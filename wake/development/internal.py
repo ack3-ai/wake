@@ -19,6 +19,10 @@ def _mem_block(block: str) -> bytearray:
 
 
 def read_from_memory(offset: int, length: int, memory: List) -> bytearray:
+    if isinstance(memory, str):
+        m = bytes.fromhex(memory[2:] if memory.startswith("0x") else memory)
+        return bytearray(m[offset : offset + length])
+
     start_block = offset // 32
     start_offset = offset % 32
     end_block = (offset + length) // 32
