@@ -54,6 +54,8 @@ from wake_rs import (
     abi,
     encode_eip712_data,
     encode_eip712_type,
+    get_eip712_signing_hash,
+    keccak256,
 )
 
 from ..utils import StrEnum
@@ -80,6 +82,7 @@ from .primitive_types import (
     FixedSizeBytes,
     FixedSizeList,
     Integer,
+    bytes32,
     fixed_bytes_map,
     fixed_list_map,
     int_map,
@@ -116,6 +119,12 @@ def get_user_defined_value_types_index() -> Dict[str, str]:
     return user_defined_value_types_index
 
 
+def get_eip712_struct_hash(obj: Any) -> bytes32:
+    return keccak256(
+        keccak256(encode_eip712_type(obj).encode()) + encode_eip712_data(obj)
+    )
+
+
 class RevertToSnapshotFailedError(Exception):
     pass
 
@@ -138,6 +147,12 @@ class Struct:
 
     def encode_eip712_data(self) -> bytes:
         return encode_eip712_data(self)
+
+    def get_eip712_struct_hash(self) -> bytes32:
+        return get_eip712_struct_hash(self)
+
+    def get_eip712_signing_hash(self, domain: Eip712Domain) -> bytes32:
+        return get_eip712_signing_hash(self, domain)
 
 
 class RequestType(StrEnum):
@@ -395,6 +410,7 @@ class Chain(ABC):
             self._connected = True
             self._client_version = self._chain_interface.get_client_version()
             from .utils import reset_lru_cache
+
             reset_lru_cache()
 
             try:
@@ -1425,7 +1441,9 @@ class Chain(ABC):
         if isinstance(block, int) and block < 0:
             block = self._chain_interface.get_block_number() + 1 + block
 
-        tx_params = self._build_transaction(RequestType.CALL, params, arguments, abi, block)
+        tx_params = self._build_transaction(
+            RequestType.CALL, params, arguments, abi, block
+        )
         try:
             coverage_handler = get_coverage_handler()
             if coverage_handler is not None and self._debug_trace_call_supported:
