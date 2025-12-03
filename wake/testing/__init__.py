@@ -1,6 +1,16 @@
 from rich import print
 
-from wake.development.core import Abi, Account, Address, Eip712Domain, Wei, abi, Struct
+from wake.development.core import (
+    Abi,
+    Account,
+    Address,
+    Eip712Domain,
+    Struct,
+    Wei,
+    abi,
+    get_eip712_signing_hash,
+    get_eip712_struct_hash,
+)
 from wake.development.globals import get_config, random
 from wake.development.internal import ExternalEvent, UnknownEvent
 from wake.development.primitive_types import *
@@ -10,6 +20,7 @@ from wake.development.transactions import (
     Eip7702Transaction,
     Error,
     ExternalError,
+    Halt,
     LegacyTransaction,
     Panic,
     PanicCodeEnum,

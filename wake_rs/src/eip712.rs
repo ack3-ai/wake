@@ -57,6 +57,21 @@ pub(crate) fn encode_eip712_data<'py>(
     Ok(PyBytes::new(py, &encoded.unwrap_or_default()))
 }
 
+#[pyfunction]
+pub(crate) fn get_eip712_signing_hash<'py>(
+    py: Python<'py>,
+    obj: &Bound<'py, PyAny>,
+    domain: &Bound<'py, PyDict>,
+) -> PyResult<Bound<'py, PyAny>> {
+    let mut py_objects = get_py_objects(py);
+
+    let typed_data = py_to_eip712(py, obj, domain, &mut py_objects)?;
+
+    let hash = typed_data.eip712_signing_hash().map_err(|e| PyErr::new::<PyValueError, _>(e.to_string()))?;
+
+    py_objects.wake_fixed_bytes_map.bind(py).get_item(32)?.unwrap().call1((hash.as_slice(),))
+}
+
 pub(crate) fn py_to_eip712(
     py: Python,
     obj: &Bound<PyAny>,
