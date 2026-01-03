@@ -33,6 +33,7 @@ from urllib.request import Request, urlopen
 import eth_utils
 from Crypto.Hash import keccak
 from pydantic import TypeAdapter, ValidationError
+
 from wake_rs import keccak256
 
 from ..compiler import SolcOutputSelectionEnum, SolidityCompiler
@@ -803,6 +804,7 @@ def mint_erc721(
     _try_change_erc721_owner(contract, owner_contract, token_id, to, owner_slot)
     _try_change_erc20_balance(contract, balance_contract, to, balance_slot, 1)
 
+
 def burn_erc721(
     contract: Account,
     from_: Union[Account, Address],
@@ -907,7 +909,9 @@ def _try_remove_erc721_owner(
             [Address],
         )
 
-        assert owner_after == Address.ZERO, f"currnet ownerOf(token_id={token_id}) = {owner_after}, slot={slot}"
+        assert (
+            owner_after == Address.ZERO
+        ), f"currnet ownerOf(token_id={token_id}) = {owner_after}, slot={slot}"
         ## Maybe do output that zero address owner of ownerOf(token_id) call should be reverted.
 
     except RevertError:
@@ -1001,7 +1005,9 @@ def _try_change_erc20_balance(
             [uint256],
         )
 
-        assert balance_after == balance_before + amount, f"balance_after: {balance_after}, balance_before: {balance_before}, amount: {amount}"
+        assert (
+            balance_after == balance_before + amount
+        ), f"balance_after: {balance_after}, balance_before: {balance_before}, amount: {amount}"
     except Exception as e:
         erc20.chain.chain_interface.set_storage_at(
             str(balance_acc.address), slot, data_before
@@ -1101,7 +1107,9 @@ def _detect_erc721_owner_slot(
 
     for addr in sorted(access_list.keys(), key=lambda a: 1 if a == impl.address else 0):
         for slot in access_list[addr]:
-            data_before = contract.chain.chain_interface.get_storage_at(str(addr), slot, "pending")
+            data_before = contract.chain.chain_interface.get_storage_at(
+                str(addr), slot, "pending"
+            )
 
             try:
                 contract.chain.chain_interface.set_storage_at(
@@ -1167,7 +1175,9 @@ def _detect_erc20_balance_slot(
     # start with the storage slots of the logic contract since they are more likely to be used
     for addr in sorted(access_list.keys(), key=lambda a: 1 if a == impl.address else 0):
         for slot in access_list[addr]:
-            data_before = erc20.chain.chain_interface.get_storage_at(str(addr), slot, block_identifier="pending")
+            data_before = erc20.chain.chain_interface.get_storage_at(
+                str(addr), slot, block_identifier="pending"
+            )
 
             try:
                 erc20.chain.chain_interface.set_storage_at(
@@ -1252,7 +1262,9 @@ def _detect_erc20_total_supply_slot(erc20: Account) -> Optional[Tuple[Account, i
     # start with the storage slots of the logic contract since they are more likely to be used
     for addr in sorted(access_list.keys(), key=lambda a: 1 if a == impl.address else 0):
         for slot in access_list[addr]:
-            data_before = erc20.chain.chain_interface.get_storage_at(str(addr), slot, "pending")
+            data_before = erc20.chain.chain_interface.get_storage_at(
+                str(addr), slot, "pending"
+            )
 
             try:
                 erc20.chain.chain_interface.set_storage_at(
@@ -1404,7 +1416,9 @@ def _detect_erc1155_balance_slot(
     # Start with the storage slots of the logic contract since they are more likely to be used
     for addr in sorted(access_list.keys(), key=lambda a: 1 if a == impl.address else 0):
         for slot in access_list[addr]:
-            data_before = erc1155.chain.chain_interface.get_storage_at(str(addr), slot, "pending")
+            data_before = erc1155.chain.chain_interface.get_storage_at(
+                str(addr), slot, "pending"
+            )
 
             try:
                 erc1155.chain.chain_interface.set_storage_at(
@@ -1539,7 +1553,9 @@ def _detect_erc1155_total_supply_slot(
 
     for addr in sorted(access_list.keys(), key=lambda a: 1 if a == impl.address else 0):
         for slot in access_list[addr]:
-            data_before = erc1155.chain.chain_interface.get_storage_at(str(addr), slot, "pending")
+            data_before = erc1155.chain.chain_interface.get_storage_at(
+                str(addr), slot, "pending"
+            )
 
             try:
                 erc1155.chain.chain_interface.set_storage_at(
