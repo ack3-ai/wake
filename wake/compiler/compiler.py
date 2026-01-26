@@ -1503,11 +1503,16 @@ class SolidityCompiler:
                 f"[green]Processed compilation results in [bold green]{end - start:.2f} s[/bold green][/]"
             )
 
+        cu_info = {}
+        for cu, target_version in zip(compilation_units, target_versions):
+            cu_info[cu.hash.hex()] = CompilationUnitBuildInfo(
+                files=cu.files,
+                target_version=target_version,
+                errors=list(errors_per_cu[cu.hash]),
+            )
+
         self._latest_build_info = ProjectBuildInfo(
-            compilation_units={
-                cu_hash.hex(): CompilationUnitBuildInfo(errors=list(errors))
-                for cu_hash, errors in errors_per_cu.items()
-            },
+            compilation_units=cu_info,
             allow_paths=self.__config.compiler.solc.allow_paths,
             exclude_paths=self.__config.compiler.solc.exclude_paths,
             include_paths=self.__config.compiler.solc.include_paths,
