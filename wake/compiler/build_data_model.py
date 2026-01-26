@@ -76,7 +76,13 @@ class CompilationUnitBuildInfo(BuildInfoModel):
         errors: List of compilation warnings and errors that occurred during compilation of the compilation unit.
     """
 
+    files: FrozenSet[Path]
+    target_version: SolidityVersion
     errors: List[SolcOutputError]
+
+    @field_serializer("target_version", when_used="json")
+    def serialize_target_version(self, target_version: SolidityVersion, info):
+        return str(target_version)
 
 
 class SourceUnitInfo(BuildInfoModel):
@@ -199,7 +205,9 @@ class ProjectBuild:
             for source_unit in self._source_units.values():
                 for node in source_unit:
                     if isinstance(node, SolidityAbc):
-                        self._reference_resolver.register_node(node, node.ast_node_id, source_unit.cu_hash)
+                        self._reference_resolver.register_node(
+                            node, node.ast_node_id, source_unit.cu_hash
+                        )
 
         for source_unit in self._source_units.values():
             source_unit._parent = None
@@ -246,7 +254,9 @@ class ProjectBuild:
                             d.register_reference(node)
 
                     if lsp and isinstance(ref_decl, GlobalSymbol):
-                        self._reference_resolver.register_global_symbol_reference(ref_decl, node)
+                        self._reference_resolver.register_global_symbol_reference(
+                            ref_decl, node
+                        )
                 elif isinstance(node, (BinaryOperation, UnaryOperation)):
                     if node.function is not None:
                         node.function.register_reference(node)
