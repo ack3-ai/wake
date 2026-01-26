@@ -32,11 +32,11 @@ import networkx as nx
 import rich
 import rich.console
 import rich.panel
+import rich.progress
 from Crypto.Hash import BLAKE2b
 from intervaltree import IntervalTree
 from pathvalidate import sanitize_filename  # type: ignore
 from pydantic import ValidationError
-from rich.progress import Progress
 from watchdog.events import (
     FileClosedEvent,
     FileOpenedEvent,
@@ -773,7 +773,7 @@ class SolidityCompiler:
                 if console is None:
                     await self.__svm.install(version)
                 else:
-                    with Progress(console=console) as progress:
+                    with rich.progress.Progress(console=console) as progress:
                         task = progress.add_task(
                             f"[green]Downloading solc {version}", total=1
                         )
@@ -1195,8 +1195,36 @@ class SolidityCompiler:
 
             compilation_units.remove(cu)
 
+        files = set()
+        for cu in compilation_units:
+            files |= cu.files
+
+        progress = rich.progress.Progress(console=console)
+        progress_task = progress.add_task(
+            f"Compiling {len(files)} files using {len(compilation_units)} solc runs",
+            total=len(compilation_units),
+        )
+
         tasks = []
         for compilation_unit, target_version in zip(compilation_units, target_versions):
+
+            async def compile_unit_wrapper(
+                compilation_unit: CompilationUnit,
+                target_version: SolidityVersion,
+                settings: SolcInputSettings,
+                logger: logging.Logger,
+                progress: rich.progress.Progress,
+                task: rich.progress.TaskID,
+            ) -> SolcOutput:
+                result = await self.compile_unit_raw(
+                    compilation_unit,
+                    target_version,
+                    settings,
+                    logger,
+                )
+                progress.advance(task)
+                return result
+
             if target_version >= "0.8.28":
                 modified_source_units = (
                     compilation_unit.source_unit_names & source_units_to_compile
@@ -1212,27 +1240,20 @@ class SolidityCompiler:
                 settings = build_settings[compilation_unit.subproject]
 
             task = asyncio.create_task(
-                self.compile_unit_raw(
+                compile_unit_wrapper(
                     compilation_unit,
                     target_version,
                     settings,
                     logger,
+                    progress,
+                    progress_task,
                 )
             )
             tasks.append(task)
 
         logger.debug(f"Compiling {len(compilation_units)} compilation units")
-        files = set()
-        for cu in compilation_units:
-            files |= cu.files
 
-        ctx_manager = (
-            console.status(
-                f"[bold green]Compiling {len(files)} files using {len(compilation_units)} solc runs...[/]"
-            )
-            if console
-            else nullcontext()
-        )
+        ctx_manager = progress if console else nullcontext()
         start = time.perf_counter()
 
         with ctx_manager:
