@@ -3,7 +3,7 @@ use pyo3::{prelude::*, types::PyBytes};
 use revm::{
     context::{ContextTr, CreateScheme, JournalTr},
     inspector::JournalExt,
-    interpreter::{CallInputs, CallOutcome, CallScheme, CallValue, InstructionResult, Interpreter},
+    interpreter::{CallInputs, CallOutcome, CallScheme, CallValue, InstructionResult},
     primitives::{Address as RevmAddress, Log},
     state::Bytecode,
     Inspector,
@@ -117,8 +117,8 @@ impl TraceInspector {
         address: RevmAddress,
         context: &mut CTX,
     ) -> Option<Vec<u8>> {
-        let journal = context.journal();
-        let bytecode = &journal.load_account_code(address).ok()?.data.info.code;
+        let journal = context.journal_mut();
+        let bytecode = &journal.load_account_with_code(address).ok()?.data.info.code;
 
         match bytecode {
             Some(Bytecode::LegacyAnalyzed(analyzed)) => self
@@ -130,14 +130,13 @@ impl TraceInspector {
                 self.extract_metadata(code.as_ref())
                     .map(|m| m.to_vec())
             }
-            Some(Bytecode::Eof(_)) => todo!(),
-            _ => None,
+            None => None,
         }
     }
 }
 
 impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for TraceInspector {
-    fn log(&mut self, _: &mut Interpreter, _: &mut CTX, log: Log) {
+    fn log(&mut self, _: &mut CTX, log: Log) {
         let current_trace = self.current_traces.last_mut().unwrap();
         current_trace.logs.push(NativeLog {
             topics: log.data.topics().iter().map(|t| t.to_vec()).collect(),
@@ -151,8 +150,8 @@ impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for TraceInspector {
         inputs: &mut revm::interpreter::CreateInputs,
     ) -> Option<revm::interpreter::CreateOutcome> {
         let nonce = context
-            .journal()
-            .load_account(inputs.caller)
+            .journal_mut()
+            .load_account(inputs.caller())
             .ok()?
             .data
             .info
@@ -160,14 +159,15 @@ impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for TraceInspector {
 
         let trace = NativeTrace {
             metadata: None,
-            input: inputs.init_code.to_vec(),
+            input: inputs.init_code().to_vec(),
             target_address: inputs.created_address(nonce).into(),
-            kind: match inputs.scheme {
+            kind: match inputs.scheme() {
                 CreateScheme::Create => "Create".to_string(),
                 CreateScheme::Create2 { salt: _ } => "Create2".to_string(),
+                CreateScheme::Custom { address: _ } => "Custom".to_string(),
             },
-            value: BigUint::from_bytes_le(inputs.value.as_le_slice()),
-            gas_limit: inputs.gas_limit,
+            value: BigUint::from_bytes_le(inputs.value().as_le_slice()),
+            gas_limit: inputs.gas_limit(),
             output: Vec::new(),
             success: false,
             result: "".to_string(),
@@ -198,27 +198,10 @@ impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for TraceInspector {
         }
     }
 
-    fn eofcreate(
-        &mut self,
-        _: &mut CTX,
-        _: &mut revm::interpreter::EOFCreateInputs,
-    ) -> Option<revm::interpreter::CreateOutcome> {
-        todo!()
-    }
-
-    fn eofcreate_end(
-        &mut self,
-        _: &mut CTX,
-        _: &revm::interpreter::EOFCreateInputs,
-        _: &mut revm::interpreter::CreateOutcome,
-    ) {
-        todo!()
-    }
-
     fn call(&mut self, context: &mut CTX, inputs: &mut CallInputs) -> Option<CallOutcome> {
         let trace = NativeTrace {
             metadata: self.get_metadata(inputs.bytecode_address, context),
-            input: inputs.input.to_vec(),
+            input: inputs.input.bytes(context).to_vec(),
             target_address: inputs.bytecode_address.into(),
             kind: call_scheme_to_string(inputs.scheme),
             value: match inputs.value {
@@ -258,19 +241,14 @@ fn call_scheme_to_string(scheme: CallScheme) -> String {
         CallScheme::CallCode => "CallCode".to_string(),
         CallScheme::DelegateCall => "DelegateCall".to_string(),
         CallScheme::StaticCall => "StaticCall".to_string(),
-        CallScheme::ExtCall => "ExtCall".to_string(),
-        CallScheme::ExtStaticCall => "ExtStaticCall".to_string(),
-        CallScheme::ExtDelegateCall => "ExtDelegateCall".to_string(),
     }
 }
 
 fn instruction_result_to_string(result: InstructionResult) -> String {
     match result {
-        InstructionResult::Continue => "Continue".to_string(),
         InstructionResult::Stop => "Stop".to_string(),
         InstructionResult::Return => "Return".to_string(),
         InstructionResult::SelfDestruct => "SelfDestruct".to_string(),
-        InstructionResult::ReturnContract => "ReturnContract".to_string(),
         InstructionResult::Revert => "Revert".to_string(),
         InstructionResult::CallTooDeep => "CallTooDeep".to_string(),
         InstructionResult::OutOfFunds => "OutOfFunds".to_string(),
@@ -279,7 +257,6 @@ fn instruction_result_to_string(result: InstructionResult) -> String {
         InstructionResult::InvalidExtDelegateCallTarget => {
             "InvalidExtDelegateCallTarget".to_string()
         }
-        InstructionResult::CallOrCreate => "CallOrCreate".to_string(),
         InstructionResult::OutOfGas => "OutOfGas".to_string(),
         InstructionResult::MemoryOOG => "MemoryOOG".to_string(),
         InstructionResult::MemoryLimitOOG => "MemoryLimitOOG".to_string(),
@@ -305,11 +282,5 @@ fn instruction_result_to_string(result: InstructionResult) -> String {
         }
         InstructionResult::CreateInitCodeSizeLimit => "CreateInitCodeSizeLimit".to_string(),
         InstructionResult::FatalExternalError => "FatalExternalError".to_string(),
-        InstructionResult::ReturnContractInNotInitEOF => "ReturnContractInNotInitEOF".to_string(),
-        InstructionResult::EOFOpcodeDisabledInLegacy => "EOFOpcodeDisabledInLegacy".to_string(),
-        InstructionResult::SubRoutineStackOverflow => "SubRoutineStackOverflow".to_string(),
-        InstructionResult::EofAuxDataOverflow => "EofAuxDataOverflow".to_string(),
-        InstructionResult::EofAuxDataTooSmall => "EofAuxDataTooSmall".to_string(),
-        InstructionResult::InvalidEXTCALLTarget => "InvalidEXTCALLTarget".to_string(),
     }
 }

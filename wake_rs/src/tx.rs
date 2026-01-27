@@ -119,9 +119,9 @@ impl TransactionAbc {
     #[getter]
     fn block_number(&self, py: Python) -> PyResult<u64> {
         match &self.block {
-            BlockInfo::Mined(block) => Ok(block.borrow(py).block_env.number),
+            BlockInfo::Mined(block) => Ok(block.borrow(py).block_env.number.try_into().unwrap()),
             BlockInfo::Pending(block_env) => {
-                Ok(block_env.number)
+                Ok(block_env.number.try_into().unwrap())
             }
         }
     }

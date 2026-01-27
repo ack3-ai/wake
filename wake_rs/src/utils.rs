@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use alloy_chains::Chain;
+use alloy_hardforks::EthereumHardfork;
 use alloy::consensus::{EthereumTypedTransaction, TxEip1559, TxEip2930, TxEip7702, TxLegacy, TypedTransaction};
 use alloy::eips::eip7702::SignedAuthorization;
 use alloy::rpc::types::{AccessList, AccessListItem, Authorization, Header};
@@ -17,6 +19,7 @@ use alloy::primitives::keccak256 as alloy_keccak256;
 use rand::rngs::OsRng;
 use revm::context::BlockEnv;
 use revm::context_interface::block::BlobExcessGasAndPrice;
+use revm::primitives::eip4844::{BLOB_BASE_FEE_UPDATE_FRACTION_CANCUN, BLOB_BASE_FEE_UPDATE_FRACTION_PRAGUE};
 use revm::primitives::{Address as RevmAddress, Bytes, TxKind, B256, I256, U256};
 
 use crate::enums::AddressEnum;
@@ -558,21 +561,43 @@ pub(crate) fn tx_params_to_typed_tx<'py>(
     })
 }
 
-pub(crate) fn header_to_block_env(header: &Header) -> BlockEnv {
-    let blob_info = if let Some(excess_blob_gas) = header.excess_blob_gas {
-        Some(BlobExcessGasAndPrice::new(excess_blob_gas.try_into().unwrap(), false)) // TODO!!
+pub(crate) fn header_to_block_env(header: &Header, chain_id: u64) -> BlockEnv {
+    let chain = Chain::from_id(chain_id);
+
+    let blob_info = header.excess_blob_gas.map(|excess_blob_gas| {
+        let fraction =
+            if EthereumHardfork::Prague
+                .activation_timestamp(chain)
+                .map_or(false, |prague_ts| header.timestamp >= prague_ts)
+            {
+                BLOB_BASE_FEE_UPDATE_FRACTION_PRAGUE
+            } else {
+                BLOB_BASE_FEE_UPDATE_FRACTION_CANCUN
+            };
+
+        BlobExcessGasAndPrice::new(
+            excess_blob_gas.try_into().unwrap(),
+            fraction,
+        )
+    });
+
+    let prevrandao = if EthereumHardfork::Paris
+        .activation_timestamp(chain)
+        .map_or(false, |paris_ts| header.timestamp >= paris_ts)
+    {
+        Some(header.mix_hash)
     } else {
         None
     };
 
     BlockEnv {
-        number: header.number,
+        number: header.number.try_into().unwrap(),
         beneficiary: header.beneficiary,
-        timestamp: header.timestamp,
+        timestamp: header.timestamp.try_into().unwrap(),
         gas_limit: header.gas_limit,
         basefee: header.base_fee_per_gas.unwrap_or(0),
         difficulty: header.difficulty,
-        prevrandao: Some(header.mix_hash), // TODO!!
+        prevrandao: prevrandao,
         blob_excess_gas_and_price: blob_info,
     }
 }

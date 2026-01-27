@@ -23,12 +23,12 @@ impl ConsoleLogInspector {
 }
 
 impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for ConsoleLogInspector {
-    fn call(&mut self, _context: &mut CTX, inputs: &mut CallInputs) -> Option<CallOutcome> {
+    fn call(&mut self, context: &mut CTX, inputs: &mut CallInputs) -> Option<CallOutcome> {
         if inputs.is_static
             && inputs.target_address == self.console_address
             && inputs.input.len() >= 4
         {
-            self.inputs.push(inputs.input.clone());
+            self.inputs.push(inputs.input.bytes(context).clone());
         }
 
         None

@@ -4,7 +4,7 @@ use revm::{
     context::{ContextTr, JournalTr},
     inspector::JournalExt,
     interpreter::{
-        CallInputs, CallOutcome, CreateInputs, CreateOutcome, EOFCreateInputs, InstructionResult,
+        CallInputs, CallOutcome, CreateInputs, CreateOutcome, InstructionResult,
         Interpreter,
     },
     primitives::{Address, Bytes, Log},
@@ -94,8 +94,8 @@ impl FqnInspector {
         address: Address,
         context: &mut CTX,
     ) -> Option<Vec<u8>> {
-        let journal = context.journal();
-        let bytecode = &journal.load_account_code(address).ok()?.data.info.code;
+        let journal = context.journal_mut();
+        let bytecode = &journal.load_account_with_code(address).ok()?.data.info.code;
 
         match bytecode {
             Some(Bytecode::LegacyAnalyzed(analyzed)) => self
@@ -107,14 +107,13 @@ impl FqnInspector {
                 self.extract_metadata(code.as_ref())
                     .map(|m| m.to_vec())
             }
-            Some(Bytecode::Eof(_)) => todo!(),
             _ => None,
         }
     }
 }
 
 impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for FqnInspector {
-    fn log(&mut self, interp: &mut Interpreter, _context: &mut CTX, log: Log) {
+    fn log_full(&mut self, interp: &mut Interpreter, _context: &mut CTX, log: Log) {
         let bytecode_address = self.bytecode_addresses.last().unwrap().clone();
 
         if let Some(init_code) = self.init_code_stack.last().unwrap() {
@@ -141,9 +140,9 @@ impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for FqnInspector {
     }
 
     fn create(&mut self, context: &mut CTX, inputs: &mut CreateInputs) -> Option<CreateOutcome> {
-        let nonce = context.journal().load_account(inputs.caller).ok()?.info.nonce;
+        let nonce = context.journal_mut().load_account(inputs.caller()).ok()?.info.nonce;
         self.bytecode_addresses.push(inputs.created_address(nonce));
-        self.init_code_stack.push(Some(inputs.init_code.clone()));
+        self.init_code_stack.push(Some(inputs.init_code().clone()));
         None
     }
 
@@ -162,27 +161,10 @@ impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for FqnInspector {
             self.errors_metadata
                 .entry(selector)
                 .or_insert(ErrorMetadata::Create(CreateErrorMetadata {
-                    init_code: inputs.init_code.clone(),
+                    init_code: inputs.init_code().clone(),
                     bytecode_address,
                 }));
         }
-    }
-
-    fn eofcreate(
-        &mut self,
-        _context: &mut CTX,
-        _inputs: &mut EOFCreateInputs,
-    ) -> Option<CreateOutcome> {
-        todo!();
-    }
-
-    fn eofcreate_end(
-        &mut self,
-        _context: &mut CTX,
-        _inputs: &EOFCreateInputs,
-        _outcome: &mut CreateOutcome,
-    ) {
-        todo!();
     }
 
     fn call(&mut self, _context: &mut CTX, inputs: &mut CallInputs) -> Option<CallOutcome> {
@@ -199,7 +181,7 @@ impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for FqnInspector {
         if outcome.result.result == InstructionResult::Revert && outcome.result.output.len() >= 4 {
             let selector: [u8; 4] = (&outcome.result.output[..4]).try_into().unwrap();
 
-            if let Ok(state_load) = context.journal().code(inputs.bytecode_address) {
+            if let Ok(state_load) = context.journal_mut().code(inputs.bytecode_address) {
                 let code = state_load.data;
                 if code.len() >= 2 {
                     let metadata = self.extract_metadata(code.as_ref()).unwrap_or_default();
