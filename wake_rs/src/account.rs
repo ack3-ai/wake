@@ -12,6 +12,7 @@ use pyo3::{intern, prelude::*, IntoPyObjectExt, PyTypeInfo};
 use revm::context::ContextTr;
 use revm::primitives::{Address as RevmAddress, U256};
 use revm::Database;
+use send_wrapper::SendWrapper;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -80,7 +81,9 @@ impl Account {
         let mut chain = chain.borrow_mut(py);
         let evm = chain.get_evm_mut()?;
 
-        Ok(py.allow_threads(|| f(evm)))
+        let mut wrapped = SendWrapper::new(evm);
+
+        Ok(py.allow_threads(|| f(*wrapped)))
     }
 
     pub(crate) fn from_address(py: Python, address: Address, chain: Py<PyAny>) -> PyResult<Self> {
@@ -302,7 +305,7 @@ impl Account {
             ChainWrapper::Native(chain) => {
                 let addr = self.address.borrow(py).0;
                 self.with_evm_context(py, chain, |evm| -> PyResult<BigUint> {
-                    Ok(evm.db().basic(addr)?.map_or(BigUint::ZERO, |a| {
+                    Ok(evm.db_mut().basic(addr)?.map_or(BigUint::ZERO, |a| {
                         BigUint::from_bytes_le(a.balance.as_le_slice())
                     }))
                 })?
@@ -328,7 +331,7 @@ impl Account {
                 let addr = self.address.borrow(py).0;
                 let value: U256 = value.try_into()?;
                 self.with_evm_context(py, chain, |evm| -> PyResult<()> {
-                    evm.db().set_balance(addr, value)?;
+                    evm.db_mut().set_balance(addr, value)?;
                     Ok(())
                 })??;
                 chain.borrow_mut(py).mine(py, false)?;
@@ -354,7 +357,7 @@ impl Account {
             ChainWrapper::Native(chain) => {
                 let addr = self.address.borrow(py).0;
                 let code = self.with_evm_context(py, chain, |evm| -> PyResult<Vec<u8>> {
-                    Ok(evm.db().basic(addr)?.map_or(vec![], |a| {
+                    Ok(evm.db_mut().basic(addr)?.map_or(vec![], |a| {
                         a.code.map_or(vec![], |c| c.original_bytes().to_vec())
                     }))
                 })??;
@@ -378,7 +381,7 @@ impl Account {
                 let addr = self.address.borrow(py).0;
                 let code = value.extract::<Vec<u8>>()?;
                 self.with_evm_context(py, chain, |evm| -> PyResult<()> {
-                    evm.db().set_code(addr, code)?;
+                    evm.db_mut().set_code(addr, code)?;
                     Ok(())
                 })??;
                 chain.borrow_mut(py).mine(py, false)?;
@@ -403,7 +406,7 @@ impl Account {
             ChainWrapper::Native(chain) => {
                 let addr = self.address.borrow(py).0;
                 self.with_evm_context(py, chain, |evm| -> PyResult<u64> {
-                    Ok(evm.db().basic(addr)?.map_or(0, |a| a.nonce))
+                    Ok(evm.db_mut().basic(addr)?.map_or(0, |a| a.nonce))
                 })?
             }
             ChainWrapper::Python(chain) => chain
@@ -423,7 +426,7 @@ impl Account {
             ChainWrapper::Native(chain) => {
                 let addr = self.address.borrow(py).0;
                 self.with_evm_context(py, chain, |evm| -> PyResult<()> {
-                    evm.db().set_nonce(addr, value)?;
+                    evm.db_mut().set_nonce(addr, value)?;
                     Ok(())
                 })??;
                 chain.borrow_mut(py).mine(py, false)?;

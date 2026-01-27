@@ -7,16 +7,17 @@ use auto_impl::auto_impl;
 use num_bigint::BigUint;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::{PyBytes, PyDict, PyNone, PyString, PyTuple, PyType};
+use send_wrapper::SendWrapper;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rand::Rng;
-use revm::context::result::ExecutionResult;
+use revm::context::result::{EVMError, ExecutionResult};
 use revm::context::transaction::AccessList;
-use revm::context::{BlockEnv, CfgEnv, ContextTr, Evm, EvmData, TxEnv};
+use revm::context::{BlockEnv, CfgEnv, ContextTr, Evm, TxEnv};
 use revm::database::{AlloyDB, EmptyDB, WrapDatabaseAsync};
 use revm::handler::instructions::EthInstructions;
-use revm::handler::EthPrecompiles;
-use revm::inspector::{InspectEvm, InspectCommitEvm};
+use revm::inspector::{InspectCommitEvm, InspectEvm};
+use revm::handler::{EthFrame, EthPrecompiles};
 use revm::inspector::JournalExt;
 use revm::interpreter::interpreter::EthInterpreter;
 use revm::precompile::{PrecompileSpecId, Precompiles};
@@ -24,6 +25,7 @@ use revm::primitives::hardfork::SpecId;
 use revm::primitives::{Address as RevmAddress, Bytes, Log, B256, U256};
 use std::collections::HashMap;
 use std::mem;
+use std::ops::AddAssign;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -39,7 +41,7 @@ use crate::chain_interface::ChainInterface;
 use crate::inspectors::console_log_inspector::ConsoleLogInspector;
 use crate::contract::Contract;
 use crate::inspectors::coverage_inspector::CoverageInspector;
-use crate::db::DB;
+use crate::db::{DB, DBError};
 use crate::enums::{
     AccessListEnum, AddressEnum, BlockEnum, GasLimitEnum, RequestTypeEnum, ValueEnum,
 };
@@ -93,7 +95,7 @@ impl ProviderWrapper {
 }
 
 #[auto_impl(&mut)]
-trait InspectorExt<CTX: ContextTr<Journal: JournalExt>>: Inspector<CTX> {}
+pub(crate) trait InspectorExt<CTX: ContextTr<Journal: JournalExt>>: Inspector<CTX> {}
 
 impl<CTX: ContextTr<Journal: JournalExt>> InspectorExt<CTX> for AccessListInspector {}
 impl<CTX: ContextTr<Journal: JournalExt>> InspectorExt<CTX> for FqnInspector {}
@@ -148,12 +150,17 @@ pub(crate) type CustomEvm = Evm<
     (),
     EthInstructions<EthInterpreter, CustomContext>,
     EthPrecompiles,
+    EthFrame<EthInterpreter>,
 >;
 
-#[pyclass]
+
+/// unsendable required because CustomEvm is not Send
+/// other workarounds such as global registry would have higher performance overhead
+/// using unsendable enforces single-threaded execution
+#[pyclass(unsendable)]
 pub struct Chain {
     rng: Xoshiro256PlusPlus,
-    pub evm: Option<CustomEvm>,
+    pub(crate) evm: Option<CustomEvm>,
     pub(crate) provider: Option<ProviderWrapper>,
     pub labels: Arc<HashMap<RevmAddress, String>>,
     collect_coverage: bool,
@@ -165,6 +172,7 @@ pub struct Chain {
     pub(crate) chain_interface: Option<Py<ChainInterface>>,
     #[pyo3(get)]
     connected: bool,
+    pub(crate) chain_id: u64,
     pub(crate) forked_chain_id: Option<u64>,
     forked_block: Option<u64>,
     accounts: Vec<Py<Account>>,
@@ -218,6 +226,7 @@ impl Chain {
                 labels: Arc::new(HashMap::new()),
                 collect_coverage: false,
                 connected: false,
+                chain_id: 0,
                 forked_chain_id: None,
                 forked_block: None,
                 accounts: vec![],
@@ -461,7 +470,7 @@ impl Chain {
 
     fn snapshot(&mut self, py: Python) -> PyResult<String> {
         let evm = self.get_evm_mut()?;
-        let snapshot_id = evm.db().snapshot().to_string();
+        let snapshot_id = evm.db_mut().snapshot().to_string();
 
         self.snapshots.push(ChainSnapshot::from_chain(self, py)?);
 
@@ -476,11 +485,11 @@ impl Chain {
 
         let snapshot = borrowed.snapshots.pop().unwrap();
 
-        let last_block_number = snapshot.pending_block_env.number - 1;
+        let last_block_number = TryInto::<u64>::try_into(snapshot.pending_block_env.number).unwrap() - 1;
 
         let evm = borrowed.get_evm_mut()?;
-        let journal_index = evm.db().revert(snapshot_id);
-        evm.db().set_last_block_number(last_block_number);
+        let journal_index = evm.db_mut().revert(snapshot_id);
+        evm.db_mut().set_last_block_number(last_block_number);
 
         let mut blocks = borrowed.blocks.as_mut().unwrap().borrow_mut(py);
         blocks.remove_blocks(last_block_number);
@@ -531,7 +540,7 @@ impl Chain {
                 .extract::<u64>()?;
             let mut borrowed = slf.borrow_mut();
             let evm = borrowed.get_evm_mut()?;
-            evm.block.timestamp = new_timestamp;
+            evm.block.timestamp = new_timestamp.try_into().unwrap();
             let _ = borrowed.mine(py, true);
         } else {
             let _ = slf.borrow_mut().mine(py, true);
@@ -542,7 +551,7 @@ impl Chain {
 
     fn set_next_block_timestamp(&mut self, new_timestamp: u64) -> PyResult<()> {
         let evm = self.get_evm_mut()?;
-        evm.block.timestamp = new_timestamp;
+        evm.block.timestamp = new_timestamp.try_into().unwrap();
         Ok(())
     }
 
@@ -650,13 +659,13 @@ impl Chain {
 
                 let (provider, forked_block, forked_chain_id) = py.allow_threads(|| {
                     let provider = if url.starts_with("ws://") || url.starts_with("wss://") {
-                        Arc::new(ProviderBuilder::new().on_client(
+                        Arc::new(ProviderBuilder::new().connect_client(
                             runtime
                                 .block_on(ClientBuilder::default().ws(WsConnect::new(url)))
                                 .unwrap(),
                         ))
                     } else {
-                        Arc::new(ProviderBuilder::new().on_client(
+                        Arc::new(ProviderBuilder::new().connect_client(
                             ClientBuilder::default().http(Url::parse(&url).unwrap()),
                         ))
                     };
@@ -702,12 +711,12 @@ impl Chain {
                 );
 
                 for account in slf_.accounts.iter() {
-                    evm.db().set_code(account.borrow(py).address.borrow(py).0, vec![])?;
+                    evm.db_mut().set_code(account.borrow(py).address.borrow(py).0, vec![])?;
                 }
 
                 evm.cfg.chain_id = chain_id.unwrap_or(forked_chain_id);
-                evm.block.number = forked_block.header.number + 1;
-                evm.block.timestamp = forked_block.header.timestamp + 1;
+                evm.block.number = (forked_block.header.number + 1).try_into().unwrap();
+                evm.block.timestamp = (forked_block.header.timestamp + 1).try_into().unwrap();
                 slf_.evm = Some(evm);
                 slf_.forked_chain_id = Some(forked_chain_id);
                 slf_.forked_block = Some(forked_block.header.number);
@@ -724,7 +733,7 @@ impl Chain {
                     }
                 );
                 evm.cfg.chain_id = chain_id.unwrap_or(31337);
-                evm.block.number = 0;
+                evm.block.number = U256::ZERO;
                 evm.block.timestamp = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
@@ -741,7 +750,7 @@ impl Chain {
         evm.cfg.disable_nonce_check = true;
         evm.cfg.disable_eip3607 = true;
         evm.block.gas_limit = block_gas_limit;
-        evm.tx.chain_id = Some(evm.cfg.chain_id);
+        slf_.chain_id = evm.cfg.chain_id;
 
         slf_.blocks = Some(Py::new(py, Blocks::new(slf.clone_ref(py), slf_.forked_block))?);
         slf_.txs = Some(Py::new(py, Txs::new())?);
@@ -766,7 +775,7 @@ impl Chain {
                     let state_db_path = format!("{}/state.db", path);
 
                     if let Some(evm) = &mut borrowed.evm {
-                        if let Err(e) = evm.db().dump_forked_state(&state_db_path) {
+                        if let Err(e) = evm.db_mut().dump_forked_state(&state_db_path) {
                             log::warn!("Failed to dump forked state: {}", e);
                         }
                     }
@@ -849,28 +858,19 @@ impl Chain {
 impl Chain {
     fn with_evm_with_inspector<'a, F, R, I>(&mut self, py: Python, inspector: I, f: F) -> R
     where
-        F: FnOnce(&mut Evm<CustomContext, I, EthInstructions<EthInterpreter, CustomContext>, EthPrecompiles>) -> R + Send,
+        F: FnOnce(&mut Evm<CustomContext, I, EthInstructions<EthInterpreter, CustomContext>, EthPrecompiles, EthFrame<EthInterpreter>>) -> R + Send,
         R: Send,
         I: Send + 'a + InspectorExt<CustomContext>,
     {
-        let evm = self.evm.take().expect("Not connected");
+        let evm = self.evm.take().expect("Not connected").with_inspector(inspector);
 
-        let (result, new_evm) = py.allow_threads(move || {
-            let mut evm = evm.with_inspector(inspector);
+        // Wrap the non-Send EVM in SendWrapper to make it Send-safe for allow_threads
+        let mut wrapped = SendWrapper::new(evm);
 
-            let result = f(&mut evm);
+        let result = py.allow_threads(|| f(&mut *wrapped));
 
-            let Evm { data: EvmData { ctx, .. }, instruction, precompiles } = evm;
-            let new_evm = Evm {
-                data: EvmData { ctx, inspector: () },
-                instruction,
-                precompiles,
-            };
+        self.evm = Some(wrapped.take().with_inspector(()));
 
-            (result, new_evm)
-        });
-
-        self.evm = Some(new_evm);
         result
     }
 
@@ -896,12 +896,11 @@ impl Chain {
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Not connected"))?;
         self.latest_block_env = Some(evm.block.clone());
 
-        let last_block_number = self.latest_block_env.as_ref().unwrap().number;
+        let last_block_number = self.latest_block_env.as_ref().unwrap().number.try_into().unwrap();
         let block_hash = B256::from_slice(&self.rng.gen::<[u8; 32]>());
 
-        evm.db()
-            .set_last_block_number(last_block_number.try_into().unwrap());
-        evm.db().set_block_hash(last_block_number, block_hash);
+        evm.db_mut().set_last_block_number(last_block_number);
+        evm.db_mut().set_block_hash(last_block_number, block_hash);
 
         let mut block_env = evm.block.clone();
         // reset to its original value
@@ -928,15 +927,15 @@ impl Chain {
         self.pending_gas_used = 0;
 
         // prepare pending block
-        evm.block.number += 1;
-        evm.block.timestamp += 1;
+        evm.block.number.add_assign(U256::from(1));
+        evm.block.timestamp.add_assign(U256::from(1));
         evm.block.gas_limit = self.block_gas_limit;
 
         Ok(Some(block))
     }
 
     pub(crate) fn last_block_number(&self) -> PyResult<u64> {
-        Ok(self.get_evm()?.db_ref().last_block_number())
+        Ok(self.get_evm()?.db().last_block_number())
     }
 
     pub(crate) fn call(
@@ -966,10 +965,9 @@ impl Chain {
         ));
         let collect_coverage = borrowed.collect_coverage;
         let block_gas_limit = borrowed.get_evm()?.block.gas_limit;
-        let evm = borrowed.get_evm_mut()?;
-        prepare_tx_env(
+        let tx_env = prepare_tx_env(
             py,
-            &mut evm.tx,
+            borrowed.chain_id,
             block_gas_limit,
             data,
             to,
@@ -993,14 +991,15 @@ impl Chain {
 
         let res = match block {
             BlockEnum::Pending => borrowed
-                .with_evm_with_inspector(py, &mut *inspector, |evm| evm.inspect_replay())
-                .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?,
+                .with_evm_with_inspector(py, &mut *inspector, |evm| evm.inspect_tx(tx_env))
+                .map_err(|e: EVMError<DBError>| PyErr::new::<PyRuntimeError, _>(e.to_string()))?,
             BlockEnum::Int(_) | BlockEnum::Latest => {
                 let block = borrowed.blocks.as_ref().unwrap().borrow_mut(py).get_block(
                     py,
                     block,
                     borrowed.last_block_number()?,
                     borrowed.provider.clone(),
+                    borrowed.forked_chain_id,
                 )?;
                 let block = block.borrow(py);
                 let journal_index = block.journal_index;
@@ -1015,14 +1014,13 @@ impl Chain {
                     .with_evm_with_inspector(py, &mut *inspector, |evm| {
                         let block_env_backup =
                             mem::replace(&mut evm.block, block_env);
-                        let rollback = evm.db().rollback(journal_index);
-                        let res = evm.inspect_replay();
-                        evm.db().restore_rollback(rollback);
+                        let rollback = evm.db_mut().rollback(journal_index);
+                        let res = evm.inspect_tx(tx_env);
+                        evm.db_mut().restore_rollback(rollback);
                         evm.block = block_env_backup;
-
                         res
                     })
-                    .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?
+                    .map_err(|e: EVMError<DBError>| PyErr::new::<PyRuntimeError, _>(e.to_string()))?
             }
             _ => return Err(PyValueError::new_err("Invalid block")),
         };
@@ -1094,10 +1092,9 @@ impl Chain {
         let collect_coverage = borrowed.collect_coverage;
 
         let block_gas_limit = borrowed.get_evm()?.block.gas_limit;
-        let evm = borrowed.get_evm_mut()?;
-        prepare_tx_env(
+        let tx_env = prepare_tx_env(
             py,
-            &mut evm.tx,
+            borrowed.chain_id,
             block_gas_limit,
             data,
             to,
@@ -1111,19 +1108,18 @@ impl Chain {
             authorization_list,
         )?;
 
-        let tx_env = evm.tx.clone();
-
         let mut inspector: Box<dyn FqnInspectorExt<CustomContext>> = if !collect_coverage {
             Box::new(FqnInspector::new())
         } else {
             Box::new(CoverageInspector::new())
         };
 
-        let journal_index = evm.db_ref().get_journal_index();
+        let evm = borrowed.get_evm()?;
+        let journal_index = evm.db().get_journal_index();
 
         let result = borrowed
-            .with_evm_with_inspector(py, &mut *inspector, |evm| evm.inspect_replay_commit())
-            .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
+            .with_evm_with_inspector(py, &mut *inspector, |evm| evm.inspect_tx_commit(tx_env.clone()))
+            .map_err(|e: EVMError<DBError>| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
 
         inspector.sync_coverage(py)?;
 
@@ -1212,10 +1208,9 @@ impl Chain {
                 .clone_ref(py),
         ));
         let block_gas_limit = borrowed.get_evm()?.block.gas_limit;
-        let evm = borrowed.get_evm_mut()?;
-        prepare_tx_env(
+        let tx_env = prepare_tx_env(
             py,
-            &mut evm.tx,
+            borrowed.chain_id,
             block_gas_limit,
             data,
             to,
@@ -1234,7 +1229,7 @@ impl Chain {
 
         let res = match block {
             BlockEnum::Pending => borrowed
-                .with_evm_with_inspector(py, &mut inspector, |evm| evm.inspect_replay())
+                .with_evm_with_inspector(py, &mut inspector, |evm| evm.inspect_tx(tx_env))
                 .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?,
             BlockEnum::Int(_) | BlockEnum::Latest => {
                 let block = borrowed.blocks.as_ref().unwrap().borrow_mut(py).get_block(
@@ -1242,6 +1237,7 @@ impl Chain {
                     block,
                     borrowed.last_block_number()?,
                     borrowed.provider.clone(),
+                    borrowed.forked_chain_id,
                 )?;
                 let block = block.borrow(py);
                 let journal_index = block.journal_index;
@@ -1256,9 +1252,9 @@ impl Chain {
                     .with_evm_with_inspector(py, &mut inspector, |evm| {
                         let block_env_backup =
                             mem::replace(&mut evm.block, block_env);
-                        let rollback = evm.db().rollback(journal_index);
-                        let res = evm.inspect_replay();
-                        evm.db().restore_rollback(rollback);
+                        let rollback = evm.db_mut().rollback(journal_index);
+                        let res = evm.inspect_tx(tx_env);
+                        evm.db_mut().restore_rollback(rollback);
                         evm.block = block_env_backup;
 
                         res
@@ -1327,10 +1323,9 @@ impl Chain {
                 .clone_ref(py),
         ));
         let block_gas_limit = borrowed.get_evm()?.block.gas_limit;
-        let evm = borrowed.get_evm_mut()?;
-        prepare_tx_env(
+        let tx_env = prepare_tx_env(
             py,
-            &mut evm.tx,
+            borrowed.chain_id,
             block_gas_limit,
             data,
             to,
@@ -1348,7 +1343,7 @@ impl Chain {
 
         let res = match block {
             BlockEnum::Pending => borrowed
-                .with_evm_with_inspector(py, &mut inspector, |evm| evm.inspect_replay())
+                .with_evm_with_inspector(py, &mut inspector, |evm| evm.inspect_tx(tx_env))
                 .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?,
             BlockEnum::Int(_) | BlockEnum::Latest => {
                 let block = borrowed.blocks.as_ref().unwrap().borrow_mut(py).get_block(
@@ -1356,6 +1351,7 @@ impl Chain {
                     block,
                     borrowed.last_block_number()?,
                     borrowed.provider.clone(),
+                    borrowed.forked_chain_id,
                 )?;
                 let block = block.borrow(py);
                 let journal_index = block.journal_index;
@@ -1370,9 +1366,9 @@ impl Chain {
                     .with_evm_with_inspector(py, &mut inspector, |evm| {
                         let block_env_backup =
                             mem::replace(&mut evm.block, block_env);
-                        let rollback = evm.db().rollback(journal_index);
-                        let res = evm.inspect_replay();
-                        evm.db().restore_rollback(rollback);
+                        let rollback = evm.db_mut().rollback(journal_index);
+                        let res = evm.inspect_tx(tx_env);
+                        evm.db_mut().restore_rollback(rollback);
                         evm.block = block_env_backup;
 
                         res
@@ -1430,9 +1426,9 @@ impl Chain {
 
         self.with_evm_with_inspector(py, &mut inspector, |evm| {
             let block_env_backup = mem::replace(&mut evm.block, block_env);
-            let rollback = evm.db().rollback(journal_index);
-            let _ = evm.inspect_with_tx(tx_env.clone());
-            evm.db().restore_rollback(rollback);
+            let rollback = evm.db_mut().rollback(journal_index);
+            let _ = evm.inspect_tx(tx_env.clone());
+            evm.db_mut().restore_rollback(rollback);
             evm.block = block_env_backup;
         });
 
@@ -1450,9 +1446,9 @@ impl Chain {
 
         self.with_evm_with_inspector(py, &mut inspector, |evm| {
             let block_env_backup = mem::replace(&mut evm.block, block_env);
-            let rollback = evm.db().rollback(journal_index);
-            let _ = evm.inspect_with_tx(tx_env.clone());
-            evm.db().restore_rollback(rollback);
+            let rollback = evm.db_mut().rollback(journal_index);
+            let _ = evm.inspect_tx(tx_env.clone());
+            evm.db_mut().restore_rollback(rollback);
             evm.block = block_env_backup;
         });
 

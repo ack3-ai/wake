@@ -36,8 +36,8 @@ impl AccessListInspector {
 }
 
 impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for AccessListInspector {
-    fn log(&mut self, interp: &mut Interpreter, context: &mut CTX, log: Log) {
-        self.fqn_inspector.log(interp, context, log);
+    fn log_full(&mut self, interp: &mut Interpreter, context: &mut CTX, log: Log) {
+        self.fqn_inspector.log_full(interp, context, log);
     }
 
     fn call_end(&mut self, context: &mut CTX, inputs: &CallInputs, outcome: &mut CallOutcome) {

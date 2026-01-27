@@ -7,14 +7,16 @@ edition = "2021"
 debug = true
 
 [dependencies]
-alloy = { version = "0.13", features = ["signer-local", "eip712", "dyn-abi", "signer-mnemonic", "signer-mnemonic-all-languages", "signer-keystore", "signer-trezor", "provider-http", "provider-ws", "rpc-types-eth"] }
+alloy = { version = "1.5.2", features = ["signer-local", "eip712", "dyn-abi", "signer-mnemonic", "signer-mnemonic-all-languages", "signer-keystore", "signer-trezor", "provider-http", "provider-ws", "rpc-types-eth"] }
+alloy-chains = "0.2.30"
+alloy-hardforks = "0.4.7"
 pyo3 = { version = "0.24", features = ["extension-module", "num-bigint", "py-clone"] }
 
 log = "0.4.21"
 pyo3-log = "0.12.3"
 num-bigint = "0.4.6"
 num-traits = "0.2.19"
-revm = { version = "21.0", features = ["alloydb", "std", "serde-json", "optional_eip3607"] }
+revm = { version = "34.0", features = ["alloydb", "std", "serde-json", "optional_eip3607"] }
 tokio = "1.39.1"
 lazy_static = "1.5.0"
 reqwest = "0.12.5"
@@ -24,7 +26,7 @@ env_logger = "0.11.5"
 send_wrapper = "0.6.0"
 hex = "0.4.3"
 regex = "1.10.6"
-revm-inspectors = "0.18.0"
+revm-inspectors = "0.34.0"
 auto_impl = "1.2.0"
 rand = { version = "0.8.5", features = ["small_rng"] }
 eth-keystore = { version = "0.5.0", features = ["geth-compat"] }

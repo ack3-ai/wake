@@ -7,6 +7,7 @@ use pyo3::{prelude::*, types::PyBytes};
 use revm::context::ContextTr;
 use revm::primitives::U256;
 use revm::Database;
+use send_wrapper::SendWrapper;
 
 use crate::account::Account;
 use crate::chain::CustomEvm;
@@ -27,7 +28,9 @@ impl ChainInterface {
         let mut chain = chain.borrow_mut(py);
         let evm = chain.get_evm_mut()?;
 
-        let result = py.allow_threads(|| f(&mut *evm));
+        let mut wrapped = SendWrapper::new(evm);
+
+        let result = py.allow_threads(|| f(*wrapped));
 
         Ok(result)
     }
@@ -57,7 +60,7 @@ impl ChainInterface {
 
         let data = match block_identifier {
             BlockEnum::Pending => self.with_evm(py, &self.chain, |evm| {
-                evm.db().storage(address, big_uint_to_u256(position))
+                evm.db_mut().storage(address, big_uint_to_u256(position))
             })?,
             BlockEnum::Int(_) | BlockEnum::Latest => {
                 let chain = self.chain.bind(py).borrow();
@@ -72,6 +75,7 @@ impl ChainInterface {
                         block_identifier,
                         last_block_number,
                         chain.provider.clone(),
+                        chain.forked_chain_id,
                     )?
                     .borrow(py)
                     .journal_index;
@@ -84,9 +88,9 @@ impl ChainInterface {
                 drop(chain);
 
                 self.with_evm(py, &self.chain, |evm| {
-                    let rollback = evm.db().rollback(journal_index);
-                    let data = evm.db().storage(address, big_uint_to_u256(position));
-                    evm.db().restore_rollback(rollback);
+                    let rollback = evm.db_mut().rollback(journal_index);
+                    let data = evm.db_mut().storage(address, big_uint_to_u256(position));
+                    evm.db_mut().restore_rollback(rollback);
                     data
                 })?
             }
@@ -120,7 +124,7 @@ impl ChainInterface {
         let address = address.parse().map_err(|e: FromHexError| PyValueError::new_err(e.to_string()))?;
 
         self.with_evm(py, &self.chain, |evm| {
-            evm.db().set_storage(address, big_uint_to_u256(position), U256::from_be_slice(bytes))
+            evm.db_mut().set_storage(address, big_uint_to_u256(position), U256::from_be_slice(bytes))
         })??;
 
         self.chain.borrow_mut(py).mine(py, false)?;
@@ -159,6 +163,7 @@ impl ChainInterface {
                         block_identifier,
                         last_block_number,
                         chain.provider.clone(),
+                        chain.forked_chain_id,
                     )?
                     .borrow(py)
                     .journal_index;
@@ -171,11 +176,11 @@ impl ChainInterface {
                 drop(chain);
 
                 let code = self.with_evm(py, &self.chain, |evm| -> PyResult<Vec<u8>> {
-                    let rollback = evm.db().rollback(journal_index);
-                    let code = evm.db().basic(address)?.map_or(vec![], |a| {
+                    let rollback = evm.db_mut().rollback(journal_index);
+                    let code = evm.db_mut().basic(address)?.map_or(vec![], |a| {
                         a.code.map_or(vec![], |c| c.original_bytes().to_vec())
                     });
-                    evm.db().restore_rollback(rollback);
+                    evm.db_mut().restore_rollback(rollback);
                     Ok(code)
                 })??;
 

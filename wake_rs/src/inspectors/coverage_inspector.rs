@@ -7,7 +7,7 @@ use revm::context::ContextTr;
 use revm::inspector::JournalExt;
 use revm::interpreter::interpreter_types::Jumps;
 use revm::interpreter::{
-    CallInputs, CallOutcome, CreateInputs, CreateOutcome, EOFCreateInputs, Interpreter,
+    CallInputs, CallOutcome, CreateInputs, CreateOutcome, Interpreter,
 };
 use revm::primitives::Log;
 use revm::Inspector;
@@ -296,12 +296,12 @@ impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for CoverageInspector {
         self.fqn_inspector.call_end(context, inputs, outcome)
     }
 
-    fn log(&mut self, interp: &mut Interpreter, context: &mut CTX, log: Log) {
-        self.fqn_inspector.log(interp, context, log)
+    fn log_full(&mut self, interp: &mut Interpreter, context: &mut CTX, log: Log) {
+        self.fqn_inspector.log_full(interp, context, log)
     }
 
     fn create(&mut self, context: &mut CTX, inputs: &mut CreateInputs) -> Option<CreateOutcome> {
-        let fqn = get_fqn_from_creation_code(&inputs.init_code, &self.coverage_helpers.init_code_index);
+        let fqn = get_fqn_from_creation_code(inputs.init_code(), &self.coverage_helpers.init_code_index);
         match &fqn {
             Some(fqn) => {
                 self.fqn_stack.push(Some(fqn.clone()));
@@ -327,23 +327,6 @@ impl<CTX: ContextTr<Journal: JournalExt>> Inspector<CTX> for CoverageInspector {
         self.pc_map_stack.pop().unwrap();
 
         self.fqn_inspector.create_end(context, inputs, outcome)
-    }
-
-    fn eofcreate(
-        &mut self,
-        _context: &mut CTX,
-        _inputs: &mut EOFCreateInputs,
-    ) -> Option<CreateOutcome> {
-        todo!()
-    }
-
-    fn eofcreate_end(
-        &mut self,
-        _context: &mut CTX,
-        _inputs: &EOFCreateInputs,
-        _outcome: &mut CreateOutcome,
-    ) {
-        todo!()
     }
 
     fn step(&mut self, interp: &mut Interpreter, _context: &mut CTX) {

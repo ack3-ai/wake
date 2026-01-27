@@ -29,7 +29,7 @@ impl Blocks {
         block_hash: B256,
         gas_used: u64,
     ) -> PyResult<Py<Block>> {
-        let block_number = block_env.number as usize;
+        let block_number: usize = block_env.number.try_into().unwrap();
         let block = Py::new(
             py,
             Block {
@@ -56,6 +56,7 @@ impl Blocks {
         block: BlockEnum,
         last_block_number: u64,
         provider: Option<ProviderWrapper>,
+        forked_chain_id: Option<u64>,
     ) -> Result<Py<Block>, PyErr> {
         let number = match block {
             BlockEnum::Int(block_number) => {
@@ -132,7 +133,7 @@ impl Blocks {
                                             Block {
                                                 chain: self.chain.clone_ref(py),
                                                 block_hash: block.header.hash,
-                                                block_env: header_to_block_env(&block.header),
+                                                block_env: header_to_block_env(&block.header, forked_chain_id.unwrap()),
                                                 journal_index: None,
                                                 gas_used: block.header.gas_used,
                                             },
@@ -175,10 +176,11 @@ impl Blocks {
         let chain = self.chain.borrow(py);
         let last_block_number = chain.last_block_number()?;
         let provider = chain.provider.clone();
+        let forked_chain_id = chain.forked_chain_id;
         drop(chain);
         Ok(Py::new(
             py,
-            self.get_block(py, block, last_block_number, provider)?,
+            self.get_block(py, block, last_block_number, provider, forked_chain_id)?,
         )?)
     }
 }

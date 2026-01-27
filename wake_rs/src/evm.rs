@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use alloy::{
     eips::eip7702::SignedAuthorization,
     hex::FromHexError,
-    rpc::types::{AccessList, Authorization},
+    rpc::types::{AccessList, Authorization}, signers::Either,
 };
 use num_bigint::BigUint;
 use pyo3::{
@@ -27,7 +27,7 @@ use crate::{
 
 pub(crate) fn prepare_tx_env(
     py: Python,
-    tx_env: &mut TxEnv,
+    chain_id: u64,
     block_gas_limit: u64,
     data: Vec<u8>,
     to: Option<Address>,
@@ -39,7 +39,9 @@ pub(crate) fn prepare_tx_env(
     max_priority_fee_per_gas: Option<U256>,
     access_list: Option<AccessListEnum>,
     authorization_list: Option<Vec<Bound<'_, PyDict>>>,
-) -> PyResult<()> {
+) -> PyResult<TxEnv> {
+    let mut tx_env = TxEnv::default();
+    tx_env.chain_id = Some(chain_id);
     tx_env.caller = from.try_into()?;
 
     tx_env.gas_limit = match gas_limit {
@@ -111,7 +113,7 @@ pub(crate) fn prepare_tx_env(
 
             tx_env
                 .authorization_list
-                .push(SignedAuthorization::new_unchecked(
+                .push(Either::Left(SignedAuthorization::new_unchecked(
                     Authorization {
                         chain_id: big_uint_to_u256(chain_id),
                         address: address
@@ -122,7 +124,7 @@ pub(crate) fn prepare_tx_env(
                     y_parity,
                     big_uint_to_u256(r),
                     big_uint_to_u256(s),
-                ));
+                )));
         }
     }
 
@@ -130,7 +132,7 @@ pub(crate) fn prepare_tx_env(
         .derive_tx_type()
         .map_err(|e| PyErr::new::<PyRuntimeError, _>(format!("{:?}", e)))?;
 
-    Ok(())
+    Ok(tx_env)
 }
 
 pub(crate) fn prepare_tx_params<'py, 'a>(

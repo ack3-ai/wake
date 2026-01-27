@@ -55,7 +55,7 @@ fn external_or_unknown_error(
     let chain = chain.bind(py).borrow();
     if chain
         .get_evm()?
-        .db_ref()
+        .db()
         .is_contract_forked(&metadata.bytecode_address)
         .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?
     {
@@ -294,7 +294,7 @@ pub(crate) fn external_or_unknown_event(
     let borrowed_chain = chain.bind(py).borrow();
     if borrowed_chain
         .get_evm()?
-        .db_ref()
+        .db()
         .is_contract_forked(&metadata.bytecode_address)
         .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?
     {
