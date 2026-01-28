@@ -8,7 +8,7 @@ use library::Library;
 use utils::keccak256;
 use pyo3::prelude::*;
 use pyo3_log;
-use utils::{new_mnemonic, to_checksum_address};
+use utils::{new_mnemonic, to_checksum_address, parse_unit};
 use inspectors::coverage_inspector::{sync_coverage, set_coverage_callback};
 use eip712::{encode_eip712_type, encode_eip712_data, get_eip712_signing_hash};
 
@@ -45,6 +45,7 @@ fn wake_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(keccak256, m)?)?;
     m.add_function(wrap_pyfunction!(new_mnemonic, m)?)?;
     m.add_function(wrap_pyfunction!(to_checksum_address, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_unit, m)?)?;
     m.add_function(wrap_pyfunction!(sync_coverage, m)?)?;
     m.add_function(wrap_pyfunction!(set_coverage_callback, m)?)?;
     m.add_function(wrap_pyfunction!(encode_eip712_type, m)?)?;
