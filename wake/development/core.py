@@ -44,6 +44,7 @@ from wake_rs import (
     get_eip712_signing_hash,
     keccak256,
     parse_unit,
+    to_checksum_address,
 )
 
 from ..utils import StrEnum
@@ -1451,10 +1452,10 @@ class Chain(ABC):
                 str(tx_params["from"])
             )
 
-            tx_params["from"] = eth_utils.address.to_checksum_address(tx_params["from"])
+            tx_params["from"] = to_checksum_address(tx_params["from"])
 
             if "to" in tx_params:
-                tx_params["to"] = eth_utils.address.to_checksum_address(tx_params["to"])
+                tx_params["to"] = to_checksum_address(tx_params["to"])
 
             self._confirm_transaction(tx_params)
 
