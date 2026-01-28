@@ -3,18 +3,14 @@ from __future__ import annotations
 import dataclasses
 import functools
 import importlib
-import json
-import math
-import re
 import sys
 from abc import ABC, abstractmethod
 from bdb import BdbQuit
 from collections import ChainMap, defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
-from enum import Enum, IntEnum
-from os import PathLike
-from pathlib import Path
+from decimal import Decimal
+from enum import IntEnum
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -24,7 +20,6 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Sequence,
     Set,
     Tuple,
     Type,
@@ -35,15 +30,8 @@ from typing import (
 from urllib.error import HTTPError
 
 import eth_utils
-from Crypto.Hash import BLAKE2b, keccak
-from typing_extensions import (
-    Annotated,
-    Literal,
-    TypedDict,
-    get_args,
-    get_origin,
-    get_type_hints,
-)
+from Crypto.Hash import BLAKE2b
+from typing_extensions import Literal, TypedDict, get_args, get_origin, get_type_hints
 
 from wake_rs import (
     Abi,
@@ -56,6 +44,7 @@ from wake_rs import (
     encode_eip712_type,
     get_eip712_signing_hash,
     keccak256,
+    parse_unit,
 )
 
 from ..utils import StrEnum
@@ -185,24 +174,113 @@ def fix_library_abi(args: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 class Wei(int):
-    def to_ether(self) -> float:
-        return self / 10**18
+    def __new__(
+        cls, value: Union[int, str, Decimal, Wei] = 0, *, unit: Optional[str] = None
+    ) -> Wei:
+        if isinstance(value, Wei):
+            if unit is None:
+                return super().__new__(cls, int(value))
+            else:
+                raise ValueError("unit must be None if value is a Wei object")
+        elif isinstance(value, int):
+            if unit is None:
+                return super().__new__(cls, value)
+            else:
+                return super().__new__(cls, int(value) * 10 ** parse_unit(unit))
+        elif isinstance(value, str):
+            if unit is None:
+                parts = value.split()
+                if len(parts) > 2:
+                    raise ValueError(
+                        f"Expected either '<amount> <unit>' or '<amount>', got {value!r}"
+                    )
+                elif len(parts) == 2:
+                    count, unit = parts
+                    return cls.from_unit(count, unit)
+                else:
+                    return super().__new__(cls, int(value))
+            else:
+                multiplied = Decimal(value) * Decimal(10 ** parse_unit(unit))
+                if multiplied % 1 != 0:
+                    raise ValueError("Value multiplied by unit is not an integer")
+                return super().__new__(cls, int(multiplied))
+        elif isinstance(value, Decimal):
+            if unit is None:
+                raise ValueError("unit must be specified if value is a Decimal")
+            else:
+                multiplied = value * Decimal(10 ** parse_unit(unit))
+                if multiplied % 1 != 0:
+                    raise ValueError("Value multiplied by unit is not an integer")
+                return super().__new__(cls, int(multiplied))
+        else:
+            raise TypeError(f"Invalid value type: {type(value)}")
 
-    def to_gwei(self) -> float:
-        return self / 10**9
+    def __repr__(self) -> str:
+        return f"Wei({int(self)} wei)"
+
+    def __str__(self) -> str:
+        n = int(self)
+        if n == 0:
+            return "0 wei"
+        elif n >= 10**15:
+            ether = Decimal(n) / Decimal(10**18)
+            if ether % 1 == 0:
+                return f"{ether} ether ({n} wei)"
+            else:
+                rounded = ether.quantize(Decimal("0.001"))
+                return f"~{rounded.normalize()} ether ({n} wei)"
+        elif n >= 10**6:
+            gwei = Decimal(n) / Decimal(10**9)
+            if gwei % 1 == 0:
+                return f"{gwei} gwei ({n} wei)"
+            else:
+                rounded = gwei.quantize(Decimal("0.001"))
+                return f"~{rounded.normalize()} gwei ({n} wei)"
+        else:
+            return f"{n} wei"
+
+    def __add__(self, other):
+        return Wei(int(self) + int(Wei(other)))
 
     @classmethod
-    def from_ether(cls, value: Union[int, float]) -> Wei:
-        return cls(int(value * 10**18))
+    def wei(cls, value: Union[int, str, Decimal, Wei]) -> Wei:
+        return cls(value, unit="wei")
 
     @classmethod
-    def from_gwei(cls, value: Union[int, float]) -> Wei:
-        return cls(int(value * 10**9))
+    def gwei(cls, value: Union[int, str, Decimal, Wei]) -> Wei:
+        return cls(value, unit="gwei")
 
     @classmethod
-    def from_str(cls, value: str) -> Wei:
-        count, unit = value.split()
-        return cls(eth_utils.currency.to_wei(float(count), unit))
+    def ether(cls, value: Union[int, str, Decimal, Wei]) -> Wei:
+        return cls(value, unit="ether")
+
+    @classmethod
+    def from_unit(cls, value: Union[int, str, Decimal, Wei], unit: str) -> Wei:
+        return cls(value, unit=unit)
+
+    @classmethod
+    def parse(cls, text: str) -> Wei:
+        return cls(text)
+
+    def to_wei(self) -> int:
+        return int(self)
+
+    def to_gwei(self) -> Decimal:
+        return Decimal(self) / Decimal(10**9)
+
+    def to_ether(self) -> Decimal:
+        return Decimal(self) / Decimal(10**18)
+
+    def to(self, unit: str) -> Decimal:
+        return Decimal(self) / Decimal(10 ** parse_unit(unit))
+
+
+def ether(value: Union[int, str, Decimal, Wei]) -> Wei:
+    return Wei.ether(value)
+
+
+def gwei(value: Union[int, str, Decimal, Wei]) -> Wei:
+    return Wei.gwei(value)
 
 
 def detect_default_chain() -> Chain:
@@ -398,9 +476,9 @@ class Chain(ABC):
             raise AlreadyConnectedError("Already connected to a chain")
 
         if isinstance(min_gas_price, str):
-            min_gas_price = Wei.from_str(min_gas_price)
+            min_gas_price = Wei.parse(min_gas_price)
         if isinstance(block_base_fee_per_gas, str):
-            block_base_fee_per_gas = Wei.from_str(block_base_fee_per_gas)
+            block_base_fee_per_gas = Wei.parse(block_base_fee_per_gas)
 
         self._chain_interface = chain_interfaces_manager.get_or_create(
             uri, accounts=accounts, chain_id=chain_id, fork=fork, hardfork=hardfork
@@ -691,21 +769,18 @@ class Chain(ABC):
         self._chain_interface.set_automine(value)
 
     @check_connected
-    def set_next_block_base_fee_per_gas(self, value: Union[int, str]) -> None:
-        if isinstance(value, str):
-            value = Wei.from_str(value)
-        self._chain_interface.set_next_block_base_fee_per_gas(value)
+    def set_next_block_base_fee_per_gas(self, value: Union[int, str, Decimal]) -> None:
+        self._chain_interface.set_next_block_base_fee_per_gas(Wei(value))
 
     @check_connected
     def set_next_block_timestamp(self, timestamp: int) -> None:
         self._chain_interface.set_next_block_timestamp(timestamp)
 
     @check_connected
-    def set_min_gas_price(self, value: Union[int, str]) -> None:
-        if isinstance(value, str):
-            value = Wei.from_str(value)
-        self._chain_interface.set_min_gas_price(value)
-        self.gas_price = value
+    def set_min_gas_price(self, value: Union[int, str, Decimal]) -> None:
+        wei = Wei(value)
+        self._chain_interface.set_min_gas_price(wei)
+        self.gas_price = wei
 
     @check_connected
     def set_default_accounts(self, account: Union[Account, Address, str, None]) -> None:

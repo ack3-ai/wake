@@ -7,8 +7,10 @@ from wake.development.core import (
     Eip712Domain,
     Wei,
     abi,
+    ether,
     get_eip712_signing_hash,
     get_eip712_struct_hash,
+    gwei,
 )
 from wake.development.internal import ExternalEvent, UnknownEvent
 from wake.development.primitive_types import *

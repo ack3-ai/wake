@@ -8,8 +8,10 @@ from wake.development.core import (
     Struct,
     Wei,
     abi,
+    ether,
     get_eip712_signing_hash,
     get_eip712_struct_hash,
+    gwei,
 )
 from wake.development.globals import get_config, random
 from wake.development.internal import ExternalEvent, UnknownEvent

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use alloy::primitives::utils::Unit;
 use alloy_chains::Chain;
 use alloy_hardforks::EthereumHardfork;
 use alloy::consensus::{EthereumTypedTransaction, TxEip1559, TxEip2930, TxEip7702, TxLegacy, TypedTransaction};
@@ -686,4 +687,9 @@ pub fn new_mnemonic(words: usize, language: &str) -> PyResult<String> {
 pub fn to_checksum_address(address: AddressEnum) -> PyResult<String> {
     let addr: RevmAddress = address.try_into()?;
     Ok(addr.to_checksum(None))
+}
+
+#[pyfunction]
+pub fn parse_unit(unit: &str) -> PyResult<u8> {
+    Unit::try_from(unit).map_err(|e| PyErr::new::<PyValueError, _>(e.to_string())).map(|u| u.get())
 }
