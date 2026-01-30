@@ -67,7 +67,7 @@ _current_test_id: Optional[str] = None
 _executing_sequence_num: int = 0
 _executing_flow_num: int = 0
 
-_shrank_path: Optional[Path] = None
+_shrunk_path: Optional[Path] = None
 
 _shrink_exact_flow: bool = False
 _shrink_exact_exception: bool = False
@@ -86,13 +86,13 @@ def get_is_fuzzing() -> bool:
     return _is_fuzzing
 
 
-def set_shrank_path(path: Path):
-    global _shrank_path
-    _shrank_path = path
+def set_shrunk_path(path: Path):
+    global _shrunk_path
+    _shrunk_path = path
 
 
-def get_shrank_path() -> Optional[Path]:
-    return _shrank_path
+def get_shrunk_path() -> Optional[Path]:
+    return _shrunk_path
 
 
 def set_current_test_id(test_id: str):
