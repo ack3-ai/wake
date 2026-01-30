@@ -1173,7 +1173,7 @@ class Chain(ABC):
                         fqn = base_fqn
                         break
                 if fqn not in errors[selector]:
-                    e = UnknownTransactionRevertedError(revert_data)
+                    e = UnknownRevertError(revert_data)
                     e.tx = tx
                     raise e from None
             except ValueError:
