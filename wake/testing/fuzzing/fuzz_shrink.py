@@ -23,7 +23,7 @@ from wake.development.globals import (
     get_executing_flow_num,
     get_fuzz_mode,
     get_sequence_initial_internal_state,
-    get_shrank_path,
+    get_shrunk_path,
     get_shrink_exact_exception,
     get_shrink_exact_flow,
     get_shrink_target_invariants_only,
@@ -251,7 +251,7 @@ class FlowState(ReproducibleFlowState):
 
 
 @dataclass
-class ShrankInfoFile:
+class ShrunkInfoFile:
     target_fuzz_node: str
     initial_state: dict
     required_flows: List[ReproducibleFlowState]
@@ -305,24 +305,24 @@ def fuzz_shrink(
     elif fuzz_mode == 1:
         shrink_test(test_class, flows_count)
     elif fuzz_mode == 2:
-        shrank_reproduce(test_class, dry_run)
+        shrunk_reproduce(test_class, dry_run)
     else:
         raise Exception("Invalid fuzz mode")
 
 
-def shrank_reproduce(test_class: type[FuzzTest], dry_run: bool = False):
+def shrunk_reproduce(test_class: type[FuzzTest], dry_run: bool = False):
     test_instance = test_class()
 
     flows: List[Callable] = __get_methods(test_instance, "flow")
     invariants: List[Callable] = __get_methods(test_instance, "invariant")
-    shrank_path = get_shrank_path()
-    if shrank_path is None:
-        raise Exception("Shrunken data file path not found")
-    # read shrank json file
-    with open(shrank_path, "r") as f:
-        serialized_shrank_info = f.read()
-    store_data: ShrankInfoFile = ShrankInfoFile.from_dict(
-        json.loads(serialized_shrank_info)
+    shrunk_path = get_shrunk_path()
+    if shrunk_path is None:
+        raise Exception("Shrunk data file path not found")
+    # read shrunk json file
+    with open(shrunk_path, "r") as f:
+        serialized_shrunk_info = f.read()
+    store_data: ShrunkInfoFile = ShrunkInfoFile.from_dict(
+        json.loads(serialized_shrunk_info)
     )
 
     random.setstate(deserialize_random_state(store_data.initial_state))
@@ -365,7 +365,7 @@ def shrank_reproduce(test_class: type[FuzzTest], dry_run: bool = False):
                     invariant_periods[inv] = 0
             test_instance.post_invariants()
 
-    print("Shrunken test passed")
+    print("Shrunk test passed")
 
 
 def shrink_collecting_phase(
@@ -576,7 +576,7 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
         except ZeroDivisionError:
             print(f"Flow type removal progress: {i}/{1} = {0:.2f}%")
         print(
-            f"Shrunken flows rate: {removed_sum}/{len(flow_states)} = {(removed_sum*100/len(flow_states)):.2f}%"
+            f"Shrunk flows: {removed_sum}/{len(flow_states)} = {(removed_sum*100/len(flow_states)):.2f}%"
         )
 
         if (
@@ -704,7 +704,7 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
             f"Brute force flow removal progress: {(curr* 100) / (error_flow_num+1):.2f}%"
         )
         print(
-            f"Shrunken flows rate: {removed_sum}/{actual_error_flow_num} = {(removed_sum*100/actual_error_flow_num):.2f}%"
+            f"Shrunk flows: {removed_sum}/{actual_error_flow_num} = {(removed_sum*100/actual_error_flow_num):.2f}%"
         )
 
         success = False
@@ -837,7 +837,7 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
     print("Shrinking completed")
     print("Time spent for the brute force removal: ", datetime.now() - base_date_time)
     print(
-        f"Shrunken flows rate: {removed_sum}/{actual_error_flow_num} = {(removed_sum*100/actual_error_flow_num):.2f}%"
+        f"Shrunk flows: {removed_sum}/{actual_error_flow_num} = {(removed_sum*100/actual_error_flow_num):.2f}%"
     )
     print("Those flows were required to reproduce the error")
     for i in range(0, error_flow_num + 1):
@@ -846,7 +846,7 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
     print("")
     project_root_path = get_config().project_root_path
     print("Time spent for shrinking: ", datetime.now() - shrink_start_time)
-    crash_logs_dir = project_root_path / ".wake" / "logs" / "shrank"
+    crash_logs_dir = project_root_path / ".wake" / "logs" / "shrunk"
 
     crash_logs_dir.mkdir(parents=True, exist_ok=True)
     # write crash log file.
@@ -859,23 +859,23 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
     ]
     current_test_id = get_current_test_id()
     assert current_test_id is not None
-    store_data: ShrankInfoFile = ShrankInfoFile(
+    store_data: ShrunkInfoFile = ShrunkInfoFile(
         target_fuzz_node=current_test_id,
         initial_state=get_sequence_initial_internal_state(),
         required_flows=required_flows,
     )
 
     # Write to a JSON file
-    shrank_file = crash_logs_dir / f"{timestamp}.json"
+    shrunk_file = crash_logs_dir / f"{timestamp}.json"
     # I would like if file already exists, then create new indexed file
-    if shrank_file.exists():
+    if shrunk_file.exists():
         i = 0
-        while shrank_file.with_suffix(f"_{i}.json").exists():
+        while shrunk_file.with_suffix(f"_{i}.json").exists():
             i += 1
-        shrank_file = shrank_file.with_suffix(f"_{i}.json")
-    with open(shrank_file, "w") as f:
+        shrunk_file = shrunk_file.with_suffix(f"_{i}.json")
+    with open(shrunk_file, "w") as f:
         json.dump(store_data.to_dict(), f, indent=2)
-    print(f"Shrunken data file written to {shrank_file}")
+    print(f"Shrunk data file written to {shrunk_file}")
 
 
 def single_fuzz_test(

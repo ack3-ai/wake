@@ -127,11 +127,12 @@ class FileAndPassParamType(click.ParamType):
 )
 @click.option(
     "-SR",
+    "--shrunk",
     "--shrank",
     "--reproduce",
     # Didn't use click.Path since we accept relative index of crash log file
     type=str,
-    help="Path of shrank file.",
+    help="Path of shrunk file.",
     is_flag=False,
     flag_value="0",
     default=None,
@@ -154,7 +155,7 @@ def run_test(
     shrink_exact_flow: bool,
     shrink_exact_exception: bool,
     shrink_target_invariants_only: bool,
-    shrank: Optional[str],
+    shrunk: Optional[str],
     paths_or_pytest_args: Tuple[str, ...],
 ) -> None:
     """Execute Wake tests using pytest."""
@@ -229,9 +230,9 @@ def run_test(
         if shrink is not None:
             raise click.BadParameter("Shrink can not execute with multiprocess mode.")
 
-        if shrank is not None:
+        if shrunk is not None:
             raise click.BadParameter(
-                "Shrank reproduce can not execute with multiprocess mode."
+                "Shrunk reproduce cannot execute with multiprocess mode."
             )
         sys.exit(
             pytest.main(
@@ -269,9 +270,9 @@ def run_test(
             set_shrink_exact_flow(shrink_exact_flow)
             set_shrink_exact_exception(shrink_exact_exception)
             set_shrink_target_invariants_only(shrink_target_invariants_only)
-        if shrank:
+        if shrunk:
             test_mode = 2
-            test_info_path = shrank
+            test_info_path = shrunk
         sys.exit(
             pytest.main(
                 pytest_args,

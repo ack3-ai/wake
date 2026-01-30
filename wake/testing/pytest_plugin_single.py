@@ -40,7 +40,7 @@ from wake.development.globals import (
     set_executing_flow_num,
     set_fuzz_mode,
     set_sequence_initial_internal_state,
-    set_shrank_path,
+    set_shrunk_path,
 )
 from wake.testing.coverage import CoverageHandler, export_coverage, prepare_info
 from wake.testing.native_coverage import NativeCoverageHandler
@@ -146,18 +146,18 @@ class PytestWakePluginSingle:
                 )
 
         elif self._test_mode == 2:
-            # shrank reproduce
+            # shrunk reproduce
             set_fuzz_mode(2)
-            shrank_data_path = self.get_shrink_argument_path(
-                self._test_info_path, "shrank"
+            shrunk_data_path = self.get_shrink_argument_path(
+                self._test_info_path, "shrunk"
             )
-            print("shrank from shrank data: ", shrank_data_path)
+            print("Reproducing from shrunk data:", shrunk_data_path)
             try:
-                with open(shrank_data_path, "r") as f:
+                with open(shrunk_data_path, "r") as f:
                     target_fuzz_node = json.load(f)["target_fuzz_node"]
             except json.JSONDecodeError:
                 raise UsageError(
-                    f"Invalid JSON format in shrank data file: {shrank_data_path}"
+                    f"Invalid JSON format in shrunk data file: {shrunk_data_path}"
                 )
 
             for item in items:
@@ -169,7 +169,7 @@ class PytestWakePluginSingle:
                     f"No test found matching the path '{target_fuzz_node}' from crash log"
                 )
 
-            set_shrank_path(shrank_data_path)
+            set_shrunk_path(shrunk_data_path)
         elif self._test_mode == 3:
             shrink_crash_path = self.get_shrink_argument_path(
                 self._test_info_path, "crashes"
