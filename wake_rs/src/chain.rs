@@ -153,14 +153,45 @@ pub(crate) type CustomEvm = Evm<
     EthFrame<EthInterpreter>,
 >;
 
+/// Wrapper that makes a non-Send/Sync type usable in `#[pyclass]` (which requires Send + Sync).
+///
+/// SAFETY: Chain is only ever accessed from one thread at a time
+/// (Python GIL ensures exclusive access via borrow/borrow_mut), and `py.allow_threads()`
+/// executes closures on the calling OS thread (only the GIL is released).
+/// The non-Send/Sync root cause is `Rc<RefCell<Vec<u8>>>` inside revm's `LocalContext`.
+pub(crate) struct EvmCell(CustomEvm);
+unsafe impl Send for EvmCell {}
+unsafe impl Sync for EvmCell {}
 
-/// unsendable required because CustomEvm is not Send
-/// other workarounds such as global registry would have higher performance overhead
-/// using unsendable enforces single-threaded execution
-#[pyclass(unsendable)]
+impl EvmCell {
+    pub fn new(evm: CustomEvm) -> Self {
+        Self(evm)
+    }
+
+    /// Consume the wrapper and return the inner EVM.
+    pub fn into_inner(self) -> CustomEvm {
+        self.0
+    }
+}
+
+impl std::ops::Deref for EvmCell {
+    type Target = CustomEvm;
+    fn deref(&self) -> &CustomEvm {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for EvmCell {
+    fn deref_mut(&mut self) -> &mut CustomEvm {
+        &mut self.0
+    }
+}
+
+
+#[pyclass]
 pub struct Chain {
     rng: Xoshiro256PlusPlus,
-    pub(crate) evm: Option<CustomEvm>,
+    pub(crate) evm: Option<EvmCell>,
     pub(crate) provider: Option<ProviderWrapper>,
     pub labels: Arc<HashMap<RevmAddress, String>>,
     collect_coverage: bool,
@@ -717,7 +748,7 @@ impl Chain {
                 evm.cfg.chain_id = chain_id.unwrap_or(forked_chain_id);
                 evm.block.number = (forked_block.header.number + 1).try_into().unwrap();
                 evm.block.timestamp = (forked_block.header.timestamp + 1).try_into().unwrap();
-                slf_.evm = Some(evm);
+                slf_.evm = Some(EvmCell::new(evm));
                 slf_.forked_chain_id = Some(forked_chain_id);
                 slf_.forked_block = Some(forked_block.header.number);
             }
@@ -740,7 +771,7 @@ impl Chain {
                     .as_secs()
                     .try_into()
                     .unwrap();
-                slf_.evm = Some(evm);
+                slf_.evm = Some(EvmCell::new(evm));
             }
         }
 
@@ -862,25 +893,25 @@ impl Chain {
         R: Send,
         I: Send + 'a + InspectorExt<CustomContext>,
     {
-        let evm = self.evm.take().expect("Not connected").with_inspector(inspector);
+        let evm = self.evm.take().expect("Not connected").into_inner().with_inspector(inspector);
 
-        // Wrap the non-Send EVM in SendWrapper to make it Send-safe for allow_threads
+        // The evm-with-inspector is also non-Send; use SendWrapper for allow_threads.
         let mut wrapped = SendWrapper::new(evm);
 
         let result = py.allow_threads(|| f(&mut *wrapped));
 
-        self.evm = Some(wrapped.take().with_inspector(()));
+        self.evm = Some(EvmCell::new(wrapped.take().with_inspector(())));
 
         result
     }
 
-    pub(crate) fn get_evm(&self) -> PyResult<&CustomEvm> {
+    pub(crate) fn get_evm(&self) -> PyResult<&EvmCell> {
         self.evm
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Not connected"))
     }
 
-    pub(crate) fn get_evm_mut(&mut self) -> PyResult<&mut CustomEvm> {
+    pub(crate) fn get_evm_mut(&mut self) -> PyResult<&mut EvmCell> {
         self.evm
             .as_mut()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Not connected"))
