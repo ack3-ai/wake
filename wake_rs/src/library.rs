@@ -50,7 +50,7 @@ impl Library {
         block: Option<BlockEnum>,
         confirmations: Option<u64>,
         revert: bool,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let chain = match chain {
             Some(chain) => chain,
             None => {
@@ -82,16 +82,16 @@ impl Library {
         )?;
 
         if confirmations != Some(0) {
-            let lib_id = cls.getattr(intern!(py, "_library_id"))?.downcast_into::<PyBytes>()?;
+            let lib_id = cls.getattr(intern!(py, "_library_id"))?.cast_into::<PyBytes>()?;
 
-            if let Ok(chain) = chain.downcast_bound::<Chain>(py) {
+            if let Ok(chain) = chain.cast_bound::<Chain>(py) {
                 let addr = if return_tx {
                     TransactionAbc::return_value(
-                        ret.downcast_bound::<TransactionAbc>(py).unwrap(),
+                        ret.cast_bound::<TransactionAbc>(py).unwrap(),
                         py
-                    ).unwrap().downcast_bound::<Account>(py).unwrap().borrow().address.borrow(py).0
+                    ).unwrap().cast_bound::<Account>(py).unwrap().borrow().address.borrow(py).0
                 } else {
-                    ret.downcast_bound::<Account>(py).unwrap().borrow().address.borrow(py).0
+                    ret.cast_bound::<Account>(py).unwrap().borrow().address.borrow(py).0
                 };
 
                 Arc::make_mut(&mut chain.borrow_mut().deployed_libraries).insert(lib_id.as_bytes().try_into().unwrap(), addr);
@@ -101,7 +101,7 @@ impl Library {
                 } else {
                     ret.clone_ref(py)
                 };
-                chain.bind(py).getattr(intern!(py, "_deployed_libraries"))?.get_item(lib_id)?.downcast_into::<PyList>()?.append(lib)?;
+                chain.bind(py).getattr(intern!(py, "_deployed_libraries"))?.get_item(lib_id)?.cast_into::<PyList>()?.append(lib)?;
             }
         }
 

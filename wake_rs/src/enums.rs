@@ -28,8 +28,8 @@ pub(crate) enum AddressEnum {
 impl Clone for AddressEnum {
     fn clone(&self) -> Self {
         match self {
-            Self::Account(acc) => Python::with_gil(|py| Self::Account(acc.clone_ref(py))),
-            Self::Address(addr) => Python::with_gil(|py| Self::Address(addr.clone_ref(py))),
+            Self::Account(acc) => Python::attach(|py| Self::Account(acc.clone_ref(py))),
+            Self::Address(addr) => Python::attach(|py| Self::Address(addr.clone_ref(py))),
             Self::Int(i) => Self::Int(i.clone()),
             Self::String(s) => Self::String(s.clone())
         }
@@ -53,7 +53,7 @@ impl<'py> IntoPyObject<'py> for AddressEnum {
 
 impl Hash for AddressEnum {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let addr = Python::with_gil(|py| {
+        let addr = Python::attach(|py| {
             match self {
                 Self::Account(acc) => acc.borrow(py).address.borrow(py).0,
                 Self::Address(addr) => addr.borrow(py).0,
@@ -67,7 +67,7 @@ impl Hash for AddressEnum {
 
 impl PartialEq for AddressEnum {
     fn eq(&self, other: &Self) -> bool {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let self_addr = match self {
                 Self::Account(acc) => acc.borrow(py).address.borrow(py).0,
                 Self::Address(addr) => addr.borrow(py).0,
@@ -93,12 +93,12 @@ impl TryFrom<AddressEnum> for RevmAddress {
     fn try_from(value: AddressEnum) -> Result<RevmAddress, Self::Error> {
         match value {
             AddressEnum::Account(acc) => {
-                Ok(Python::with_gil(|py| {
+                Ok(Python::attach(|py| {
                     acc.borrow(py).address.borrow(py).0
                 }))
             }
             AddressEnum::Address(addr) => {
-                Ok(Python::with_gil(|py| {
+                Ok(Python::attach(|py| {
                     addr.borrow(py).0
                 }))
             }
@@ -112,7 +112,7 @@ impl TryFrom<AddressEnum> for RevmAddress {
 
 impl From<revm::primitives::Address> for AddressEnum {
     fn from(value: revm::primitives::Address) -> Self {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             AddressEnum::Address(Py::new(py, Address::from(value)).unwrap())
         })
     }
@@ -222,18 +222,18 @@ pub(crate) enum GasLimitEnum {
     Auto,
 }
 
-impl FromPyObject<'_> for GasLimitEnum {
-    fn extract_bound(ob: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok(int) = ob.extract::<BigUint>() {
+impl FromPyObject<'_, '_> for GasLimitEnum {
+    type Error = PyErr;
+
+    fn extract(obj: Borrowed<'_, '_, PyAny>) -> Result<Self, Self::Error> {
+        if let Ok(int) = obj.extract::<BigUint>() {
             Ok(Self::Int(int))
         } else {
-            let s = ob.extract::<String>()?;
+            let s = obj.extract::<String>()?;
             match s.as_str() {
                 "max" => Ok(Self::Max),
                 "auto" => Ok(Self::Auto),
-                _ => Err(
-                    PyValueError::new_err("Invalid gas limit value")
-                )
+                _ => Err(PyValueError::new_err("Invalid gas limit value"))
             }
         }
     }
@@ -244,12 +244,14 @@ pub(crate) enum AccessListEnum {
     Auto,
 }
 
-impl FromPyObject<'_> for AccessListEnum {
-    fn extract_bound(ob: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok(dict) = ob.extract::<HashMap<AddressEnum, Vec<BigUint>>>() {
+impl FromPyObject<'_, '_> for AccessListEnum {
+    type Error = PyErr;
+
+    fn extract(obj: Borrowed<'_, '_, PyAny>) -> Result<Self, Self::Error> {
+        if let Ok(dict) = obj.extract::<HashMap<AddressEnum, Vec<BigUint>>>() {
             Ok(Self::Dictionary(dict))
         } else {
-            let s = ob.extract::<String>()?;
+            let s = obj.extract::<String>()?;
             match s.as_str() {
                 "auto" => Ok(Self::Auto),
                 _ => Err(
@@ -287,12 +289,14 @@ impl<'py> IntoPyObject<'py> for BlockEnum {
     }
 }
 
-impl FromPyObject<'_> for BlockEnum {
-    fn extract_bound(ob: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok(int) = ob.extract::<i64>() {
+impl FromPyObject<'_, '_> for BlockEnum {
+    type Error = PyErr;
+
+    fn extract(obj: Borrowed<'_, '_, PyAny>) -> Result<Self, Self::Error> {
+        if let Ok(int) = obj.extract::<i64>() {
             Ok(Self::Int(int))
         } else {
-            let s = ob.extract::<String>()?;
+            let s = obj.extract::<String>()?;
             match s.as_str() {
                 "latest" => Ok(Self::Latest),
                 "pending" => Ok(Self::Pending),
@@ -315,9 +319,11 @@ pub(crate) enum RequestTypeEnum {
     AccessList,
 }
 
-impl FromPyObject<'_> for RequestTypeEnum {
-    fn extract_bound(ob: &Bound<'_, PyAny>) -> PyResult<Self> {
-        let s = ob.extract::<&str>()?;
+impl FromPyObject<'_, '_> for RequestTypeEnum {
+    type Error = PyErr;
+
+    fn extract(obj: Borrowed<'_, '_, PyAny>) -> Result<Self, Self::Error> {
+        let s = obj.extract::<&str>()?;
         match s {
             "tx" => Ok(Self::Tx),
             "call" => Ok(Self::Call),

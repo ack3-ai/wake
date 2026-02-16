@@ -111,13 +111,13 @@ pub(crate) fn py_to_eip712(
 
     let salt = match domain.get_item(intern!(py, "salt"))? {
         Some(v) => {
-            if let Ok(bytes) = v.downcast::<PyBytes>() {
+            if let Ok(bytes) = v.cast::<PyBytes>() {
                 Some(B256::from_slice(bytes.as_bytes()))
-            } else if let Ok(bytearray) = v.downcast::<PyByteArray>() {
+            } else if let Ok(bytearray) = v.cast::<PyByteArray>() {
                 Some(B256::from_slice(unsafe { bytearray.as_bytes() }))
             } else {
                 let bytes = v.call_method0(intern!(py, "__bytes__"))?;
-                Some(B256::from_slice(bytes.downcast::<PyBytes>()?.as_bytes()))
+                Some(B256::from_slice(bytes.cast::<PyBytes>()?.as_bytes()))
             }
         }
         None => None,
@@ -153,7 +153,7 @@ fn pytype_to_abi_type(
         Ok("bytes".into())
     } else if pytype.is(&PyString::type_object(py)) {
         Ok("string".into())
-    } else if let Ok(pytype) = pytype.downcast::<PyType>() {
+    } else if let Ok(pytype) = pytype.cast::<PyType>() {
         if pytype.is_subclass(&Address::type_object(py))?
             || pytype.is_subclass(&Account::type_object(py))?
         {
@@ -162,7 +162,7 @@ fn pytype_to_abi_type(
             let bits = pytype.getattr(intern!(py, "bits"))?.extract::<usize>()?;
             if pytype
                 .getattr(intern!(py, "signed"))?
-                .downcast::<PyBool>()?
+                .cast::<PyBool>()?
                 .is_true()
             {
                 Ok(format!("int{}", bits))
@@ -177,7 +177,7 @@ fn pytype_to_abi_type(
         } else if py_objects
             .dataclasses_is_dataclass
             .call(py, (pytype.clone(),), None)?
-            .downcast_bound::<PyBool>(py)?
+            .cast_bound::<PyBool>(py)?
             .is_true()
         {
             let type_name = pytype.getattr(intern!(py, "original_name")).map_or(
@@ -189,17 +189,17 @@ fn pytype_to_abi_type(
             let fields = py_objects
                 .dataclasses_fields
                 .call(py, (pytype,), None)?;
-            let fields = fields.downcast_bound::<PyTuple>(py)?;
+            let fields = fields.cast_bound::<PyTuple>(py)?;
 
             let mut props = Vec::with_capacity(fields.len());
 
             for field in fields.iter() {
                 let name = field
                     .getattr(intern!(py, "name"))?
-                    .downcast_into::<PyString>()?;
+                    .cast_into::<PyString>()?;
                 let original_name = field
                     .getattr(intern!(py, "original_name"))
-                    .map_or(Ok(name.clone()), |n| n.downcast_into::<PyString>())?;
+                    .map_or(Ok(name.clone()), |n| n.cast_into::<PyString>())?;
                 let pytype = hints.get_item(name)?.unwrap();
 
                 let t = pytype_to_abi_type(py, &pytype, resolver, py_objects)?;
@@ -223,19 +223,19 @@ fn pytype_to_abi_type(
             let inner_type = py_objects
                 .typing_get_args
                 .call1(py, (pytype,))?
-                .downcast_bound::<PyTuple>(py)?
+                .cast_bound::<PyTuple>(py)?
                 .get_item(0)?;
 
             Ok(format!(
                 "{}[]",
                 pytype_to_abi_type(py, &inner_type, resolver, py_objects)?
             ))
-        } else if let Ok(origin) = origin.downcast::<PyType>() {
+        } else if let Ok(origin) = origin.cast::<PyType>() {
             if origin.is_subclass(&py_objects.wake_fixed_list.bind(py))? {
                 let inner_type = py_objects
                     .typing_get_args
                     .call1(py, (pytype,))?
-                    .downcast_bound::<PyTuple>(py)?
+                    .cast_bound::<PyTuple>(py)?
                     .get_item(0)?;
                 let length = pytype.getattr(intern!(py, "length"))?.extract::<usize>()?;
 
@@ -270,18 +270,18 @@ fn convert(
     if pytype.is(&PyBool::type_object(py)) {
         Ok((
             "bool".into(),
-            serde_json::Value::Bool(value.downcast::<PyBool>()?.is_true()),
+            serde_json::Value::Bool(value.cast::<PyBool>()?.is_true()),
         ))
     } else if pytype.is(&PyBytes::type_object(py))
         || pytype.is(&PyByteArray::type_object(py))
     {
-        let str = if let Ok(bytes) = value.downcast::<PyBytes>() {
+        let str = if let Ok(bytes) = value.cast::<PyBytes>() {
             hex::encode(bytes.as_bytes())
-        } else if let Ok(bytearray) = value.downcast::<PyByteArray>() {
+        } else if let Ok(bytearray) = value.cast::<PyByteArray>() {
             unsafe { hex::encode(bytearray.as_bytes()) }
         } else {
             let bytes = value.call_method0(intern!(py, "__bytes__"))?;
-            hex::encode(bytes.downcast_into::<PyBytes>()?.as_bytes())
+            hex::encode(bytes.cast_into::<PyBytes>()?.as_bytes())
         };
         Ok(("bytes".into(), serde_json::Value::String(str)))
     } else if pytype.is(&PyString::type_object(py)) {
@@ -289,7 +289,7 @@ fn convert(
             "string".into(),
             serde_json::Value::String(value.extract::<String>()?),
         ))
-    } else if let Ok(pytype) = pytype.downcast::<PyType>() {
+    } else if let Ok(pytype) = pytype.cast::<PyType>() {
         if pytype.is_subclass(&Address::type_object(py))?
             || pytype.is_subclass(&Account::type_object(py))?
         {
@@ -306,7 +306,7 @@ fn convert(
             let bits = pytype.getattr(intern!(py, "bits"))?.extract::<usize>()?;
             if pytype
                 .getattr(intern!(py, "signed"))?
-                .downcast::<PyBool>()?
+                .cast::<PyBool>()?
                 .is_true()
             {
                 let val = value.extract::<BigInt>()?;
@@ -330,12 +330,12 @@ fn convert(
             let length = pytype.getattr(intern!(py, "length"))?.extract::<usize>()?;
             Ok((
                 format!("bytes{}", length),
-                serde_json::Value::String(hex::encode(value.downcast::<PyBytes>()?.as_bytes())),
+                serde_json::Value::String(hex::encode(value.cast::<PyBytes>()?.as_bytes())),
             ))
         } else if py_objects
             .dataclasses_is_dataclass
             .call(py, (pytype.clone(),), None)?
-            .downcast_bound::<PyBool>(py)?
+            .cast_bound::<PyBool>(py)?
             .is_true()
         {
             process_dataclass(py, value, resolver, py_objects)
@@ -355,13 +355,13 @@ fn convert(
         let inner_type = py_objects
             .typing_get_args
             .call(py, (pytype,), None)?
-            .downcast_bound::<PyTuple>(py)?
+            .cast_bound::<PyTuple>(py)?
             .get_item(0)?;
 
         let length;
         if origin.is(&PyList::type_object(py)) {
             length = None;
-        } else if let Ok(origin) = origin.downcast::<PyType>() {
+        } else if let Ok(origin) = origin.cast::<PyType>() {
             if origin.is_subclass(&py_objects.wake_fixed_list.bind(py))? {
                 length = Some(origin.getattr(intern!(py, "length"))?.extract::<usize>()?);
             } else {
@@ -443,7 +443,7 @@ pub(crate) fn process_dataclass(
     let fields = py_objects
         .dataclasses_fields
         .call(py, (obj.clone(),), None)?;
-    let fields = fields.downcast_bound::<PyTuple>(py)?;
+    let fields = fields.cast_bound::<PyTuple>(py)?;
 
     let mut props = Vec::with_capacity(fields.len());
     let mut map = serde_json::Map::with_capacity(fields.len());
@@ -451,10 +451,10 @@ pub(crate) fn process_dataclass(
     for field in fields.iter() {
         let name = field
             .getattr(intern!(py, "name"))?
-            .downcast_into::<PyString>()?;
+            .cast_into::<PyString>()?;
         let original_name = field
             .getattr(intern!(py, "original_name"))
-            .map_or(Ok(name.clone()), |n| n.downcast_into::<PyString>())?;
+            .map_or(Ok(name.clone()), |n| n.cast_into::<PyString>())?;
         let value = obj.getattr(name.clone())?;
         let pytype = hints.get_item(name)?.unwrap();
 

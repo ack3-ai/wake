@@ -14,7 +14,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use num_bigint::{BigInt, BigUint};
 use pyo3::intern;
-use pyo3::sync::GILOnceCell;
+use pyo3::sync::PyOnceLock;
 use pyo3::types::{PyByteArray, PyBytes, PyDict, PyFunction, PyList, PyType};
 use alloy::primitives::keccak256 as alloy_keccak256;
 use rand::rngs::OsRng;
@@ -31,7 +31,7 @@ pub type CreationCodeSegment = (usize, Vec<u8>);
 // Type alias for a creation code entry
 pub type CreationCodeEntry = (Vec<CreationCodeSegment>, String);
 
-static mut PY_FUNCTIONS: GILOnceCell<PyObjects> = GILOnceCell::new();
+static mut PY_FUNCTIONS: PyOnceLock<PyObjects> = PyOnceLock::new();
 
 #[allow(static_mut_refs)]
 pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
@@ -47,7 +47,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("get_origin")
                 .unwrap()
-                .downcast_into::<PyFunction>()
+                .cast_into::<PyFunction>()
                 .unwrap()
                 .unbind(),
             typing_get_args: py
@@ -55,7 +55,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("get_args")
                 .unwrap()
-                .downcast_into::<PyFunction>()
+                .cast_into::<PyFunction>()
                 .unwrap()
                 .unbind(),
             typing_get_type_hints: py
@@ -63,7 +63,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("get_type_hints")
                 .unwrap()
-                .downcast_into::<PyFunction>()
+                .cast_into::<PyFunction>()
                 .unwrap()
                 .unbind(),
             dataclasses_is_dataclass: py
@@ -71,7 +71,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("is_dataclass")
                 .unwrap()
-                .downcast_into::<PyFunction>()
+                .cast_into::<PyFunction>()
                 .unwrap()
                 .unbind(),
             dataclasses_fields: py
@@ -79,7 +79,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("fields")
                 .unwrap()
-                .downcast_into::<PyFunction>()
+                .cast_into::<PyFunction>()
                 .unwrap()
                 .unbind(),
             enums_int_enum: py
@@ -87,7 +87,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("IntEnum")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
             wake_integer: py
@@ -95,7 +95,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("Integer")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
             wake_fixed_bytes: py
@@ -103,7 +103,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("FixedSizeBytes")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
             wake_fixed_list: py
@@ -111,7 +111,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("FixedSizeList")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
             wake_u256: py
@@ -125,7 +125,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("errors")
                 .unwrap()
-                .downcast_into::<PyDict>()
+                .cast_into::<PyDict>()
                 .unwrap()
                 .unbind(),
             wake_halt_exception: py
@@ -133,7 +133,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("Halt")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
             wake_unknown_revert_exception: py
@@ -141,7 +141,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("UnknownRevertError")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
             wake_external_error: py
@@ -149,7 +149,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("ExternalError")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
             wake_events: py
@@ -157,7 +157,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("events")
                 .unwrap()
-                .downcast_into::<PyDict>()
+                .cast_into::<PyDict>()
                 .unwrap()
                 .unbind(),
             wake_unknown_event: py
@@ -165,7 +165,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("UnknownEvent")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
             wake_external_event: py
@@ -173,7 +173,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("ExternalEvent")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
             wake_uint_map: py
@@ -181,7 +181,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("uint_map")
                 .unwrap()
-                .downcast_into::<PyDict>()
+                .cast_into::<PyDict>()
                 .unwrap()
                 .unbind(),
             wake_int_map: py
@@ -189,7 +189,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("int_map")
                 .unwrap()
-                .downcast_into::<PyDict>()
+                .cast_into::<PyDict>()
                 .unwrap()
                 .unbind(),
             wake_fixed_bytes_map: py
@@ -197,7 +197,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("fixed_bytes_map")
                 .unwrap()
-                .downcast_into::<PyDict>()
+                .cast_into::<PyDict>()
                 .unwrap()
                 .unbind(),
             wake_fixed_list_map: py
@@ -205,7 +205,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("fixed_list_map")
                 .unwrap()
-                .downcast_into::<PyDict>()
+                .cast_into::<PyDict>()
                 .unwrap()
                 .unbind(),
             wake_new_fixed_list: py
@@ -213,7 +213,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("new_fixed_list")
                 .unwrap()
-                .downcast_into::<PyFunction>()
+                .cast_into::<PyFunction>()
                 .unwrap()
                 .unbind(),
             wake_contracts_by_metadata: py
@@ -221,7 +221,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("contracts_by_metadata")
                 .unwrap()
-                .downcast_into::<PyDict>()
+                .cast_into::<PyDict>()
                 .unwrap()
                 .unbind(),
             wake_init_code_index: py
@@ -236,7 +236,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("get_class_that_defined_method")
                 .unwrap()
-                .downcast_into::<PyFunction>()
+                .cast_into::<PyFunction>()
                 .unwrap()
                 .unbind(),
             wake_detect_default_chain: py
@@ -244,7 +244,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("detect_default_chain")
                 .unwrap()
-                .downcast_into::<PyFunction>()
+                .cast_into::<PyFunction>()
                 .unwrap()
                 .unbind(),
             wake_random: py
@@ -258,7 +258,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("get_config")
                 .unwrap()
-                .downcast_into::<PyFunction>()
+                .cast_into::<PyFunction>()
                 .unwrap()
                 .unbind(),
             wake_wei: py
@@ -272,7 +272,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("CallTrace")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
             wake_connected_chains: py
@@ -280,7 +280,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("connected_chains")
                 .unwrap()
-                .downcast_into::<PyList>()
+                .cast_into::<PyList>()
                 .unwrap()
                 .unbind(),
             wake_get_name_abi: py
@@ -294,7 +294,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("prompt")
                 .unwrap()
-                .downcast_into::<PyFunction>()
+                .cast_into::<PyFunction>()
                 .unwrap()
                 .unbind(),
             hardhat_console_abi: py
@@ -302,7 +302,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("abis")
                 .unwrap()
-                .downcast_into::<PyDict>()
+                .cast_into::<PyDict>()
                 .unwrap()
                 .unbind(),
             tx_status_enum: py
@@ -310,7 +310,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .getattr("TransactionStatusEnum")
                 .unwrap()
-                .downcast_into::<PyType>()
+                .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
         });
@@ -369,7 +369,7 @@ impl PyObjects {
         kwargs.set_item(intern!(py, "include_extras"), true)?;
 
         let hints = self.typing_get_type_hints.call(py, (obj.clone(),), Some(&kwargs))?;
-        let hints = hints.downcast_bound::<PyDict>(py)?;
+        let hints = hints.cast_bound::<PyDict>(py)?;
         self.type_hints_cache.insert(obj.fully_qualified_name()?.to_string(), hints.clone().unbind());
         Ok(hints.clone())
     }
@@ -497,7 +497,7 @@ pub(crate) fn tx_params_to_typed_tx<'py>(
             value,
             access_list: match tx_dict.get_item(intern!(py, "accessList"))? {
                 Some(access_list) => {
-                    tx_params_access_list_convert(py, &access_list.downcast_into::<PyList>()?)?
+                    tx_params_access_list_convert(py, &access_list.cast_into::<PyList>()?)?
                 }
                 None => AccessList::default(),
             },
@@ -518,7 +518,7 @@ pub(crate) fn tx_params_to_typed_tx<'py>(
             value,
             access_list: match tx_dict.get_item(intern!(py, "accessList"))? {
                 Some(access_list) => {
-                    tx_params_access_list_convert(py, &access_list.downcast_into::<PyList>()?)?
+                    tx_params_access_list_convert(py, &access_list.cast_into::<PyList>()?)?
                 }
                 None => AccessList::default(),
             },
@@ -542,13 +542,13 @@ pub(crate) fn tx_params_to_typed_tx<'py>(
             value,
             access_list: match tx_dict.get_item(intern!(py, "accessList"))? {
                 Some(access_list) => {
-                    tx_params_access_list_convert(py, &access_list.downcast_into::<PyList>()?)?
+                    tx_params_access_list_convert(py, &access_list.cast_into::<PyList>()?)?
                 }
                 None => AccessList::default(),
             },
             authorization_list: match tx_dict.get_item(intern!(py, "authorizationList"))? {
                 Some(authorization_list) => {
-                    tx_params_authorization_list_convert(py, &authorization_list.downcast_into::<PyList>()?)?
+                    tx_params_authorization_list_convert(py, &authorization_list.cast_into::<PyList>()?)?
                 }
                 None => vec![],
             },
@@ -649,15 +649,15 @@ pub fn get_fqn_from_creation_code(init_code: &Bytes, init_code_index: &Vec<Creat
 
 #[pyfunction]
 pub fn keccak256<'py>(py: Python<'py>, data: &Bound<PyAny>) -> PyResult<Bound<'py, PyAny>> {
-    let b = if let Ok(bytes) = data.downcast::<PyBytes>() {
+    let b = if let Ok(bytes) = data.cast::<PyBytes>() {
         alloy_keccak256(bytes.as_bytes())
-    } else if let Ok(bytearray) = data.downcast::<PyByteArray>() {
+    } else if let Ok(bytearray) = data.cast::<PyByteArray>() {
         unsafe {
             alloy_keccak256(bytearray.as_bytes())
         }
     } else {
         let bytes = data.call_method0(intern!(py, "__bytes__"))?;
-        let bytes = bytes.downcast::<PyBytes>().unwrap().as_bytes();
+        let bytes = bytes.cast::<PyBytes>().unwrap().as_bytes();
         alloy_keccak256(bytes)
     };
 

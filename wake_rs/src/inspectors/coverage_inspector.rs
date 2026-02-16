@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Mutex, time::Duration};
 
 use lazy_static::lazy_static;
-use pyo3::sync::GILOnceCell;
+use pyo3::sync::PyOnceLock;
 use pyo3::{prelude::*, types::PyFunction};
 use revm::context::ContextTr;
 use revm::inspector::JournalExt;
@@ -89,7 +89,7 @@ pub(crate) struct CoverageHelpers {
     callback_function: Option<Py<PyFunction>>,
 }
 
-static mut COVERAGE_HELPERS: GILOnceCell<CoverageHelpers> = GILOnceCell::new();
+static mut COVERAGE_HELPERS: PyOnceLock<CoverageHelpers> = PyOnceLock::new();
 
 #[allow(static_mut_refs)]
 #[pyfunction]
@@ -230,7 +230,7 @@ pub(crate) struct CoverageInspector {
 impl CoverageInspector {
     pub fn new() -> Self {
         let ret = Self {
-            coverage_helpers: Python::with_gil(|py| get_coverage_helpers(py)),
+            coverage_helpers: Python::attach(|py| get_coverage_helpers(py)),
             statement_coverage: HashMap::default(),
             last_statement: HashMap::new(),
             fqn_stack: Vec::new(),
