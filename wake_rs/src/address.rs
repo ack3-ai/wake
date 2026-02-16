@@ -67,13 +67,13 @@ impl Address {
 
     #[classmethod]
     pub fn from_key(_cls: &Bound<'_, PyType>, key: &Bound<PyAny>) -> PyResult<Self> {
-        let signer = if let Ok(key) = key.downcast::<PyString>() {
+        let signer = if let Ok(key) = key.cast::<PyString>() {
             let key_str = key.to_str()?.trim_start_matches("0x");
             let key = hex::decode(key_str).map_err(|_| PyErr::new::<PyValueError, _>("Invalid hex string"))?;
             LocalSigner::from_slice(&key)
-        } else if let Ok(key) = key.downcast::<PyBytes>() {
+        } else if let Ok(key) = key.cast::<PyBytes>() {
             LocalSigner::from_slice(key.as_bytes())
-        } else if let Ok(key) = key.downcast::<PyByteArray>() {
+        } else if let Ok(key) = key.cast::<PyByteArray>() {
             LocalSigner::from_slice(unsafe { key.as_bytes() })
         } else if let Ok(key) = key.extract::<BigUint>() {
             LocalSigner::from_slice(&key.to_bytes_be())
@@ -127,7 +127,7 @@ impl Address {
         };
         let password = match password {
             Some(p) => p,
-            None => py_objects.click_prompt.bind(py).call1((format!("Password for account {}", alias), "", true),).map_err(|e| PyErr::new::<PyValueError, _>(e.to_string()))?.downcast_into::<PyString>()?
+            None => py_objects.click_prompt.bind(py).call1((format!("Password for account {}", alias), "", true),).map_err(|e| PyErr::new::<PyValueError, _>(e.to_string()))?.cast_into::<PyString>()?
         };
 
         let signer = LocalSigner::decrypt_keystore(keypath, password.to_str()?.to_owned().into_bytes()).map_err(|e|

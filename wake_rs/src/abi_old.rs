@@ -84,7 +84,7 @@ impl Abi {
     ) -> PyResult<Vec<u8>> {
         let selector = func
             .getattr(intern!(py, "selector"))?
-            .downcast_into::<PyBytes>()?;
+            .cast_into::<PyBytes>()?;
         let contract =
             py_objects
                 .wake_get_class_that_defined_method
@@ -92,10 +92,10 @@ impl Abi {
         let contract = contract.bind(py);
         let abi = contract
             .getattr(intern!(py, "_abi"))?
-            .downcast_into::<PyDict>()?
+            .cast_into::<PyDict>()?
             .get_item(selector.clone())?
             .expect("selector not found in abi")
-            .downcast_into::<PyDict>()?;
+            .cast_into::<PyDict>()?;
         let types = extract_abi_types(py, &abi, intern!(py, "inputs"))?;
 
         let encoded = Abi::encode(py, types, args, py_objects)?;
@@ -106,7 +106,7 @@ impl Abi {
         Ok(result)
     }
 
-    pub(crate) fn decode<'py>(py: Python<'py>, types: Vec<String>, data: Vec<u8>, py_objects: &PyObjects) -> PyResult<PyObject> {
+    pub(crate) fn decode<'py>(py: Python<'py>, types: Vec<String>, data: Vec<u8>, py_objects: &PyObjects) -> PyResult<Py<PyAny>> {
         let alloy_type: DynSolType = format!("({})", types.join(",")).parse().map_err(|e: AlloyAbiError| AbiError::new_err(e.to_string()))?;
         let decoded = alloy_type.abi_decode_sequence(data.as_slice()).map_err(|e| AbiError::new_err(e.to_string()))?;
 
@@ -175,12 +175,12 @@ impl Abi {
 
     #[staticmethod]
     #[pyo3(name = "decode")]
-    fn decode_py<'py>(py: Python<'py>, types: Vec<String>, data: Vec<u8>) -> PyResult<PyObject> {
+    fn decode_py<'py>(py: Python<'py>, types: Vec<String>, data: Vec<u8>) -> PyResult<Py<PyAny>> {
         Ok(Self::decode(py, types, data, get_py_objects(py))?)
     }
 }
 
-pub(crate) fn alloy_to_py(py: Python<'_>, value: &DynSolValue, py_objects: &PyObjects) -> PyResult<PyObject> {
+pub(crate) fn alloy_to_py(py: Python<'_>, value: &DynSolValue, py_objects: &PyObjects) -> PyResult<Py<PyAny>> {
     match value {
         DynSolValue::Address(v) => Address::from(*v).into_py_any(py),
         DynSolValue::Bytes(v) => PyBytes::new(py, v.as_slice()).into_py_any(py),
@@ -233,20 +233,20 @@ pub(crate) fn py_to_alloy(py: Python<'_>, value: &Bound<PyAny>, t: &DynSolType, 
             return Ok(DynSolValue::Address(address.try_into()?));
         }
         DynSolType::Array(arr) => {
-            if let Ok(v) = value.downcast::<PyList>() {
+            if let Ok(v) = value.cast::<PyList>() {
                 let mut values = Vec::with_capacity(v.len());
                 for v in v.iter() {
                     values.push(py_to_alloy(py, &v, &**arr, py_objects)?);
                 }
                 return Ok(DynSolValue::Array(values));
-            } else if let Ok(v) = value.downcast::<PyTuple>() {
+            } else if let Ok(v) = value.cast::<PyTuple>() {
                 let mut values = Vec::with_capacity(v.len());
                 for v in v.iter() {
                     values.push(py_to_alloy(py, &v, &**arr, py_objects)?);
                 }
                 return Ok(DynSolValue::Array(values));
             } else {
-                let v = value.extract::<Vec<PyObject>>()?;
+                let v = value.extract::<Vec<Py<PyAny>>>()?;
 
                 let mut values = Vec::with_capacity(v.len());
                 for v in v {
@@ -256,34 +256,34 @@ pub(crate) fn py_to_alloy(py: Python<'_>, value: &Bound<PyAny>, t: &DynSolType, 
             }
         }
         DynSolType::Bool => {
-            let bool = value.downcast::<PyBool>()?;
+            let bool = value.cast::<PyBool>()?;
             return Ok(DynSolValue::Bool(bool.is_true()));
         }
         DynSolType::Bytes => {
-            let bytes: Vec<u8> = if let Ok(b) = value.downcast::<PyBytes>() {
+            let bytes: Vec<u8> = if let Ok(b) = value.cast::<PyBytes>() {
                 b.as_bytes().to_vec()
-            } else if let Ok(b) = value.downcast::<PyByteArray>() {
+            } else if let Ok(b) = value.cast::<PyByteArray>() {
                 b.to_vec()
             } else {
-                value.call_method0(intern!(py, "__bytes__"))?.downcast_into::<PyBytes>()?.as_bytes().to_vec()
+                value.call_method0(intern!(py, "__bytes__"))?.cast_into::<PyBytes>()?.as_bytes().to_vec()
             };
             return Ok(DynSolValue::Bytes(bytes));
         }
         DynSolType::FixedArray(arr, _size) => {
-            if let Ok(v) = value.downcast::<PyTuple>() {
+            if let Ok(v) = value.cast::<PyTuple>() {
                 let mut values = Vec::with_capacity(v.len());
                 for v in v.iter() {
                     values.push(py_to_alloy(py, &v, &**arr, py_objects)?);
                 }
                 return Ok(DynSolValue::FixedArray(values));
-            } else if let Ok(v) = value.downcast::<PyList>() {
+            } else if let Ok(v) = value.cast::<PyList>() {
                 let mut values = Vec::with_capacity(v.len());
                 for v in v.iter() {
                     values.push(py_to_alloy(py, &v, &**arr, py_objects)?);
                 }
                 return Ok(DynSolValue::FixedArray(values));
             } else {
-                let v = value.extract::<Vec<PyObject>>()?;
+                let v = value.extract::<Vec<Py<PyAny>>>()?;
 
                 let mut values = Vec::with_capacity(v.len());
                 for v in v {
@@ -294,12 +294,12 @@ pub(crate) fn py_to_alloy(py: Python<'_>, value: &Bound<PyAny>, t: &DynSolType, 
             }
         }
         DynSolType::FixedBytes(size) => {
-            let mut bytes = if let Ok(b) = value.downcast::<PyBytes>() {
+            let mut bytes = if let Ok(b) = value.cast::<PyBytes>() {
                 b.as_bytes().to_vec()
-            } else if let Ok(b) = value.downcast::<PyByteArray>() {
+            } else if let Ok(b) = value.cast::<PyByteArray>() {
                 b.to_vec()
             } else {
-                value.call_method0(intern!(py, "__bytes__"))?.downcast_into::<PyBytes>()?.as_bytes().to_vec()
+                value.call_method0(intern!(py, "__bytes__"))?.cast_into::<PyBytes>()?.as_bytes().to_vec()
             };
 
             bytes.resize(32, 0);
@@ -308,14 +308,14 @@ pub(crate) fn py_to_alloy(py: Python<'_>, value: &Bound<PyAny>, t: &DynSolType, 
         DynSolType::Function => {
             // TODO callable?
             let tmp;
-            let bytes = if let Ok(b) = value.downcast::<PyBytes>() {
+            let bytes = if let Ok(b) = value.cast::<PyBytes>() {
                 b.as_bytes()
-            } else if let Ok(b) = value.downcast::<PyByteArray>() {
+            } else if let Ok(b) = value.cast::<PyByteArray>() {
                 unsafe {
                     b.as_bytes()
                 }
             } else {
-                tmp = value.call_method0(intern!(py, "__bytes__"))?.downcast_into::<PyBytes>()?;
+                tmp = value.call_method0(intern!(py, "__bytes__"))?.cast_into::<PyBytes>()?;
                 tmp.as_bytes()
             };
 
@@ -325,39 +325,39 @@ pub(crate) fn py_to_alloy(py: Python<'_>, value: &Bound<PyAny>, t: &DynSolType, 
             return Ok(DynSolValue::Function(function));
         }
         DynSolType::String => {
-            let string = value.downcast::<PyString>()?.to_string();
+            let string = value.cast::<PyString>()?.to_string();
             return Ok(DynSolValue::String(string));
         }
         DynSolType::Tuple(tuple) => {
-            if let Ok(v) = value.downcast::<PyTuple>() {
+            if let Ok(v) = value.cast::<PyTuple>() {
                 let mut values = Vec::with_capacity(v.len());
                 for (t, v) in tuple.iter().zip(v.iter()) {
                     values.push(py_to_alloy(py, &v, t, py_objects)?);
                 }
                 return Ok(DynSolValue::Tuple(values));
-            } else if let Ok(v) = value.downcast::<PyList>() {
+            } else if let Ok(v) = value.cast::<PyList>() {
                 let mut values = Vec::with_capacity(v.len());
                 for (t, v) in tuple.iter().zip(v.iter()) {
                     values.push(py_to_alloy(py, &v, t, py_objects)?);
                 }
                 return Ok(DynSolValue::Tuple(values));
-            } else if py_objects.dataclasses_is_dataclass.call1(py, (value,))?.downcast_bound::<PyBool>(py)?.is_true() {
+            } else if py_objects.dataclasses_is_dataclass.call1(py, (value,))?.cast_bound::<PyBool>(py)?.is_true() {
                 let fields = py_objects
                     .dataclasses_fields
                     .bind(py)
                     .call1((value,))?
-                    .downcast_into::<PyTuple>()?;
+                    .cast_into::<PyTuple>()?;
                 let mut values = Vec::with_capacity(fields.len());
 
                 for (t, field) in tuple.iter().zip(fields.iter()) {
-                    let name = field.getattr("name")?.downcast_into::<PyString>()?;
+                    let name = field.getattr("name")?.cast_into::<PyString>()?;
                     let value = value.getattr(name)?;
                     values.push(py_to_alloy(py, &value, t, py_objects)?);
                 }
 
                 return Ok(DynSolValue::Tuple(values));
             } else {
-                let iterable = value.extract::<Vec<PyObject>>()?;
+                let iterable = value.extract::<Vec<Py<PyAny>>>()?;
                 let mut values = Vec::with_capacity(iterable.len());
                 for (i, v) in iterable.iter().enumerate() {
                     values.push(py_to_alloy(py, v.bind(py), tuple.get(i).unwrap(), py_objects)?);

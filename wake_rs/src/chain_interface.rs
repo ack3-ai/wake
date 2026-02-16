@@ -30,7 +30,7 @@ impl ChainInterface {
 
         let mut wrapped = SendWrapper::new(evm);
 
-        let result = py.allow_threads(|| f(*wrapped));
+        let result = py.detach(|| f(*wrapped));
 
         Ok(result)
     }
@@ -109,15 +109,15 @@ impl ChainInterface {
         let tmp;
         let tmp2;
 
-        let bytes = if let Ok(bytes) = value.downcast::<PyBytes>() {
+        let bytes = if let Ok(bytes) = value.cast::<PyBytes>() {
             bytes.as_bytes()
-        } else if let Ok(bytearray) = value.downcast::<PyByteArray>() {
+        } else if let Ok(bytearray) = value.cast::<PyByteArray>() {
             tmp = bytearray.to_vec();
             tmp.as_slice()
         } else {
             tmp2 = value
                 .call_method0(intern!(py, "__bytes__"))?
-                .downcast_into::<PyBytes>()?;
+                .cast_into::<PyBytes>()?;
             tmp2.as_bytes()
         };
 

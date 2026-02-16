@@ -118,7 +118,7 @@ impl Contract {
         block: Option<BlockEnum>,
         confirmations: Option<u64>,
         revert: bool,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let chain = match chain {
             Some(chain) => chain,
             None => {
@@ -139,7 +139,7 @@ impl Contract {
             let mut last_end = 0;
 
             let try_get_lib = |lib_id: &[u8]| -> PyResult<Option<String>> {
-                match chain.downcast_bound::<Chain>(py) {
+                match chain.cast_bound::<Chain>(py) {
                     Ok(chain) => Ok(chain
                         .borrow()
                         .deployed_libraries
@@ -149,13 +149,13 @@ impl Contract {
                         let item = chain
                             .bind(py)
                             .getattr(intern!(py, "_deployed_libraries"))?
-                            .downcast_into::<PyDict>()?
+                            .cast_into::<PyDict>()?
                             .get_item(PyBytes::new(py, lib_id))?;
 
                         if let Some(item) = item {
                             Ok(Some(
                                 item.get_item(-1)?
-                                    .downcast::<Account>()?
+                                    .cast::<Account>()?
                                     .borrow()
                                     .address
                                     .borrow(py)
@@ -178,7 +178,7 @@ impl Contract {
                 let lib = libraries
                     .get(lib_id.as_slice())
                     .unwrap()
-                    .downcast_bound::<PyTuple>(py)
+                    .cast_bound::<PyTuple>(py)
                     .unwrap();
                 let lib_addr = lib.get_item(0).unwrap().extract::<AddressEnum>();
 
@@ -250,7 +250,7 @@ impl Contract {
         block: Option<BlockEnum>,
         confirmations: Option<u64>,
         revert: bool,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         if request_type == RequestTypeEnum::Tx && block.is_some() {
             return Err(PyValueError::new_err(
                 "block cannot be specified for contract transactions",
@@ -279,21 +279,21 @@ impl Contract {
 
         let selector = hex::decode(data).unwrap();
 
-        if let Ok(chain) = chain.downcast_bound::<Chain>(py) {
+        if let Ok(chain) = chain.cast_bound::<Chain>(py) {
             let abi = if to.is_some() {
                 Some(
                     cls.getattr(intern!(py, "_abi"))?
-                        .downcast_into::<PyDict>()?
+                        .cast_into::<PyDict>()?
                         .get_item(PyBytes::new(py, &selector))?
                         .unwrap()
-                        .downcast_into::<PyDict>()?,
+                        .cast_into::<PyDict>()?,
                 )
             } else {
                 if cls.hasattr(intern!(py, "_abi"))? {
                     cls.getattr(intern!(py, "_abi"))?
-                        .downcast_into::<PyDict>()?
+                        .cast_into::<PyDict>()?
                         .get_item(intern!(py, "constructor"))?
-                        .and_then(|item| item.downcast_into::<PyDict>().ok())
+                        .and_then(|item| item.cast_into::<PyDict>().ok())
                         .or_else(|| None)
                 } else {
                     None
@@ -491,7 +491,7 @@ impl Contract {
                 let lib = libraries
                     .get(lib_id.as_slice())
                     .unwrap()
-                    .downcast_bound::<PyTuple>(py)
+                    .cast_bound::<PyTuple>(py)
                     .unwrap();
                 let lib_addr = lib.get_item(0).unwrap().extract::<AddressEnum>();
 

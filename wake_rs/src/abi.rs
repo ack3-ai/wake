@@ -53,16 +53,16 @@ impl abi {
         let encoded = tuple.abi_encode_sequence().unwrap();
 
         let mut result = Vec::with_capacity(4 + encoded.len());
-        if let Ok(bytes) = selector.downcast::<PyBytes>() {
+        if let Ok(bytes) = selector.cast::<PyBytes>() {
             result.extend_from_slice(&bytes.as_bytes()[..4]);
-        } else if let Ok(bytearray) = selector.downcast::<PyByteArray>() {
+        } else if let Ok(bytearray) = selector.cast::<PyByteArray>() {
             unsafe {
                 result.extend_from_slice(&bytearray.as_bytes()[..4]);
             }
         } else {
             let bytes = selector
                 .call_method0(intern!(py, "__bytes__"))?
-                .downcast_into::<PyBytes>()?;
+                .cast_into::<PyBytes>()?;
             result.extend_from_slice(&bytes.as_bytes()[..4]);
         };
         result.extend_from_slice(&encoded);
@@ -145,14 +145,14 @@ impl abi {
     ) -> PyResult<Bound<'py, PyAny>> {
         let tmp;
 
-        let data = if let Ok(bytes) = data.downcast::<PyBytes>() {
+        let data = if let Ok(bytes) = data.cast::<PyBytes>() {
             bytes.as_bytes()
-        } else if let Ok(bytearray) = data.downcast::<PyByteArray>() {
+        } else if let Ok(bytearray) = data.cast::<PyByteArray>() {
             unsafe { bytearray.as_bytes() }
         } else {
             tmp = data
                 .call_method0(intern!(py, "__bytes__"))?
-                .downcast_into::<PyBytes>()?;
+                .cast_into::<PyBytes>()?;
             tmp.as_bytes()
         };
         let py_objects = get_py_objects(py);
@@ -180,7 +180,7 @@ impl abi {
                 .map(|(item, t)| {
                     t.and_then(|t| Ok(normalize_output(py, item, &t, &chain, py_objects)?))
                 })
-                .collect::<Result<Vec<PyObject>, _>>()?;
+                .collect::<Result<Vec<Py<PyAny>>, _>>()?;
 
             if tmp.len() == 1 {
                 Ok(tmp.pop().unwrap().into_bound(py))
@@ -211,7 +211,7 @@ fn convert_type(
         // fallback for int used directly
         // does NOT cover IntEnum
         Ok(DynSolType::Int(256))
-    } else if let Ok(pytype) = value.downcast::<PyType>() {
+    } else if let Ok(pytype) = value.cast::<PyType>() {
         if pytype.is_subclass(&Address::type_object(py))?
             || pytype.is_subclass(&Account::type_object(py))?
         {
@@ -220,7 +220,7 @@ fn convert_type(
             let bits = value.getattr(intern!(py, "bits"))?.extract::<usize>()?;
             if value
                 .getattr(intern!(py, "signed"))?
-                .downcast::<PyBool>()?
+                .cast::<PyBool>()?
                 .is_true()
             {
                 Ok(DynSolType::Int(bits))
@@ -235,20 +235,20 @@ fn convert_type(
         } else if py_objects
             .dataclasses_is_dataclass
             .call(py, (value.clone(),), None)?
-            .downcast_bound::<PyBool>(py)?
+            .cast_bound::<PyBool>(py)?
             .is_true()
         {
             let hints = py_objects.get_type_hints(py, pytype.clone())?;
             let fields = py_objects
                 .dataclasses_fields
                 .call(py, (value.clone(),), None)?;
-            let fields = fields.downcast_bound::<PyTuple>(py)?;
+            let fields = fields.cast_bound::<PyTuple>(py)?;
 
             let mut types = Vec::with_capacity(fields.len());
             for field in fields.iter() {
                 let name = field
                     .getattr(intern!(py, "name"))?
-                    .downcast_into::<PyString>()?
+                    .cast_into::<PyString>()?
                     .to_string();
                 let t = convert_type(py, &hints.get_item(name)?.unwrap(), py_objects)?;
                 types.push(t);
@@ -267,12 +267,12 @@ fn convert_type(
         let inner_type = py_objects
             .typing_get_args
             .call(py, (value.clone(),), None)?
-            .downcast_bound::<PyTuple>(py)?
+            .cast_bound::<PyTuple>(py)?
             .get_item(0)?;
 
         if origin.is(&PyList::type_object(py)) {
             // ok
-        } else if let Ok(origin) = origin.downcast::<PyType>() {
+        } else if let Ok(origin) = origin.cast::<PyType>() {
             if !origin.is_subclass(&py_objects.wake_fixed_list.bind(py))? {
                 return Err(PyErr::new::<PyValueError, _>(format!(
                     "Unsupported type: {:?}",
@@ -363,27 +363,27 @@ fn normalize_input(
         return Ok(py_to_alloy(py, value, target_type, py_objects)?);
     }
 
-    if let Ok(bool) = value.downcast::<PyBool>() {
+    if let Ok(bool) = value.cast::<PyBool>() {
         Ok(DynSolValue::Bool(bool.is_true()))
-    } else if let Ok(str) = value.downcast::<PyString>() {
+    } else if let Ok(str) = value.cast::<PyString>() {
         Ok(DynSolValue::String(str.to_string()))
     } else if value.is_instance(py_objects.wake_fixed_bytes.bind(py))? {
         // must go before PyBytes check
         let length = value.getattr(intern!(py, "length"))?.extract::<usize>()?;
         let mut bytes = value
             .call_method0(intern!(py, "__bytes__"))?
-            .downcast::<PyBytes>()?
+            .cast::<PyBytes>()?
             .as_bytes()
             .to_vec();
         bytes.resize(32, 0);
         Ok(DynSolValue::FixedBytes(B256::from_slice(&bytes), length))
-    } else if let Ok(bytes) = value.downcast::<PyBytes>() {
+    } else if let Ok(bytes) = value.cast::<PyBytes>() {
         Ok(DynSolValue::Bytes(bytes.as_bytes().to_vec()))
-    } else if let Ok(bytes_array) = value.downcast::<PyByteArray>() {
+    } else if let Ok(bytes_array) = value.cast::<PyByteArray>() {
         Ok(DynSolValue::Bytes(unsafe {
             bytes_array.as_bytes().to_vec()
         }))
-    } else if let Ok(tuple) = value.downcast::<PyTuple>() {
+    } else if let Ok(tuple) = value.cast::<PyTuple>() {
         let mut values = Vec::with_capacity(tuple.len());
         for item in tuple.iter() {
             values.push(normalize_input(py, &item, None, py_objects)?);
@@ -396,22 +396,22 @@ fn normalize_input(
         Ok(DynSolValue::FixedArray(normalize_array(
             py, value, length, py_objects,
         )?))
-    } else if let Ok(array) = value.downcast::<PyList>() {
+    } else if let Ok(array) = value.cast::<PyList>() {
         Ok(DynSolValue::Array(normalize_array(
             py,
             array,
             array.len(),
             py_objects,
         )?))
-    } else if let Ok(address) = value.downcast::<Address>() {
+    } else if let Ok(address) = value.cast::<Address>() {
         Ok(DynSolValue::Address(address.borrow().0))
-    } else if let Ok(account) = value.downcast::<Account>() {
+    } else if let Ok(account) = value.cast::<Account>() {
         Ok(DynSolValue::Address(account.borrow().address.borrow(py).0))
     } else if value.is_instance(py_objects.wake_integer.bind(py))? {
         let bits = value.getattr(intern!(py, "bits"))?.extract::<usize>()?;
         if value
             .getattr(intern!(py, "signed"))?
-            .downcast::<PyBool>()?
+            .cast::<PyBool>()?
             .is_true()
         {
             let int = value.extract::<BigInt>()?;
@@ -432,13 +432,13 @@ fn normalize_input(
         let fields = py_objects
             .dataclasses_fields
             .call(py, (value.clone(),), None)?;
-        let fields = fields.downcast_bound::<PyTuple>(py)?;
+        let fields = fields.cast_bound::<PyTuple>(py)?;
 
         let mut values = Vec::with_capacity(fields.len());
         for field in fields.iter() {
             let name = field
                 .getattr(intern!(py, "name"))?
-                .downcast_into::<PyString>()?;
+                .cast_into::<PyString>()?;
             let t = convert_type(py, &hints.get_item(name.clone())?.unwrap(), py_objects)?;
 
             values.push(normalize_input(

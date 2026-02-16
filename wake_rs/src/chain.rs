@@ -83,7 +83,7 @@ impl ProviderWrapper {
         with_transactions: bool,
         handle: &tokio::runtime::Handle,
     ) -> Result<Option<AlloyBlock>, RpcError<TransportErrorKind>> {
-        py.allow_threads(|| {
+        py.detach(|| {
             let future = self.0.get_block_by_number(BlockNumberOrTag::Number(number));
             if with_transactions {
                 handle.block_on(async { future.full().await })
@@ -374,12 +374,12 @@ impl Chain {
     }
 
     #[getter]
-    fn get_chain_id(&self, py: Python) -> PyResult<PyObject> {
+    fn get_chain_id(&self, py: Python) -> PyResult<Py<PyAny>> {
         get_py_objects(py).wake_u256.call1(py, (self.get_evm()?.cfg.chain_id,))
     }
 
     #[getter]
-    fn get_forked_chain_id(&self, py: Python) -> PyResult<PyObject> {
+    fn get_forked_chain_id(&self, py: Python) -> PyResult<Py<PyAny>> {
         match self.forked_chain_id {
             Some(chain_id) => get_py_objects(py)
                 .wake_u256
@@ -471,8 +471,8 @@ impl Chain {
 
         for (addr, label) in labels.iter() {
             new_labels.insert(
-                addr.downcast_into::<Address>()?.borrow().0,
-                label.downcast_into::<PyString>()?.to_string(),
+                addr.cast_into::<Address>()?.borrow().0,
+                label.cast_into::<PyString>()?.to_string(),
             );
         }
         Ok(())
@@ -541,21 +541,21 @@ impl Chain {
         chain_id: Option<u64>,
         fork: Option<String>,
         hardfork: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let connect_context = PyModule::import(py, "wake.utils.connect_context")?
             .getattr("ConnectContext")?
             .call1((slf.clone_ref(py), accounts, chain_id, fork, hardfork))?;
         Ok(connect_context.into())
     }
 
-    fn snapshot_and_revert(slf: Py<Self>, py: Python) -> PyResult<PyObject> {
+    fn snapshot_and_revert(slf: Py<Self>, py: Python) -> PyResult<Py<PyAny>> {
         let context = PyModule::import(py, "wake.utils.snapshot_revert_context")?
             .getattr("SnapshotRevertContext")?
             .call1((slf.clone_ref(py),))?;
         Ok(context.into())
     }
 
-    fn change_automine(slf: Py<Self>, py: Python, automine: bool) -> PyResult<PyObject> {
+    fn change_automine(slf: Py<Self>, py: Python, automine: bool) -> PyResult<Py<PyAny>> {
         let automine_context = PyModule::import(py, "wake.utils.automine_context")?
             .getattr("AutomineContext")?
             .call1((slf.clone_ref(py), automine))?;
@@ -688,7 +688,7 @@ impl Chain {
                     .map(BlockId::from)
                     .unwrap_or(BlockId::latest());
 
-                let (provider, forked_block, forked_chain_id) = py.allow_threads(|| {
+                let (provider, forked_block, forked_chain_id) = py.detach(|| {
                     let provider = if url.starts_with("ws://") || url.starts_with("wss://") {
                         Arc::new(ProviderBuilder::new().connect_client(
                             runtime
@@ -860,7 +860,7 @@ impl Chain {
         block: Option<BlockEnum>,
         confirmations: Option<u64>,
         revert_on_failure: bool,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         Contract::_execute(
             &Contract::type_object(py),
             py,
@@ -898,7 +898,7 @@ impl Chain {
         // The evm-with-inspector is also non-Send; use SendWrapper for allow_threads.
         let mut wrapped = SendWrapper::new(evm);
 
-        let result = py.allow_threads(|| f(&mut *wrapped));
+        let result = py.detach(|| f(&mut *wrapped));
 
         self.evm = Some(EvmCell::new(wrapped.take().with_inspector(())));
 
@@ -985,7 +985,7 @@ impl Chain {
         block: BlockEnum,
         return_type: Option<Bound<PyAny>>,
         abi: Option<Bound<PyDict>>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let mut borrowed = slf.borrow_mut();
         let default_call_account = from_.unwrap_or(AddressEnum::Account(
             borrowed

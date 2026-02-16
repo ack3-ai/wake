@@ -33,8 +33,8 @@ pub struct TransactionAbc {
     events_metadata: HashMap<Log, EventMetadata>,
 
     cached_error: Option<PyErr>,
-    cached_return_value: Option<PyObject>,
-    cached_call_trace: Option<PyObject>,
+    cached_return_value: Option<Py<PyAny>>,
+    cached_call_trace: Option<Py<PyAny>>,
     pub(crate) journal_index: usize, // used for EVM DB journal rollbacks; index into DB journal before this tx happened
     tx_env: TxEnv,
     gas_limit_before: u64, // gas limit before this tx was executed
@@ -166,7 +166,7 @@ impl TransactionAbc {
     }
 
     #[getter]
-    pub fn return_value(slf: &Bound<Self>, py: Python) -> PyResult<PyObject> {
+    pub fn return_value(slf: &Bound<Self>, py: Python) -> PyResult<Py<PyAny>> {
         let borrowed = slf.borrow();
 
         if let ExecutionResult::Success { output, .. } = &borrowed.result {
@@ -357,11 +357,11 @@ impl TransactionAbc {
 
         for log in console_logs {
             if let Some(abi) = hardhat_console_abi.get_item(PyBytes::new(py, &log[..4]))? {
-                let abi = abi.downcast_into::<PyList>()?;
+                let abi = abi.cast_into::<PyList>()?;
                 let mut abi_types = Vec::with_capacity(abi.len());
 
                 for input in abi.iter() {
-                    let output_dict = input.downcast::<PyDict>()?;
+                    let output_dict = input.cast::<PyDict>()?;
                     collapse_if_tuple(py, output_dict, &mut abi_types)?;
                 }
 

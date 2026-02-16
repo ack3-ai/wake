@@ -26,7 +26,7 @@ pub(crate) fn decode_and_normalize(
     chain: &Py<Chain>,
     abi_key: &Bound<PyString>,
     py_objects: &mut PyObjects,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let alloy_type: DynSolType = format!("({})", extract_abi_types(py, &abi, abi_key)?.join(","))
         .parse()
         .unwrap();
@@ -51,7 +51,7 @@ fn external_or_unknown_error(
     tx: Option<&Bound<TransactionAbc>>,
     metadata: &CallErrorMetadata,
     py_objects: &mut PyObjects,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let chain = chain.bind(py).borrow();
     if chain
         .get_evm()?
@@ -65,11 +65,11 @@ fn external_or_unknown_error(
         ))?;
 
         if !name_abi.is_none() {
-            let name_abi = name_abi.downcast_into::<PyTuple>()?;
-            let abi = name_abi.get_item(1)?.downcast_into::<PyDict>()?;
+            let name_abi = name_abi.cast_into::<PyTuple>()?;
+            let abi = name_abi.get_item(1)?.cast_into::<PyDict>()?;
 
             if let Some(abi) = abi.get_item(PyBytes::new(py, &data[..4]))? {
-                let abi = abi.downcast_into::<PyDict>()?;
+                let abi = abi.cast_into::<PyDict>()?;
                 let alloy_type: DynSolType = format!(
                     "({})",
                     extract_abi_types(py, &abi, intern!(py, "inputs"))?.join(",")
@@ -79,22 +79,22 @@ fn external_or_unknown_error(
 
                 let decoded = alloy_type.abi_decode_sequence(&data[4..]).unwrap();
 
-                let contract_name = name_abi.get_item(0)?.downcast_into::<PyString>()?;
+                let contract_name = name_abi.get_item(0)?.cast_into::<PyString>()?;
                 let error_name = abi
                     .get_item(intern!(py, "name"))?
                     .unwrap()
-                    .downcast_into::<PyString>()?;
+                    .cast_into::<PyString>()?;
 
                 let kwargs = PyDict::new(py);
                 if let DynSolValue::Tuple(ref tuple) = decoded {
                     let inputs = abi.get_item(intern!(py, "inputs"))?.unwrap();
-                    let inputs_list = inputs.downcast::<PyList>()?;
+                    let inputs_list = inputs.cast::<PyList>()?;
                     for (input, value) in inputs_list.iter().zip(tuple.iter()) {
-                        let input_dict = input.downcast::<PyDict>()?;
+                        let input_dict = input.cast::<PyDict>()?;
                         let input_name = input_dict
                             .get_item(intern!(py, "name"))?
                             .unwrap()
-                            .downcast_into::<PyString>()?;
+                            .cast_into::<PyString>()?;
 
                         kwargs.set_item(input_name, alloy_to_py(py, &value, py_objects)?)?;
                     }
@@ -131,7 +131,7 @@ pub(crate) fn resolve_error(
     tx: Option<&Bound<TransactionAbc>>,
     errors_metadata: &HashMap<[u8; 4], ErrorMetadata>,
     py_objects: &mut PyObjects,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     if data.len() < 4 {
         return new_unknown_error(py, data, tx, py_objects);
     }
@@ -142,7 +142,7 @@ pub(crate) fn resolve_error(
         .get_item(PyBytes::new(py, &data[..4]))?;
 
     if let Some(errors) = errors {
-        let errors = errors.downcast_into::<PyDict>()?;
+        let errors = errors.cast_into::<PyDict>()?;
         let selector: [u8; 4] = data[..4].try_into().unwrap();
         let metadata = errors_metadata.get(&selector);
 
@@ -179,7 +179,7 @@ pub(crate) fn resolve_error(
         };
 
         let tmp = match errors.get_item(fqn)? {
-            Some(item) => item.downcast_into::<PyTuple>()?,
+            Some(item) => item.cast_into::<PyTuple>()?,
             None => {
                 // e.g. when lib defines an error, doesn't syntatically use it
                 // (because it reverts using a constant from assembly) and a contract uses the lib
@@ -195,19 +195,19 @@ pub(crate) fn resolve_error(
             }
         };
 
-        let module_name = tmp.get_item(0)?.downcast_into::<PyString>()?;
-        let path = tmp.get_item(1)?.downcast_into::<PyTuple>()?;
+        let module_name = tmp.get_item(0)?.cast_into::<PyString>()?;
+        let path = tmp.get_item(1)?.cast_into::<PyTuple>()?;
 
         let mut obj = py.import(module_name)?.into_any();
 
         for attr in path.iter() {
-            let attr = attr.downcast::<PyString>()?;
+            let attr = attr.cast::<PyString>()?;
             obj = obj.getattr(attr)?;
         }
 
         let abi = obj
             .getattr(intern!(py, "_abi"))?
-            .downcast_into::<PyDict>()?;
+            .cast_into::<PyDict>()?;
 
         let alloy_type: DynSolType = format!(
             "({})",
@@ -246,7 +246,7 @@ pub(crate) fn new_unknown_event(
     log: &Log,
     chain: &Py<Chain>,
     py_objects: &PyObjects,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let topics: Vec<Bound<PyBytes>> = log
         .topics()
         .iter()
@@ -270,7 +270,7 @@ pub(crate) fn new_unknown_error(
     data: &[u8],
     tx: Option<&Bound<TransactionAbc>>,
     py_objects: &mut PyObjects,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let err = py_objects.wake_unknown_revert_exception.call(
         py,
         (PyBytes::new(py, data),),
@@ -290,7 +290,7 @@ pub(crate) fn external_or_unknown_event(
     chain: &Py<Chain>,
     metadata: &CallEventMetadata,
     py_objects: &mut PyObjects,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let borrowed_chain = chain.bind(py).borrow();
     if borrowed_chain
         .get_evm()?
@@ -304,29 +304,29 @@ pub(crate) fn external_or_unknown_event(
             .call1((metadata.bytecode_address.to_string(), borrowed_chain.forked_chain_id.unwrap()))?;
 
         if !name_abi.is_none() {
-            let name_abi = name_abi.downcast_into::<PyTuple>()?;
-            let abi = name_abi.get_item(1)?.downcast_into::<PyDict>()?;
+            let name_abi = name_abi.cast_into::<PyTuple>()?;
+            let abi = name_abi.get_item(1)?.cast_into::<PyDict>()?;
 
             if let Some(abi) =
                 abi.get_item(PyBytes::new(py, log.topics()[0].as_slice()))?
             {
-                let values = decode_event(py, abi.downcast::<PyDict>()?, log)?;
+                let values = decode_event(py, abi.cast::<PyDict>()?, log)?;
 
-                let contract_name = name_abi.get_item(0)?.downcast_into::<PyString>()?;
+                let contract_name = name_abi.get_item(0)?.cast_into::<PyString>()?;
                 let event_name = abi
                     .get_item(intern!(py, "name"))?
-                    .downcast_into::<PyString>()?;
+                    .cast_into::<PyString>()?;
 
                 let inputs = abi.get_item(intern!(py, "inputs"))?;
-                let inputs_list = inputs.downcast::<PyList>()?;
+                let inputs_list = inputs.cast::<PyList>()?;
 
                 let kwargs = PyDict::new(py);
                 for (input, value) in inputs_list.iter().zip(values.iter()) {
-                    let input_dict = input.downcast::<PyDict>()?;
+                    let input_dict = input.cast::<PyDict>()?;
                     let input_name = input_dict
                         .get_item(intern!(py, "name"))?
                         .unwrap()
-                        .downcast_into::<PyString>()?;
+                        .cast_into::<PyString>()?;
 
                     kwargs.set_item(input_name, alloy_to_py(py, &value, py_objects)?)?;
                 }
@@ -355,15 +355,15 @@ pub(crate) fn external_or_unknown_event(
 
 fn decode_event(py: Python, abi: &Bound<PyDict>, log: &Log) -> PyResult<Vec<DynSolValue>> {
     let inputs = abi.get_item(intern!(py, "inputs"))?.unwrap();
-    let inputs_list = inputs.downcast::<PyList>()?;
+    let inputs_list = inputs.cast::<PyList>()?;
 
     let mut types = Vec::with_capacity(inputs_list.len());
     for input in inputs_list.iter() {
-        let input_dict = input.downcast::<PyDict>()?;
+        let input_dict = input.cast::<PyDict>()?;
         let input_indexed = input_dict
             .get_item(intern!(py, "indexed"))?
             .unwrap()
-            .downcast_into::<PyBool>()?;
+            .cast_into::<PyBool>()?;
 
         if !input_indexed.is_true() {
             collapse_if_tuple(py, input_dict, &mut types)?;
@@ -378,11 +378,11 @@ fn decode_event(py: Python, abi: &Bound<PyDict>, log: &Log) -> PyResult<Vec<DynS
         let mut topic_index = 1;
 
         for input in inputs_list.iter() {
-            let input_dict = input.downcast::<PyDict>()?;
+            let input_dict = input.cast::<PyDict>()?;
             let input_indexed = input_dict
                 .get_item(intern!(py, "indexed"))?
                 .unwrap()
-                .downcast_into::<PyBool>()?;
+                .cast_into::<PyBool>()?;
 
             if input_indexed.is_true() {
                 let input_type = input_dict.get_item(intern!(py, "type"))?.unwrap();
@@ -422,7 +422,7 @@ pub(crate) fn resolve_event(
     chain: &Py<Chain>,
     metadata: Option<&EventMetadata>,
     py_objects: &mut PyObjects,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     if log.topics().len() == 0 {
         return new_unknown_event(py, log, chain, py_objects);
     }
@@ -432,7 +432,7 @@ pub(crate) fn resolve_event(
         .get_item(PyBytes::new(py, log.topics()[0].as_slice()))?;
 
     if let Some(events) = events {
-        let events = events.downcast_into::<PyDict>()?;
+        let events = events.cast_into::<PyDict>()?;
 
         let fqn = match metadata {
             Some(EventMetadata::Create(create_metadata)) => {
@@ -463,7 +463,7 @@ pub(crate) fn resolve_event(
         };
 
         let tmp = match events.get_item(fqn)? {
-            Some(item) => item.downcast_into::<PyTuple>()?,
+            Some(item) => item.cast_into::<PyTuple>()?,
             None => {
                 match metadata {
                     Some(EventMetadata::Create(_)) | None => {
@@ -477,19 +477,19 @@ pub(crate) fn resolve_event(
             }
         };
 
-        let module_name = tmp.get_item(0)?.downcast_into::<PyString>()?;
-        let path = tmp.get_item(1)?.downcast_into::<PyTuple>()?;
+        let module_name = tmp.get_item(0)?.cast_into::<PyString>()?;
+        let path = tmp.get_item(1)?.cast_into::<PyTuple>()?;
 
         let mut obj = py.import(module_name)?.into_any();
 
         for attr in path.iter() {
-            let attr = attr.downcast::<PyString>()?;
+            let attr = attr.cast::<PyString>()?;
             obj = obj.getattr(attr)?;
         }
 
         let abi = obj
             .getattr(intern!(py, "_abi"))?
-            .downcast_into::<PyDict>()?;
+            .cast_into::<PyDict>()?;
         let values = decode_event(py, &abi, log)?;
 
         let event = normalize_output(
@@ -523,12 +523,12 @@ pub(crate) fn normalize_output(
     pytype: &Bound<PyAny>,
     chain: &Py<PyAny>, // called from abi possibly with non-native Chain
     py_objects: &mut PyObjects,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     // TODO None
     match value {
         DynSolValue::Address(v) => {
             // may be Address, Account, or Contract
-            let pytype = pytype.downcast::<PyType>()?;
+            let pytype = pytype.cast::<PyType>()?;
 
             if pytype.is_subclass(&Contract::type_object(py))? {
                 return Ok(pytype.call((Address::from(*v), chain), None)?.into());
@@ -560,7 +560,7 @@ pub(crate) fn normalize_output(
             let inner_type = py_objects
                 .typing_get_args
                 .call1(py, (pytype,))?
-                .downcast_bound::<PyTuple>(py)?
+                .cast_bound::<PyTuple>(py)?
                 .get_item(0)?;
 
             let mut vec = Vec::with_capacity(v.len());
@@ -575,7 +575,7 @@ pub(crate) fn normalize_output(
             let inner_type = py_objects
                 .typing_get_args
                 .call1(py, (pytype,))?
-                .downcast_bound::<PyTuple>(py)?
+                .cast_bound::<PyTuple>(py)?
                 .get_item(0)?;
 
             let mut vec = Vec::with_capacity(v.len());
@@ -592,24 +592,24 @@ pub(crate) fn normalize_output(
             if py_objects
                 .dataclasses_is_dataclass
                 .call1(py, (pytype,))?
-                .downcast_bound::<PyBool>(py)?
+                .cast_bound::<PyBool>(py)?
                 .is_true()
             {
                 let fields = py_objects.dataclasses_fields.call1(py, (pytype,))?;
-                let fields = fields.downcast_bound::<PyTuple>(py)?;
+                let fields = fields.cast_bound::<PyTuple>(py)?;
                 let type_hints =
-                    py_objects.get_type_hints(py, pytype.clone().downcast_into::<PyType>()?)?;
+                    py_objects.get_type_hints(py, pytype.clone().cast_into::<PyType>()?)?;
 
                 let mut field_types = Vec::with_capacity(fields.len());
                 for field in fields.iter() {
                     if field
                         .getattr(intern!(py, "init"))?
-                        .downcast_into::<PyBool>()?
+                        .cast_into::<PyBool>()?
                         .is_true()
                     {
                         field_types.push(
                             type_hints
-                                .get_item(field.getattr("name")?.downcast_into::<PyString>()?)?
+                                .get_item(field.getattr("name")?.cast_into::<PyString>()?)?
                                 .unwrap(),
                         );
                     }
@@ -628,7 +628,7 @@ pub(crate) fn normalize_output(
                     .into())
             } else {
                 let args = py_objects.typing_get_args.call1(py, (pytype,))?;
-                let types = args.downcast_bound::<PyTuple>(py)?;
+                let types = args.cast_bound::<PyTuple>(py)?;
                 let mut vec = Vec::with_capacity(v.len());
 
                 for (item, inner_type) in v.iter().zip(types.iter()) {
@@ -657,18 +657,18 @@ pub(crate) fn collapse_if_tuple(
     let input_type = abi
         .get_item(intern!(py, "type"))?
         .unwrap()
-        .downcast_into::<PyString>()?;
+        .cast_into::<PyString>()?;
     let input_type = input_type.to_str()?;
 
     if input_type.starts_with("tuple") {
         let components = abi
             .get_item(intern!(py, "components"))?
             .unwrap()
-            .downcast_into::<PyList>()?;
+            .cast_into::<PyList>()?;
         let mut tuple_types = Vec::with_capacity(components.len());
 
         for component in components.iter() {
-            let component_dict = component.downcast::<PyDict>()?;
+            let component_dict = component.cast::<PyDict>()?;
             collapse_if_tuple(py, component_dict, &mut tuple_types)?;
         }
         types.push(format!(
@@ -678,7 +678,7 @@ pub(crate) fn collapse_if_tuple(
         ));
     } else {
         if let Some(internal_type) = abi.get_item(intern!(py, "internalType"))? {
-            let internal_type = internal_type.downcast_into::<PyString>()?;
+            let internal_type = internal_type.cast_into::<PyString>()?;
             let internal_type = internal_type.to_str()?;
 
             // fix library ABI if needed
@@ -713,11 +713,11 @@ pub(crate) fn extract_abi_types(
     key: &Bound<PyString>,
 ) -> PyResult<Vec<String>> {
     let inputs = abi.get_item(key)?.unwrap();
-    let inputs_list = inputs.downcast::<PyList>()?;
+    let inputs_list = inputs.cast::<PyList>()?;
     let mut types = Vec::with_capacity(inputs_list.len());
 
     for input in inputs_list.iter() {
-        let input_dict = input.downcast::<PyDict>()?;
+        let input_dict = input.cast::<PyDict>()?;
         collapse_if_tuple(py, input_dict, &mut types)?;
     }
 

@@ -83,13 +83,13 @@ impl Account {
 
         let mut wrapped = SendWrapper::new(evm);
 
-        Ok(py.allow_threads(|| f(*wrapped)))
+        Ok(py.detach(|| f(*wrapped)))
     }
 
     pub(crate) fn from_address(py: Python, address: Address, chain: Py<PyAny>) -> PyResult<Self> {
         Ok(Self {
             address: Py::new(py, address)?,
-            chain: if let Ok(chain) = chain.downcast_bound::<Chain>(py) {
+            chain: if let Ok(chain) = chain.cast_bound::<Chain>(py) {
                 ChainWrapper::Native(chain.clone().unbind())
             } else {
                 ChainWrapper::Python(chain)
@@ -104,7 +104,7 @@ impl Account {
     ) -> PyResult<Self> {
         Ok(Self {
             address: Py::new(py, Address::from(address))?,
-            chain: if let Ok(chain) = chain.downcast_bound::<Chain>(py) {
+            chain: if let Ok(chain) = chain.cast_bound::<Chain>(py) {
                 ChainWrapper::Native(chain.clone().unbind())
             } else {
                 ChainWrapper::Python(chain)
@@ -156,7 +156,7 @@ impl Account {
             Some(chain) => chain,
             None => py_objects.wake_detect_default_chain.call0(py)?,
         };
-        let pk = if let Ok(_) = chain.downcast_bound::<Chain>(py) {
+        let pk = if let Ok(_) = chain.cast_bound::<Chain>(py) {
             let mut pk = py_objects
                 .wake_random
                 .call_method1(py, intern!(py, "getrandbits"), (256,))?
@@ -174,7 +174,7 @@ impl Account {
             }
             chain
                 .call_method1(py, intern!(py, "_new_private_key"), (extra_entropy,))?
-                .downcast_bound::<PyBytes>(py)?
+                .cast_bound::<PyBytes>(py)?
                 .as_bytes()
                 .to_vec()
         };
@@ -259,9 +259,9 @@ impl Account {
                 let labels = chain
                     .bind(py)
                     .getattr(intern!(py, "_labels"))?
-                    .downcast_into::<PyDict>()?;
+                    .cast_into::<PyDict>()?;
                 match labels.get_item(self.address.clone_ref(py))? {
-                    Some(label) => Ok(Some(label.downcast_into::<PyString>()?)),
+                    Some(label) => Ok(Some(label.cast_into::<PyString>()?)),
                     None => Ok(None),
                 }
             }
@@ -288,7 +288,7 @@ impl Account {
                 let labels = chain
                     .bind(py)
                     .getattr(intern!(py, "_labels"))?
-                    .downcast_into::<PyDict>()?;
+                    .cast_into::<PyDict>()?;
                 if let Some(label) = label {
                     labels.set_item(self.address.clone_ref(py), PyString::new(py, label))?;
                 } else {
@@ -370,7 +370,7 @@ impl Account {
                     intern!(py, "get_code"),
                     (self.address.borrow(py).__str__(),),
                 )?
-                .downcast_into::<PyBytes>()?),
+                .cast_into::<PyBytes>()?),
         }
     }
 
@@ -475,9 +475,9 @@ impl Account {
                 }
             }
         } else {
-            let pytype = value.downcast_into::<PyType>()?;
+            let pytype = value.cast_into::<PyType>()?;
             // just ensure that the pytype has a _fqn attribute
-            pytype.getattr(intern!(py, "_fqn"))?.downcast_into::<PyString>()?;
+            pytype.getattr(intern!(py, "_fqn"))?.cast_into::<PyString>()?;
 
             match &self.chain {
                 ChainWrapper::Native(chain) => {
@@ -605,7 +605,7 @@ impl Account {
         access_list: Option<AccessListEnum>,
         authorization_list: Option<Vec<Bound<'py, PyDict>>>,
         block: BlockEnum,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let borrowed = slf.borrow();
         match &borrowed.chain {
             ChainWrapper::Native(chain) => Chain::call(
@@ -640,7 +640,7 @@ impl Account {
                     access_list,
                     authorization_list,
                 )?;
-                let args: Vec<PyObject> = vec![];
+                let args: Vec<Py<PyAny>> = vec![];
                 chain.call_method1(
                     py,
                     intern!(py, "_call"),
@@ -672,7 +672,7 @@ impl Account {
         authorization_list: Option<Vec<Bound<'py, PyDict>>>,
         block: BlockEnum,
         revert_on_failure: bool,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let borrowed = slf.borrow();
         match &borrowed.chain {
             ChainWrapper::Native(chain) => Chain::estimate(
@@ -711,7 +711,7 @@ impl Account {
                     access_list,
                     authorization_list,
                 )?;
-                let args: Vec<PyObject> = vec![];
+                let args: Vec<Py<PyAny>> = vec![];
                 chain.call_method1(
                     py,
                     intern!(py, "_estimate"),
@@ -735,7 +735,7 @@ impl Account {
         authorization_list: Option<Vec<Bound<'py, PyDict>>>,
         block: BlockEnum,
         revert_on_failure: bool,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let borrowed = slf.borrow();
         match &borrowed.chain {
             ChainWrapper::Native(chain) => Chain::access_list(
@@ -773,7 +773,7 @@ impl Account {
                     None,
                     authorization_list,
                 )?;
-                let args: Vec<PyObject> = vec![];
+                let args: Vec<Py<PyAny>> = vec![];
                 chain.call_method1(
                     py,
                     intern!(py, "_access_list"),
@@ -797,7 +797,7 @@ impl Account {
         access_list: Option<AccessListEnum>,
         authorization_list: Option<Vec<Bound<'py, PyDict>>>,
         confirmations: Option<u64>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let borrowed = slf.borrow();
         match &borrowed.chain {
             ChainWrapper::Native(chain) => Chain::transact(
@@ -831,7 +831,7 @@ impl Account {
                     access_list,
                     authorization_list,
                 )?;
-                let args: Vec<PyObject> = vec![];
+                let args: Vec<Py<PyAny>> = vec![];
                 chain.call_method1(
                     py,
                     intern!(py, "_transact"),
@@ -855,18 +855,18 @@ impl Account {
         let signer = signers.get(&self.address.borrow(py).0);
 
         if let Some(signer) = signer {
-            let bytes = if let Ok(bytes) = data.downcast::<PyBytes>() {
+            let bytes = if let Ok(bytes) = data.cast::<PyBytes>() {
                 let data = bytes.as_bytes();
-                py.allow_threads(move || signer.sign_message(data, &handle))
-            } else if let Ok(bytearray) = data.downcast::<PyByteArray>() {
+                py.detach(move || signer.sign_message(data, &handle))
+            } else if let Ok(bytearray) = data.cast::<PyByteArray>() {
                 let data = bytearray.to_vec();
-                py.allow_threads(move || signer.sign_message(&data, &handle))
+                py.detach(move || signer.sign_message(&data, &handle))
             } else {
                 let bytes = data
                     .call_method0(intern!(py, "__bytes__"))?
-                    .downcast_into::<PyBytes>()?;
+                    .cast_into::<PyBytes>()?;
                 let data = bytes.as_bytes();
-                py.allow_threads(move || signer.sign_message(data, &handle))
+                py.detach(move || signer.sign_message(data, &handle))
             }
             .map_err(|e| PyErr::new::<PyValueError, _>(e.to_string()))?
             .as_bytes();
@@ -884,7 +884,7 @@ impl Account {
                         intern!(py, "sign"),
                         (self.address.borrow(py).__str__(), data),
                     )?
-                    .downcast_into::<PyBytes>()?),
+                    .cast_into::<PyBytes>()?),
             }
         }
     }
@@ -900,28 +900,28 @@ impl Account {
             .get(&self.address.borrow(py).0)
             .expect("Account cannot sign");
 
-        let bytes = if let Ok(bytes) = data.downcast::<PyBytes>() {
+        let bytes = if let Ok(bytes) = data.cast::<PyBytes>() {
             let data: &[u8; 32] = bytes
                 .as_bytes()
                 .try_into()
                 .expect("32 bytes must be provided");
-            py.allow_threads(move || signer.sign_hash(data, &handle))
-        } else if let Ok(bytearray) = data.downcast::<PyByteArray>() {
+            py.detach(move || signer.sign_hash(data, &handle))
+        } else if let Ok(bytearray) = data.cast::<PyByteArray>() {
             let vec = bytearray.to_vec();
             let data: &[u8; 32] = vec
                 .as_slice()
                 .try_into()
                 .expect("32 bytes must be provided");
-            py.allow_threads(move || signer.sign_hash(data, &handle))
+            py.detach(move || signer.sign_hash(data, &handle))
         } else {
             let bytes = data
                 .call_method0(intern!(py, "__bytes__"))?
-                .downcast_into::<PyBytes>()?;
+                .cast_into::<PyBytes>()?;
             let data: &[u8; 32] = bytes
                 .as_bytes()
                 .try_into()
                 .expect("32 bytes must be provided");
-            py.allow_threads(move || signer.sign_hash(data, &handle))
+            py.detach(move || signer.sign_hash(data, &handle))
         }
         .map_err(|e| PyErr::new::<PyValueError, _>(e.to_string()))?
         .as_bytes();
@@ -940,7 +940,7 @@ impl Account {
 
         if let Some(signer) = signer {
             let mut typed_tx = tx_params_to_typed_tx(py, tx)?;
-            let signature = py.allow_threads(|| signer.sign_transaction(&mut typed_tx, handle))
+            let signature = py.detach(|| signer.sign_transaction(&mut typed_tx, handle))
                 .map_err(|e| PyErr::new::<PyValueError, _>(e.to_string()))?;
 
             let signed = typed_tx.into_signed(signature);
@@ -959,7 +959,7 @@ impl Account {
                         intern!(py, "sign_transaction"),
                         (tx,),
                     )?
-                    .downcast_into::<PyBytes>()?),
+                    .cast_into::<PyBytes>()?),
             }
         }
     }
@@ -976,11 +976,11 @@ impl Account {
         let signer = signers.get(&self.address.borrow(py).0);
 
         if let Some(signer) = signer {
-            let typed = if let Ok(dict) = message.downcast::<PyDict>() {
+            let typed = if let Ok(dict) = message.cast::<PyDict>() {
                 // raw dict
                 let json = PyModule::import(py, "json")?
                     .call_method1(intern!(py, "dumps"), (dict,))?
-                    .downcast::<PyString>()?
+                    .cast::<PyString>()?
                     .to_string();
                 serde_json::from_str::<TypedData>(&json)
                     .map_err(|e| PyErr::new::<PyValueError, _>(e.to_string()))?
@@ -1012,7 +1012,7 @@ impl Account {
                         intern!(py, "sign_typed"),
                         (self.address.borrow(py).__str__(), message),
                     )?
-                    .downcast_into::<PyBytes>()?),
+                    .cast_into::<PyBytes>()?),
             }
         }
     }
@@ -1043,7 +1043,7 @@ impl Account {
             nonce,
         };
 
-        let signature = py.allow_threads(move || signer.sign_hash(&authorization.signature_hash().0, &handle))
+        let signature = py.detach(move || signer.sign_hash(&authorization.signature_hash().0, &handle))
             .map_err(|e| PyErr::new::<PyValueError, _>(e.to_string()))?;
 
         let signed_authorization = PyDict::new(py);
