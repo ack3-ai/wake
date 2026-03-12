@@ -130,6 +130,7 @@ async def compile(
             )
         }
     else:
+        modified_files = {}
         sol_files: Set[Path] = set()
         start = time.perf_counter()
         with console.status("[bold green]Searching for *.sol files...[/]"):
@@ -212,6 +213,7 @@ async def compile(
         [SolcOutputSelectionEnum.ALL],
         write_artifacts=not no_artifacts,
         force_recompile=force,
+        modified_files=modified_files,
         console=console,
         no_warnings=no_warnings,
         incremental=incremental,
