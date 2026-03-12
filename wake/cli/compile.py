@@ -215,6 +215,7 @@ async def compile(
         console=console,
         no_warnings=no_warnings,
         incremental=incremental,
+        virtual=bool(import_json),
     )
 
     if watch:

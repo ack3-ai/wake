@@ -821,6 +821,7 @@ async def detect_(
         no_warnings=True,
         modified_files=modified_files,
         incremental=incremental,
+        virtual=bool(import_json),
     )
 
     assert compiler.latest_build_info is not None
