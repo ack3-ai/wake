@@ -1890,7 +1890,8 @@ def _get_storage_layout_from_explorer(
     graph, _ = compiler.build_graph(
         sources.keys(),
         {k: v.encode("utf-8") for k, v in sources.items()},
-        True,  # pyright: ignore reportGeneralTypeIssues
+        ignore_errors=True,  # pyright: ignore reportGeneralTypeIssues
+        virtual=True,
     )
     compilation_units = compiler.build_compilation_units_maximize(graph, dummy_logger)
     compilation_units = compiler.merge_compilation_units(
