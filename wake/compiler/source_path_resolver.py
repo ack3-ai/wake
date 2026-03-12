@@ -1,6 +1,6 @@
 import itertools
 from pathlib import Path
-from typing import AbstractSet
+from typing import AbstractSet, Optional
 
 from wake.config import WakeConfig
 
@@ -18,6 +18,7 @@ class SourcePathResolver:
         source_unit_name: str,
         parent_source_unit_name: str,
         virtual_files: AbstractSet[Path],
+        virtual_root: Optional[Path],
     ) -> Path:
         """
         Return a system path for the given source unit name. Currently, this is done in a single step:
@@ -27,8 +28,13 @@ class SourcePathResolver:
         """
         matching_paths = set()
 
+        if virtual_root is None:
+            root = self.__config.project_root_path
+        else:
+            root = virtual_root
+
         for include_path in itertools.chain(
-            [self.__config.project_root_path],
+            [root],
             self.__config.compiler.solc.include_paths,
             [self.__config.wake_contracts_path],
         ):
@@ -50,12 +56,19 @@ class SourcePathResolver:
             raise CompilationResolveError(err)
         return matching_paths.pop()
 
-    def matches(self, source_unit_name: str, file: Path) -> bool:
+    def matches(
+        self, source_unit_name: str, file: Path, virtual_root: Optional[Path]
+    ) -> bool:
         """
         Return True if the given source unit name matches the given file path.
         """
+        if virtual_root is None:
+            root = self.__config.project_root_path
+        else:
+            root = virtual_root
+
         for include_path in itertools.chain(
-            [self.__config.project_root_path],
+            [root],
             self.__config.compiler.solc.include_paths,
             [self.__config.wake_contracts_path],
         ):

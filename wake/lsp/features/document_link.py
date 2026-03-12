@@ -107,7 +107,7 @@ async def document_link(
 
                 try:
                     include_path = source_path_resolver.resolve(
-                        unit_name, this_source_unit_name, context.parser.files
+                        unit_name, this_source_unit_name, context.parser.files, None
                     )
                     document_links.append(
                         DocumentLink(

@@ -65,7 +65,7 @@ class CompilationUnit:
         return frozenset(self.__paths_to_source_unit_names[path])
 
     def contains_unresolved_file(
-        self, files: Iterable[Path], config: WakeConfig
+        self, files: Iterable[Path], config: WakeConfig, virtual_root: Optional[Path]
     ) -> bool:
         unresolved_imports: Set[str] = set()
         for node in self.__unit_graph.nodes:
@@ -77,7 +77,7 @@ class CompilationUnit:
 
         for unresolved_import in unresolved_imports:
             for file in files:
-                if source_path_resolver.matches(unresolved_import, file):
+                if source_path_resolver.matches(unresolved_import, file, virtual_root):
                     return True
         return False
 

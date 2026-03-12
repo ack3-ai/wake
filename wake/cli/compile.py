@@ -103,21 +103,7 @@ async def compile(
             paths_mode=loaded["system"],
         )
 
-        # add project root as an include path (for solc to resolve imports correctly)
-        if config.project_root_path != original_project_root:
-            config.update(
-                {
-                    "compiler": {
-                        "solc": {
-                            "include_paths": set(config.compiler.solc.include_paths)
-                            | {original_project_root},
-                        }
-                    }
-                },
-                [],
-                paths_mode=loaded["system"],
-            )
-
+        virtual_root = Path(original_project_root)
         modified_files = {
             Path(path): source["content"].encode("utf-8")
             for path, source in loaded["sources"].items()
@@ -130,6 +116,7 @@ async def compile(
             )
         }
     else:
+        virtual_root = None
         modified_files = {}
         sol_files: Set[Path] = set()
         start = time.perf_counter()
@@ -217,7 +204,7 @@ async def compile(
         console=console,
         no_warnings=no_warnings,
         incremental=incremental,
-        virtual=bool(import_json),
+        virtual_root=virtual_root,
     )
 
     if watch:

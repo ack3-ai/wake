@@ -705,6 +705,7 @@ async def detect_(
 
     if import_json is None:
         incremental = None
+        virtual_root = None
         scan_extra = {}
         sol_files: Set[Path] = set()
         modified_files: Dict[Path, bytes] = {}
@@ -752,21 +753,7 @@ async def detect_(
             paths_mode=loaded["system"],
         )
 
-        # add project root as an include path (for solc to resolve imports correctly)
-        if config.project_root_path != original_project_root:
-            config.update(
-                {
-                    "compiler": {
-                        "solc": {
-                            "include_paths": set(config.compiler.solc.include_paths)
-                            | {original_project_root},
-                        }
-                    }
-                },
-                [],
-                paths_mode=loaded["system"],
-            )
-
+        virtual_root = Path(original_project_root)
         modified_files = {
             Path(path): source["content"].encode("utf-8")
             for path, source in loaded["sources"].items()
@@ -821,7 +808,7 @@ async def detect_(
         no_warnings=True,
         modified_files=modified_files,
         incremental=incremental,
-        virtual=bool(import_json),
+        virtual_root=virtual_root,
     )
 
     assert compiler.latest_build_info is not None

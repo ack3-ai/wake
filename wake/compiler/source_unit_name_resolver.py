@@ -1,6 +1,6 @@
 import itertools
 from pathlib import Path, PurePath, PurePosixPath
-from typing import List
+from typing import List, Optional
 
 from wake.config import WakeConfig
 from wake.config.data_model import SolcRemapping
@@ -111,13 +111,18 @@ class SourceUnitNameResolver:
             return self.__resolve_relative_import(parent_source_unit, import_str)
         return self.__resolve_direct_import(parent_source_unit, import_str)
 
-    def resolve_cmdline_arg(self, arg: Path) -> str:
+    def resolve_cmdline_arg(self, arg: Path, virtual_root: Optional[Path]) -> str:
         """
         Return a source unit name of the file provided as a command-line argument.
         """
+        if virtual_root is None:
+            root = self.__config.project_root_path
+        else:
+            root = virtual_root
+
         pure_path = PurePath(arg)
         for include_path in itertools.chain(
-            [self.__config.project_root_path],
+            [root],
             self.__config.compiler.solc.include_paths,
             [self.__config.wake_contracts_path],
         ):
