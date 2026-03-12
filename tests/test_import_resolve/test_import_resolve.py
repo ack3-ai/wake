@@ -80,11 +80,15 @@ def test_cmdline_args():
 
     with change_cwd(current_path):
         assert (
-            resolver.resolve_cmdline_arg(Path("project1/contracts/a.sol").resolve())
+            resolver.resolve_cmdline_arg(
+                Path("project1/contracts/a.sol").resolve(), None
+            )
             == "contracts/a.sol"
         )
         assert (
-            resolver.resolve_cmdline_arg(Path("project1/interfaces/b.sol").resolve())
+            resolver.resolve_cmdline_arg(
+                Path("project1/interfaces/b.sol").resolve(), None
+            )
             == "interfaces/b.sol"
         )
 

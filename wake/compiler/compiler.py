@@ -393,7 +393,7 @@ class SolidityCompiler:
         files: Iterable[Path],
         modified_files: Mapping[Path, bytes],
         ignore_errors: bool = False,
-        virtual: bool = False,
+        virtual_root: Optional[Path] = None,
     ) -> Tuple[nx.DiGraph, Dict[str, Path]]:
         self._lines_index.clear()
 
@@ -401,7 +401,7 @@ class SolidityCompiler:
         source_units_queue: deque[Tuple[str, Path, Optional[bytes]]] = deque()
         source_units: Dict[str, Path] = {}
 
-        if not virtual:
+        if virtual_root is None:
             # resolve and deduplicate (avoid duplicates due to symlinks)
             files = {f.resolve() for f in files}
             modified_files = {f.resolve(): modified_files[f] for f in modified_files}
@@ -418,7 +418,7 @@ class SolidityCompiler:
                     raise
 
             source_unit_name = self.__source_unit_name_resolver.resolve_cmdline_arg(
-                file
+                file, virtual_root
             )
             if source_unit_name in source_units:
                 first = str(source_units[source_unit_name])
@@ -479,9 +479,12 @@ class SolidityCompiler:
                 )
                 try:
                     import_path = self.__source_path_resolver.resolve(
-                        import_unit_name, source_unit_name, modified_files.keys()
+                        import_unit_name,
+                        source_unit_name,
+                        modified_files.keys(),
+                        virtual_root,
                     )
-                    if not virtual:
+                    if virtual_root is None:
                         import_path = import_path.resolve()
                     if import_path not in modified_files:
                         import_path = import_path.resolve(strict=True)
@@ -984,7 +987,7 @@ class SolidityCompiler:
         console: Optional[rich.console.Console] = None,
         no_warnings: bool = False,
         incremental: Optional[bool] = None,
-        virtual: bool = False,
+        virtual_root: Optional[Path] = None,
     ) -> Tuple[ProjectBuild, Set[SolcOutputError]]:
         if modified_files is None:
             modified_files = {}
@@ -1023,7 +1026,7 @@ class SolidityCompiler:
             raise CompilationError("Subproject cannot be named '__null__'")
 
         graph, source_units_to_paths = self.build_graph(
-            files, modified_files, ignore_errors=True, virtual=virtual
+            files, modified_files, ignore_errors=True, virtual_root=virtual_root
         )
         compilation_units = self.build_compilation_units_maximize(graph, logger)
         subprojects = {cu.subproject for cu in compilation_units}
@@ -1166,7 +1169,9 @@ class SolidityCompiler:
                 for cu in maximized_compilation_units
                 if cu.hash.hex() not in self._latest_build_info.compilation_units
                 or (cu.source_unit_names & source_units_to_compile)
-                or cu.contains_unresolved_file(deleted_files, self.__config)
+                or cu.contains_unresolved_file(
+                    deleted_files, self.__config, virtual_root
+                )
             ]
 
             logger.debug(

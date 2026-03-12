@@ -1855,7 +1855,7 @@ class LspCompiler:
         needed_compilation_units = []
         for cu in compilation_units:
             if (cu.files & files_to_compile) or cu.contains_unresolved_file(
-                self.__deleted_files, self.__config
+                self.__deleted_files, self.__config, None
             ):
                 needed_compilation_units.append(cu)
                 continue
