@@ -157,6 +157,8 @@ def find_low_level_call_source_address(
                     )
                     return None
                 expression = expression.arguments[0]
+            else:
+                return None
         elif isinstance(expression, ir.MemberAccess):
             if isinstance(expression.referenced_declaration, ir.enums.GlobalSymbol):
                 return expression.referenced_declaration
