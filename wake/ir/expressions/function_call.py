@@ -162,6 +162,11 @@ class FunctionCall(ExpressionAbc):
             VariableDeclaration,
         ]
     ]:
+        from ..expressions.assignment import Assignment
+        from ..expressions.conditional import Conditional
+        from ..expressions.index_access import IndexAccess
+        from ..expressions.index_range_access import IndexRangeAccess
+
         if self.kind == FunctionCallKind.TYPE_CONVERSION:
             return None
 
@@ -233,6 +238,10 @@ class FunctionCall(ExpressionAbc):
                         False
                     ), f"Unexpected function call child node: {node}\n{self.source}"
                 node = node.components[0]
+            elif isinstance(node, Assignment):
+                node = node.right_expression
+            elif isinstance(node, (IndexAccess, IndexRangeAccess, Conditional)):
+                return None
             else:
                 assert (
                     False
