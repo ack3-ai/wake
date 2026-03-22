@@ -10,7 +10,7 @@ import string
 from collections import defaultdict, deque
 from copy import deepcopy
 from operator import itemgetter
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import (
     Any,
     DefaultDict,
@@ -160,6 +160,7 @@ class TypeGenerator:
     __reference_resolver: ReferenceResolver
     __imports: SourceUnitImports
     __name_sanitizer: NameSanitizer
+    __source_unit_name_sanitizer: SourceUnitNameSanitizer
     __current_source_unit: str
     __pytypes_dir: Path
     __sol_to_py_lookup: Dict[str, Tuple[str, str]]
@@ -188,6 +189,7 @@ class TypeGenerator:
         self.__reference_resolver = ReferenceResolver(lsp=False)
         self.__imports = SourceUnitImports(self)
         self.__name_sanitizer = NameSanitizer()
+        self.__source_unit_name_sanitizer = SourceUnitNameSanitizer()
         self.__current_source_unit = ""
         self.__pytypes_dir = config.project_root_path / "pytypes"
         self.__sol_to_py_lookup = {}
@@ -272,6 +274,10 @@ class TypeGenerator:
     @property
     def cyclic_source_units(self) -> Set[str]:
         return self.__cyclic_source_units[self.__current_source_unit]
+
+    @property
+    def source_unit_name_sanitizer(self) -> "SourceUnitNameSanitizer":
+        return self.__source_unit_name_sanitizer
 
     def add_str_to_types(
         self, num_of_indentation: int, string: str, num_of_newlines: int
@@ -579,9 +585,12 @@ class TypeGenerator:
 
                 if isinstance(error_decl.parent, ContractDefinition):
                     # error is declared in a contract
-                    error_module_name = "pytypes." + _make_path_alphanum(
-                        error_decl.parent.parent.source_unit_name[:-4].replace(".", "_")
-                    ).replace("/", ".")
+                    error_module_name = (
+                        "pytypes."
+                        + self.__source_unit_name_sanitizer.sanitize_name(
+                            error_decl.parent.parent.source_unit_name
+                        ).replace("/", ".")
+                    )
                     self.__errors_index[selector][fqn] = (
                         error_module_name,
                         (
@@ -590,9 +599,12 @@ class TypeGenerator:
                         ),
                     )
                 elif isinstance(error_decl.parent, SourceUnit):
-                    error_module_name = "pytypes." + _make_path_alphanum(
-                        error_decl.parent.source_unit_name[:-4].replace(".", "_")
-                    ).replace("/", ".")
+                    error_module_name = (
+                        "pytypes."
+                        + self.__source_unit_name_sanitizer.sanitize_name(
+                            error_decl.parent.source_unit_name
+                        ).replace("/", ".")
+                    )
                     self.__errors_index[selector][fqn] = (
                         error_module_name,
                         (self.get_name(error_decl, force_simple=True),),
@@ -617,9 +629,12 @@ class TypeGenerator:
                 # TODO: a contract may use two different events with the same selector when emitting events declared in other contracts
                 if isinstance(event_decl.parent, ContractDefinition):
                     # event is declared in a contract
-                    event_module_name = "pytypes." + _make_path_alphanum(
-                        event_decl.parent.parent.source_unit_name[:-4].replace(".", "_")
-                    ).replace("/", ".")
+                    event_module_name = (
+                        "pytypes."
+                        + self.__source_unit_name_sanitizer.sanitize_name(
+                            event_decl.parent.parent.source_unit_name
+                        ).replace("/", ".")
+                    )
                     self.__events_index[selector][fqn] = (
                         event_module_name,
                         (
@@ -628,9 +643,12 @@ class TypeGenerator:
                         ),
                     )
                 elif isinstance(event_decl.parent, SourceUnit):
-                    event_module_name = "pytypes." + _make_path_alphanum(
-                        event_decl.parent.source_unit_name[:-4].replace(".", "_")
-                    ).replace("/", ".")
+                    event_module_name = (
+                        "pytypes."
+                        + self.__source_unit_name_sanitizer.sanitize_name(
+                            event_decl.parent.source_unit_name
+                        ).replace("/", ".")
+                    )
                     self.__events_index[selector][fqn] = (
                         event_module_name,
                         (self.get_name(event_decl, force_simple=True),),
@@ -1527,9 +1545,12 @@ class TypeGenerator:
                 base_names.append(self.get_name(parent_contract, force_simple=True))
                 self.__imports.generate_contract_import(parent_contract, force=True)
 
-        contract_module_name = "pytypes." + _make_path_alphanum(
-            contract.parent.source_unit_name[:-4].replace(".", "_")
-        ).replace("/", ".")
+        contract_module_name = (
+            "pytypes."
+            + self.__source_unit_name_sanitizer.sanitize_name(
+                contract.parent.source_unit_name
+            ).replace("/", ".")
+        )
         self.__contracts_index[fqn] = (
             contract_module_name,
             (self.get_name(contract, force_simple=True),),
@@ -1611,7 +1632,7 @@ class TypeGenerator:
             lists += f"class List{a}(FixedSizeList[T]):\n    length = {a}\n\n\n"
 
         self.__pytypes_dir.mkdir(exist_ok=True)
-        contract_name = _make_path_alphanum(contract_name[:-4].replace(".", "_"))
+        contract_name = self.__source_unit_name_sanitizer.sanitize_name(contract_name)
         unit_path = (self.__pytypes_dir / contract_name).with_suffix(".py")
         unit_path.parent.mkdir(parents=True, exist_ok=True)
         unit_path.write_text(str(self.__imports) + lists + self.__source_unit_types)
@@ -1929,8 +1950,8 @@ class SourceUnitImports:
         *,
         aliased: bool = False,
     ) -> str:
-        source_unit_name = _make_path_alphanum(
-            source_unit_name[:-4].replace(".", "_")
+        source_unit_name = self.__type_gen.source_unit_name_sanitizer.sanitize_name(
+            source_unit_name
         ).replace("/", ".")
         name = self.__type_gen.get_name(declaration, force_simple=True)
 
@@ -1941,8 +1962,8 @@ class SourceUnitImports:
     def __generate_lazy_module(
         self, declaration: DeclarationAbc, source_unit_name: str
     ) -> str:
-        source_unit_name = _make_path_alphanum(
-            source_unit_name[:-4].replace(".", "_")
+        source_unit_name = self.__type_gen.source_unit_name_sanitizer.sanitize_name(
+            source_unit_name
         ).replace("/", ".")
         name = self.__type_gen.get_name(declaration, force_simple=True)
 
@@ -2033,6 +2054,43 @@ class SourceUnitImports:
 
     def add_python_import(self, p_import: str) -> None:
         self.__python_imports.add(p_import)
+
+
+class SourceUnitNameSanitizer:
+    _cache: dict[str, str]
+    _used: set[str]
+
+    def __init__(self):
+        self._cache = {}
+        self._used = set()
+
+    @staticmethod
+    def _sanitize_part(part: str) -> str:
+        part = part.replace(".", "_")
+        part = "".join(ch for ch in part if ch.isalnum() or ch == "_")
+        if not part:
+            part = "_"
+        while keyword.iskeyword(part) or part.startswith(tuple(string.digits)):
+            part = f"_{part}"
+        return part
+
+    def sanitize_name(self, name: str) -> str:
+        if name in self._cache:
+            return self._cache[name]
+
+        path = PurePosixPath(name)
+        parts = [self._sanitize_part(p) for p in list(path.parts[:-1]) + [path.stem]]
+
+        result = "/".join(parts)
+        base = result
+        i = 1
+        while result in self._used:
+            result = f"{base}_{i}"
+            i += 1
+
+        self._cache[name] = result
+        self._used.add(result)
+        return result
 
 
 class NameSanitizer:
