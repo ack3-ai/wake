@@ -20,8 +20,8 @@ from urllib.error import HTTPError
 
 import rich.traceback
 import rich_click
-from rich import print as rich_print
 from ipdb.__main__ import _init_pdb
+from rich import print as rich_print
 
 from wake.config import WakeConfig
 from wake.core import get_logger
@@ -123,6 +123,11 @@ def attach_debugger(
     assert e_type is not None
     assert e is not None
     assert tb is not None
+
+    config = get_config()
+    tb_lines = traceback.format_exception(e_type, e, tb)
+    (config.project_root_path / ".wake").mkdir(parents=True, exist_ok=True)
+    (config.project_root_path / ".wake" / "crash.txt").write_text("".join(tb_lines))
 
     rich_tb = rich.traceback.Traceback.from_exception(e_type, e, tb)
     console.print(rich_tb)
