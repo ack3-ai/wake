@@ -10,10 +10,10 @@ debug = true
 alloy = { version = "1.5.2", features = ["signer-local", "eip712", "dyn-abi", "signer-mnemonic", "signer-mnemonic-all-languages", "signer-keystore", "signer-trezor", "provider-http", "provider-ws", "rpc-types-eth"] }
 alloy-chains = "0.2.30"
 alloy-hardforks = "0.4.7"
-pyo3 = { version = "0.27.2", features = ["extension-module", "num-bigint"] }
+pyo3 = { version = "0.28.2", features = ["extension-module", "num-bigint"] }
 
 log = "0.4.21"
-pyo3-log = "0.13.2"
+pyo3-log = "0.13.3"
 num-bigint = "0.4.6"
 num-traits = "0.2.19"
 revm = { version = "34.0", features = ["alloydb", "std", "serde-json", "optional_eip3607"] }

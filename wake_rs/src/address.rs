@@ -17,7 +17,7 @@ use crate::globals::TOKIO_RUNTIME;
 use crate::utils::get_py_objects;
 
 
-#[pyclass(frozen)]
+#[pyclass(frozen, from_py_object)]
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct Address(pub RevmAddress);
 

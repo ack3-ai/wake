@@ -178,10 +178,7 @@ impl Blocks {
         let provider = chain.provider.clone();
         let forked_chain_id = chain.forked_chain_id;
         drop(chain);
-        Ok(Py::new(
-            py,
-            self.get_block(py, block, last_block_number, provider, forked_chain_id)?,
-        )?)
+        self.get_block(py, block, last_block_number, provider, forked_chain_id)
     }
 }
 
