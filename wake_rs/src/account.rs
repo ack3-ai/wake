@@ -459,13 +459,12 @@ impl Account {
 
     #[setter]
     fn set_pytypes_resolver(&self, py: Python, value: Bound<PyAny>) -> PyResult<()> {
-        // we must be holding GIL in order for Arc::make_mut not to panic
-
         if value.is_none() {
             match &self.chain {
                 ChainWrapper::Native(chain) => {
                     let mut chain = chain.borrow_mut(py);
-                    let fqn_overrides = Arc::make_mut(&mut chain.fqn_overrides);
+                    let fqn_overrides = Arc::get_mut(&mut chain.fqn_overrides)
+                        .expect("fqn_overrides Arc should be uniquely owned while holding GIL");
                     fqn_overrides.remove(&self.address.borrow(py).0);
                 }
                 ChainWrapper::Python(_) => {
@@ -482,7 +481,8 @@ impl Account {
             match &self.chain {
                 ChainWrapper::Native(chain) => {
                     let mut chain = chain.borrow_mut(py);
-                    let fqn_overrides = Arc::make_mut(&mut chain.fqn_overrides);
+                    let fqn_overrides = Arc::get_mut(&mut chain.fqn_overrides)
+                        .expect("fqn_overrides Arc should be uniquely owned while holding GIL");
                     fqn_overrides.insert(self.address.borrow(py).0, pytype.unbind());
                 }
                 ChainWrapper::Python(_) => {
