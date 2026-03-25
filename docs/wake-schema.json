@@ -209,17 +209,6 @@
             }
           }
         },
-        "ganache": {
-          "type": "object",
-          "properties": {
-            "cmd_args": {
-              "type": "string",
-              "default": "-k istanbul -q",
-              "description": "Arguments for the Ganache command"
-            }
-          },
-          "deprecated": true
-        },
         "hardhat": {
           "type": "object",
           "properties": {

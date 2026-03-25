@@ -13,14 +13,14 @@ Built by [Ackee Blockchain Security](https://ackee.xyz) — trusted auditors of 
 - **Built-in fuzzing** — automatically generate diverse inputs and edge cases to uncover hidden vulnerabilities
 - **Vulnerability detectors** — catch reentrancy, overflows, and logic flaws early
 - **Seamless developer experience** — VS Code extension, GitHub Actions, solc manager
-- **Cross-chain testing** — works with Anvil, Hardhat, and Ganache  
+- **Cross-chain testing** — works with revm, Anvil and Hardhat
 
 ---
 
 ## Features and benefits
 
 - Testing framework based on [pytest](https://docs.pytest.org/en) — write clean, simple tests with familiar tooling
-- Manually-guided fuzzing (MGF) — combine automated fuzzing with human insights to target specific contract behaviors and edge cases  
+- Manually-guided fuzzing (MGF) — combine automated fuzzing with human insights to target specific contract behaviors and edge cases
 - Property-based fuzzer — automatically generate diverse inputs to uncover hidden bugs faster
 - Deployments & mainnet interactions — test contracts in realistic environments before going live
 - Vulnerability and code quality detectors — detect reentrancy, overflows, and bad patterns early in development
