@@ -385,13 +385,6 @@ class AnvilConfig(WakeConfigModel):
     """
 
 
-class GanacheConfig(WakeConfigModel):
-    cmd_args: str = "-k istanbul -q"
-    """
-    Command line arguments to pass to `ganache`.
-    """
-
-
 class HardhatConfig(WakeConfigModel):
     cmd_args: str = ""
     """
@@ -412,13 +405,6 @@ class TestingConfig(WakeConfigModel):
     anvil: AnvilConfig = Field(default_factory=AnvilConfig)
     """
     Anvil-specific config options.
-    """
-    ganache: GanacheConfig = Field(
-        default_factory=GanacheConfig,
-        deprecated="Ganache support was dropped. This field will be removed in a future version.",
-    )
-    """
-    Ganache-specific config options.
     """
     hardhat: HardhatConfig = Field(default_factory=HardhatConfig)
     """
