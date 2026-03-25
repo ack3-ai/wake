@@ -11,7 +11,7 @@ use revm::{
 
 use crate::address::Address;
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub(crate) struct NativeLog {
     topics: Vec<Vec<u8>>,
@@ -34,7 +34,7 @@ impl NativeLog {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub(crate) struct NativeTrace {
     metadata: Option<Vec<u8>>,
