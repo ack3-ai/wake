@@ -404,7 +404,7 @@ class TestingConfig(WakeConfigModel):
     """
     Timeout for syncing coverage data.
     """
-    cmd: str = "anvil"
+    cmd: str = "revm"
     """
     Which development chain to use for testing. Should be one of `revm`, `anvil`, or
     `hardhat`.
