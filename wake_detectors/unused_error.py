@@ -29,6 +29,15 @@ class UnusedErrorDetector(Detector):
         return self._detections
 
     def visit_error_definition(self, node: ir.ErrorDefinition):
+        p = node.parent
+        # do not report unused errors in interfaces that are not inherited by other contracts
+        if (
+            isinstance(p, ir.ContractDefinition)
+            and p.kind == ir.enums.ContractKind.INTERFACE
+            and not p.child_contracts
+        ):
+            return
+
         if len(node.references) == 0:
             self._detections.append(
                 DetectorResult(
