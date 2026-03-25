@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use alloy::dyn_abi::DynSolType;
 use pyo3::{
-    intern, prelude::*, types::{PyBytes, PyDict, PyList, PyNone}, IntoPyObjectExt, PyTypeInfo
+    intern, prelude::*, types::{PyBytes, PyDict, PyList, PyNone, PyTuple}, IntoPyObjectExt, PyTypeInfo
 };
 use revm::{
     context::{result::{ExecutionResult, Output}, BlockEnv, TxEnv}, primitives::{
@@ -32,6 +32,7 @@ pub struct TransactionAbc {
     errors_metadata: HashMap<[u8; 4], ErrorMetadata>,
     events_metadata: HashMap<Log, EventMetadata>,
 
+    cached_events: Option<Py<PyTuple>>,
     cached_error: Option<PyErr>,
     cached_return_value: Option<Py<PyAny>>,
     cached_call_trace: Option<Py<PyAny>>,
@@ -66,6 +67,7 @@ impl TransactionAbc {
             abi,
             errors_metadata,
             events_metadata,
+            cached_events: None,
             cached_error: None,
             cached_return_value: None,
             cached_call_trace: None,
@@ -241,19 +243,27 @@ impl TransactionAbc {
     }
 
     #[getter]
-    fn events(&self, py: Python) -> PyResult<Vec<Py<PyAny>>> {
-        match &self.result {
+    fn events(&mut self, py: Python) -> PyResult<Py<PyTuple>> {
+        if let Some(events) = &self.cached_events {
+            return Ok(events.clone_ref(py));
+        }
+
+        let events = match &self.result {
             ExecutionResult::Success { logs, .. } => {
                 let py_objects = get_py_objects(py);
 
-                logs.iter()
-                    .map(|log| {
-                        resolve_event(py, log, &self.chain, self.events_metadata.get(log), py_objects)
-                    })
-                    .collect()
+                let mut events = Vec::with_capacity(logs.len());
+                for log in logs {
+                    events.push(resolve_event(py, log, &self.chain, self.events_metadata.get(log), py_objects)?);
+                }
+                events
             }
-            _ => Ok(vec![]),
-        }
+            _ => vec![],
+        };
+
+        let tuple = PyTuple::new(py, &events)?.unbind();
+        self.cached_events = Some(tuple.clone_ref(py));
+        Ok(tuple)
     }
 
     #[getter]
@@ -291,12 +301,17 @@ impl TransactionAbc {
     #[getter]
     pub fn error(slf: &Bound<Self>, py: Python) -> PyResult<Option<PyErr>> {
         let borrowed = slf.borrow();
-        match &borrowed.result {
-            ExecutionResult::Success { .. } => Ok(None),
+
+        if let Some(error) = &borrowed.cached_error {
+            return Ok(Some(error.clone_ref(py)));
+        }
+
+        let error = match &borrowed.result {
+            ExecutionResult::Success { .. } => None,
             ExecutionResult::Revert {
                 gas_used: _,
                 output,
-            } => Ok(Some(PyErr::from_value(
+            } => Some(PyErr::from_value(
                 resolve_error(
                     py,
                     &output,
@@ -307,13 +322,16 @@ impl TransactionAbc {
                 )?
                 .bind(py)
                 .clone(),
-            ))),
+            )),
             ExecutionResult::Halt { reason, .. } => {
                 let error = get_py_objects(py).wake_halt_exception.bind(py).call1((format!("{:?}", reason),))?;
                 error.setattr("tx", slf)?;
-                Ok(Some(PyErr::from_value(error,)))
+                Some(PyErr::from_value(error,))
             }
-        }
+        };
+        drop(borrowed);
+        slf.borrow_mut().cached_error = error.as_ref().map(|e| e.clone_ref(py));
+        Ok(error)
     }
 
     #[getter]
@@ -379,8 +397,13 @@ impl TransactionAbc {
     }
 
     #[getter]
-    fn call_trace<'py>(slf: &Bound<Self>, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+    fn call_trace<'py>(slf: &Bound<Self>, py: Python<'py>) -> PyResult<Py<PyAny>> {
         let borrowed = slf.borrow();
+
+        if let Some(call_trace) = &borrowed.cached_call_trace {
+            return Ok(call_trace.clone_ref(py));
+        }
+
         let journal_index = borrowed.journal_index;
 
         let mut block_env = match &borrowed.block {
@@ -405,7 +428,9 @@ impl TransactionAbc {
                 Address::from(borrowed.tx_env.caller),
                 borrowed.chain.clone_ref(py),
             ),
-        )?;
+        )?.unbind();
+        drop(borrowed);
+        slf.borrow_mut().cached_call_trace = Some(tmp.clone_ref(py));
 
         Ok(tmp)
     }
