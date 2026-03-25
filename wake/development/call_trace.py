@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib
+import os
 import reprlib
 from collections import ChainMap
 from dataclasses import dataclass
+from datetime import datetime
 from functools import partial
 from typing import (
     TYPE_CHECKING,
@@ -2089,6 +2091,17 @@ class CallTrace:
             call_trace._error_names = []
 
         return call_trace
+
+    def save(self) -> None:
+        with open(os.devnull, "w") as devnull:
+            console = Console(record=True, file=devnull)
+            console.print(self)
+
+            call_traces_dir = get_config().project_root_path / ".wake" / "call_traces"
+            call_traces_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+            console.save_svg(str(call_traces_dir / f"{timestamp}.svg"))
 
 
 class NativeLog:
