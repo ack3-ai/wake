@@ -4,7 +4,7 @@ import asyncio
 import logging
 import sys
 import time
-from pathlib import Path, PurePosixPath, PureWindowsPath
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 from typing import (
     TYPE_CHECKING,
     AbstractSet,
@@ -706,6 +706,7 @@ async def detect_(
     if import_json is None:
         incremental = None
         virtual_root = None
+        virtual_symlinks = None
         scan_extra = {}
         sol_files: Set[Path] = set()
         modified_files: Dict[Path, bytes] = {}
@@ -765,6 +766,9 @@ async def detect_(
                 is_relative_to(path, p) for p in config.compiler.solc.exclude_paths
             )
         }
+        virtual_symlinks = {
+            PurePath(k): PurePath(v) for k, v in loaded.get("symlinks", {}).items()
+        }
 
     compiler = SolidityCompiler(config)
 
@@ -809,6 +813,7 @@ async def detect_(
         modified_files=modified_files,
         incremental=incremental,
         virtual_root=virtual_root,
+        virtual_symlinks=virtual_symlinks,
     )
 
     assert compiler.latest_build_info is not None
