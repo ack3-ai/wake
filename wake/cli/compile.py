@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
-from pathlib import Path, PurePosixPath, PureWindowsPath
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 from typing import TYPE_CHECKING, Optional, Set, Tuple
 
 import rich_click as click
@@ -38,6 +38,7 @@ def export_json(
         "wake_contracts_path": str(config.wake_contracts_path),
         "config": config_dict,
         "sources": {},
+        "symlinks": {str(k): str(v) for k, v in build_info.symlinks.items()},
     }
 
     for path, source_unit in build.source_units.items():
@@ -115,8 +116,12 @@ async def compile(
                 is_relative_to(path, p) for p in config.compiler.solc.exclude_paths
             )
         }
+        virtual_symlinks = {
+            PurePath(k): PurePath(v) for k, v in loaded.get("symlinks", {}).items()
+        }
     else:
         virtual_root = None
+        virtual_symlinks = None
         modified_files = {}
         sol_files: Set[Path] = set()
         start = time.perf_counter()
@@ -205,6 +210,7 @@ async def compile(
         no_warnings=no_warnings,
         incremental=incremental,
         virtual_root=virtual_root,
+        virtual_symlinks=virtual_symlinks,
     )
 
     if watch:

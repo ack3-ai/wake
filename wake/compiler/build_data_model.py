@@ -119,6 +119,7 @@ class ProjectBuildInfo(BuildInfoModel):
     target_solidity_versions: Dict[Optional[str], Optional[SolidityVersion]]
     wake_version: str
     incremental: bool
+    symlinks: Dict[PurePath, PurePath]
 
     @field_serializer("settings", when_used="json")
     def serialize_settings(

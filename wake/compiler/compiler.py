@@ -11,7 +11,7 @@ from bisect import bisect
 from collections import defaultdict, deque
 from contextlib import nullcontext
 from json import JSONDecodeError
-from pathlib import Path
+from pathlib import Path, PurePath
 from types import MappingProxyType
 from typing import (
     Callable,
@@ -394,17 +394,48 @@ class SolidityCompiler:
         modified_files: Mapping[Path, bytes],
         ignore_errors: bool = False,
         virtual_root: Optional[Path] = None,
-    ) -> Tuple[nx.DiGraph, Dict[str, Path]]:
+        virtual_symlinks: Optional[Mapping[PurePath, PurePath]] = None,
+    ) -> Tuple[nx.DiGraph, Dict[str, Path], Dict[PurePath, PurePath]]:
+        def resolve_with_symlinks(path: Path, strict: bool = False) -> Path:
+            original_path = path
+            if not path.is_absolute():
+                path = Path(os.path.abspath(path))
+
+            resolved = path.resolve(strict=strict)
+
+            if resolved != path:
+                symlinks[path] = resolved
+
+            assert original_path.resolve(strict=strict) == resolved
+            return resolved
+
         self._lines_index.clear()
 
         # source unit name, full path, file content
         source_units_queue: deque[Tuple[str, Path, Optional[bytes]]] = deque()
         source_units: Dict[str, Path] = {}
 
+        symlinks: Dict[PurePath, PurePath] = {}
+
         if virtual_root is None:
             # resolve and deduplicate (avoid duplicates due to symlinks)
-            files = {f.resolve() for f in files}
-            modified_files = {f.resolve(): modified_files[f] for f in modified_files}
+            files = {resolve_with_symlinks(f) for f in files}
+            modified_files = {
+                resolve_with_symlinks(f): modified_files[f] for f in modified_files
+            }
+
+        if virtual_symlinks is not None:
+            symlinks.update(virtual_symlinks)
+
+            inversed_symlinks = {v: k for k, v in virtual_symlinks.items()}
+
+            files = {Path(virtual_symlinks.get(f, f)) for f in files}
+
+            new_modified_files = dict(modified_files)
+            for path, source in modified_files.items():
+                if path in inversed_symlinks:
+                    new_modified_files[Path(inversed_symlinks[path])] = source
+            modified_files = new_modified_files
 
         # for every source file resolve a source unit name
         for file in files:
@@ -485,9 +516,11 @@ class SolidityCompiler:
                         virtual_root,
                     )
                     if virtual_root is None:
-                        import_path = import_path.resolve()
+                        import_path = resolve_with_symlinks(import_path)
+                    if virtual_symlinks is not None and import_path in virtual_symlinks:
+                        import_path = Path(virtual_symlinks[import_path])
                     if import_path not in modified_files:
-                        import_path = import_path.resolve(strict=True)
+                        import_path = resolve_with_symlinks(import_path, strict=True)
                 except (FileNotFoundError, CompilationResolveError):
                     if ignore_errors:
                         graph.nodes[source_unit_name]["unresolved_imports"].add(
@@ -511,7 +544,7 @@ class SolidityCompiler:
                         )
                     )
                 graph.add_edge(import_unit_name, source_unit_name)
-        return graph, source_units
+        return graph, source_units, symlinks
 
     @staticmethod
     def build_compilation_units_maximize(
@@ -988,6 +1021,7 @@ class SolidityCompiler:
         no_warnings: bool = False,
         incremental: Optional[bool] = None,
         virtual_root: Optional[Path] = None,
+        virtual_symlinks: Optional[Mapping[PurePath, PurePath]] = None,
     ) -> Tuple[ProjectBuild, Set[SolcOutputError]]:
         if modified_files is None:
             modified_files = {}
@@ -1025,8 +1059,12 @@ class SolidityCompiler:
         if any(s == "__null__" for s in self.__config.subproject.keys()):
             raise CompilationError("Subproject cannot be named '__null__'")
 
-        graph, source_units_to_paths = self.build_graph(
-            files, modified_files, ignore_errors=True, virtual_root=virtual_root
+        graph, source_units_to_paths, symlinks = self.build_graph(
+            files,
+            modified_files,
+            ignore_errors=True,
+            virtual_root=virtual_root,
+            virtual_symlinks=virtual_symlinks,
         )
         compilation_units = self.build_compilation_units_maximize(graph, logger)
         subprojects = {cu.subproject for cu in compilation_units}
@@ -1650,6 +1688,7 @@ class SolidityCompiler:
             target_solidity_versions=target_versions_by_subproject,
             wake_version=get_package_version("eth-wake"),
             incremental=incremental,
+            symlinks=symlinks,
         )
         self._latest_build = build
 

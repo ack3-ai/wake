@@ -751,6 +751,7 @@ class LspCompiler:
             target_solidity_versions=target_versions,
             wake_version=self.__wake_version,
             incremental=True,
+            symlinks={},  # TODO: unused in LSP
         )
 
     @property
@@ -1558,7 +1559,7 @@ class LspCompiler:
                 modified_files[p] = self.__output_contents[p].text.encode("utf-8")
 
         try:
-            graph, source_units_to_paths = self.__compiler.build_graph(
+            graph, source_units_to_paths, _ = self.__compiler.build_graph(
                 self.__discovered_files,
                 modified_files,
                 True,
@@ -1764,7 +1765,7 @@ class LspCompiler:
                 modified_files[path] = info.text.encode("utf-8")
 
             if full_compile:
-                graph, source_units_to_paths = self.__compiler.build_graph(
+                graph, source_units_to_paths, _ = self.__compiler.build_graph(
                     self.__discovered_files,
                     modified_files,
                     True,
@@ -1778,7 +1779,7 @@ class LspCompiler:
                         self.__deleted_files.add(p)
                 self.__last_graph = graph
             else:
-                graph, source_units_to_paths = self.__compiler.build_graph(
+                graph, source_units_to_paths, _ = self.__compiler.build_graph(
                     files_to_compile,
                     modified_files,
                     True,

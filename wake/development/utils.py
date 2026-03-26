@@ -1887,11 +1887,11 @@ def _get_storage_layout_from_explorer(
     )
     compiler = SolidityCompiler(compilation_config)
 
-    graph, _ = compiler.build_graph(
+    graph, _, _ = compiler.build_graph(
         sources.keys(),
         {k: v.encode("utf-8") for k, v in sources.items()},
         ignore_errors=True,  # pyright: ignore reportGeneralTypeIssues
-        virtual=True,
+        # TODO: should set virtual_root to avoid following symlinks
     )
     compilation_units = compiler.build_compilation_units_maximize(graph, dummy_logger)
     compilation_units = compiler.merge_compilation_units(
