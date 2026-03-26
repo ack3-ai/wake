@@ -396,6 +396,7 @@ class SolidityCompiler:
         virtual_root: Optional[Path] = None,
         virtual_symlinks: Optional[Mapping[PurePath, PurePath]] = None,
     ) -> Tuple[nx.DiGraph, Dict[str, Path], Dict[PurePath, PurePath]]:
+        # IMPORTANT: doesn't collect intermediate symlinks in multihop case
         def resolve_with_symlinks(path: Path, strict: bool = False) -> Path:
             original_path = path
             if not path.is_absolute():
