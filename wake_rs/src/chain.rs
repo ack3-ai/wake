@@ -734,7 +734,7 @@ impl Chain {
 
                 let mut evm: CustomEvm = Evm::new(
                     Context::new(DB::ForkDB(db), spec),
-                    EthInstructions::default(),
+                    EthInstructions::new_mainnet_with_spec(spec),
                     EthPrecompiles{
                         precompiles: Precompiles::new(PrecompileSpecId::from_spec_id(spec)),
                         spec,
@@ -757,7 +757,7 @@ impl Chain {
 
                 let mut evm: CustomEvm = Evm::new(
                     Context::new(DB::EmptyDB(db), spec),
-                    EthInstructions::default(),
+                    EthInstructions::new_mainnet_with_spec(spec),
                     EthPrecompiles{
                         precompiles: Precompiles::new(PrecompileSpecId::from_spec_id(spec)),
                         spec,
@@ -1075,7 +1075,8 @@ impl Chain {
                 }
             }
             ExecutionResult::Revert {
-                gas_used: _,
+                gas: _,
+                logs: _,
                 output,
             } => Err(PyErr::from_value(
                 resolve_error(
@@ -1296,9 +1297,9 @@ impl Chain {
         };
 
         match res.result {
-            ExecutionResult::Success { gas_used, .. } => Ok(gas_used),
+            ExecutionResult::Success { gas, .. } => Ok(gas.used()),
             ExecutionResult::Revert {
-                gas_used, output, ..
+                gas, output, ..
             } => {
                 if revert {
                     Err(PyErr::from_value(
@@ -1314,17 +1315,17 @@ impl Chain {
                         .clone(),
                     ))
                 } else {
-                    Ok(gas_used)
+                    Ok(gas.used())
                 }
             }
-            ExecutionResult::Halt { reason, gas_used } => {
+            ExecutionResult::Halt { reason, gas, logs: _ } => {
                 if revert {
                     Err(PyErr::from_type(
                         py_objects.wake_halt_exception.bind(py).clone(),
                         format!("{:?}", reason),
                     ))
                 } else {
-                    Ok(gas_used)
+                    Ok(gas.used())
                 }
             }
         }
@@ -1412,10 +1413,10 @@ impl Chain {
         let py_objects = get_py_objects(py);
 
         match res.result {
-            ExecutionResult::Success { gas_used, .. } => {
-                Ok((access_list_into_py(inspector.into_access_list()), gas_used))
+            ExecutionResult::Success { gas, .. } => {
+                Ok((access_list_into_py(inspector.into_access_list()), gas.used()))
             }
-            ExecutionResult::Revert { gas_used, output } => {
+            ExecutionResult::Revert { gas, output, logs: _ } => {
                 if revert {
                     Err(PyErr::from_value(
                         resolve_error(
@@ -1430,17 +1431,17 @@ impl Chain {
                         .clone(),
                     ))
                 } else {
-                    Ok((access_list_into_py(inspector.into_access_list()), gas_used))
+                    Ok((access_list_into_py(inspector.into_access_list()), gas.used()))
                 }
             }
-            ExecutionResult::Halt { reason, gas_used } => {
+            ExecutionResult::Halt { reason, gas, logs: _ } => {
                 if revert {
                     Err(PyErr::from_type(
                         py_objects.wake_halt_exception.bind(py).clone(),
                         format!("{:?}", reason),
                     ))
                 } else {
-                    Ok((access_list_into_py(inspector.into_access_list()), gas_used))
+                    Ok((access_list_into_py(inspector.into_access_list()), gas.used()))
                 }
             }
         }

@@ -309,7 +309,8 @@ impl TransactionAbc {
         let error = match &borrowed.result {
             ExecutionResult::Success { .. } => None,
             ExecutionResult::Revert {
-                gas_used: _,
+                gas: _,
+                logs: _,
                 output,
             } => Some(PyErr::from_value(
                 resolve_error(
@@ -339,7 +340,8 @@ impl TransactionAbc {
         match &slf.borrow().result {
             ExecutionResult::Success { .. } => Ok(None),
             ExecutionResult::Revert {
-                gas_used: _,
+                gas: _,
+                logs: _,
                 output,
             } => {
                 let error = new_unknown_error(py, output, Some(slf), get_py_objects(py))?;

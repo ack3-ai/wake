@@ -8,7 +8,7 @@ use pyo3::exceptions::PyException;
 use pyo3::PyErr;
 use revm::context::DBErrorMarker;
 use revm::database::{AlloyDB, EmptyDB, WrapDatabaseAsync};
-use revm::primitives::{Address, B256, U256, HashMap as RevmHashMap};
+use revm::primitives::{Address, AddressMap, B256, U256};
 use revm::state::{Account, AccountInfo, Bytecode};
 use revm::{Database, DatabaseCommit};
 
@@ -187,8 +187,7 @@ impl Database for DB {
 }
 
 impl DatabaseCommit for DB {
-    fn commit(&mut self, changes: RevmHashMap<Address, Account>) {
-        //info!("committing changes to db: {:?}", changes);
+    fn commit(&mut self, changes: AddressMap<Account>) {
         match self {
             DB::EmptyDB(db) => db.commit(changes),
             DB::ForkDB(db) => db.commit(changes),

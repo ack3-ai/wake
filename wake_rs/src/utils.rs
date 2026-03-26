@@ -598,8 +598,9 @@ pub(crate) fn header_to_block_env(header: &Header, chain_id: u64) -> BlockEnv {
         gas_limit: header.gas_limit,
         basefee: header.base_fee_per_gas.unwrap_or(0),
         difficulty: header.difficulty,
-        prevrandao: prevrandao,
+        prevrandao,
         blob_excess_gas_and_price: blob_info,
+        slot_num: 0,  // TODO: should be set once available
     }
 }
 
