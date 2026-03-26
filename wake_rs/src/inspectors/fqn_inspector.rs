@@ -1,15 +1,10 @@
 use std::collections::HashMap;
 
 use revm::{
-    context::{ContextTr, JournalTr},
-    inspector::JournalExt,
-    interpreter::{
+    Inspector, bytecode::BytecodeKind, context::{ContextTr, JournalTr}, inspector::JournalExt, interpreter::{
         CallInputs, CallOutcome, CreateInputs, CreateOutcome, InstructionResult,
         Interpreter,
-    },
-    primitives::{Address, Bytes, Log},
-    state::Bytecode,
-    Inspector,
+    }, primitives::{Address, Bytes, Log}
 };
 
 pub enum EventMetadata {
@@ -95,19 +90,18 @@ impl FqnInspector {
         context: &mut CTX,
     ) -> Option<Vec<u8>> {
         let journal = context.journal_mut();
-        let bytecode = &journal.load_account_with_code(address).ok()?.data.info.code;
+        let bytecode = journal.load_account_with_code(address).ok()?.data.info.code.as_ref()?;
 
-        match bytecode {
-            Some(Bytecode::LegacyAnalyzed(analyzed)) => self
-                .extract_metadata(analyzed.original_byte_slice())
+        match bytecode.kind() {
+            BytecodeKind::LegacyAnalyzed => self
+                .extract_metadata(bytecode.original_byte_slice())
                 .map(|m| m.to_vec()),
-            Some(Bytecode::Eip7702(eip7702)) => {
-                let delegated_address = eip7702.delegated_address;
+            BytecodeKind::Eip7702 => {
+                let delegated_address = bytecode.eip7702_address()?;
                 let code = journal.code(delegated_address).ok()?;
                 self.extract_metadata(code.as_ref())
                     .map(|m| m.to_vec())
             }
-            _ => None,
         }
     }
 }

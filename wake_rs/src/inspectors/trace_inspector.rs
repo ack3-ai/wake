@@ -1,12 +1,7 @@
 use num_bigint::BigUint;
 use pyo3::{prelude::*, types::PyBytes};
 use revm::{
-    context::{ContextTr, CreateScheme, JournalTr},
-    inspector::JournalExt,
-    interpreter::{CallInputs, CallOutcome, CallScheme, CallValue, InstructionResult},
-    primitives::{Address as RevmAddress, Log},
-    state::Bytecode,
-    Inspector,
+    Inspector, bytecode::BytecodeKind, context::{ContextTr, CreateScheme, JournalTr}, inspector::JournalExt, interpreter::{CallInputs, CallOutcome, CallScheme, CallValue, InstructionResult}, primitives::{Address as RevmAddress, Log}
 };
 
 use crate::address::Address;
@@ -118,19 +113,18 @@ impl TraceInspector {
         context: &mut CTX,
     ) -> Option<Vec<u8>> {
         let journal = context.journal_mut();
-        let bytecode = &journal.load_account_with_code(address).ok()?.data.info.code;
+        let bytecode = journal.load_account_with_code(address).ok()?.data.info.code.as_ref()?;
 
-        match bytecode {
-            Some(Bytecode::LegacyAnalyzed(analyzed)) => self
-                .extract_metadata(analyzed.original_byte_slice())
+        match bytecode.kind() {
+            BytecodeKind::LegacyAnalyzed => self
+                .extract_metadata(bytecode.original_byte_slice())
                 .map(|m| m.to_vec()),
-            Some(Bytecode::Eip7702(eip7702)) => {
-                let delegated_address = eip7702.delegated_address;
+            BytecodeKind::Eip7702 => {
+                let delegated_address = bytecode.eip7702_address()?;
                 let code = journal.code(delegated_address).ok()?;
                 self.extract_metadata(code.as_ref())
                     .map(|m| m.to_vec())
             }
-            None => None,
         }
     }
 }
@@ -282,5 +276,6 @@ fn instruction_result_to_string(result: InstructionResult) -> String {
         }
         InstructionResult::CreateInitCodeSizeLimit => "CreateInitCodeSizeLimit".to_string(),
         InstructionResult::FatalExternalError => "FatalExternalError".to_string(),
+        InstructionResult::InvalidImmediateEncoding => "InvalidImmediateEncoding".to_string(),
     }
 }

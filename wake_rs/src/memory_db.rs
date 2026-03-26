@@ -6,7 +6,7 @@ use std::{
 };
 
 use revm::{
-    primitives::{Address, B256, KECCAK_EMPTY, U256, HashMap as RevmHashMap }, state::{Account, AccountInfo, Bytecode}, Database, DatabaseCommit, DatabaseRef
+    Database, DatabaseCommit, DatabaseRef, primitives::{Address, AddressMap, B256, KECCAK_EMPTY, U256 }, state::{Account, AccountInfo, Bytecode}
 };
 
 use bincode::{serialize_into, Options};
@@ -518,7 +518,7 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
 }
 
 impl<ExtDB: DatabaseRef> DatabaseCommit for CacheDB<ExtDB> {
-    fn commit(&mut self, changes: RevmHashMap<Address, Account>) {
+    fn commit(&mut self, changes: AddressMap<Account>) {
         for (address, mut account) in changes {
             if !account.is_touched() {
                 continue;

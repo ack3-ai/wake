@@ -16,7 +16,7 @@ log = "0.4.21"
 pyo3-log = "0.13.3"
 num-bigint = "0.4.6"
 num-traits = "0.2.19"
-revm = { version = "34.0", features = ["alloydb", "std", "serde-json", "optional_eip3607"] }
+revm = { version = "36.0", features = ["alloydb", "std", "serde-json", "optional_eip3607"] }
 tokio = "1.39.1"
 lazy_static = "1.5.0"
 reqwest = "0.12.5"
@@ -26,7 +26,7 @@ env_logger = "0.11.5"
 send_wrapper = "0.6.0"
 hex = "0.4.3"
 regex = "1.10.6"
-revm-inspectors = "0.34.0"
+revm-inspectors = "0.36.1"
 auto_impl = "1.2.0"
 rand = { version = "0.8.5", features = ["small_rng"] }
 eth-keystore = { version = "0.5.0", features = ["geth-compat"] }
