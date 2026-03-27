@@ -13,7 +13,7 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use rand::Rng;
 use revm::context::result::{EVMError, ExecutionResult};
 use revm::context::transaction::AccessList;
-use revm::context::{BlockEnv, CfgEnv, ContextTr, Evm, TxEnv};
+use revm::context::{BlockEnv, Cfg, CfgEnv, ContextTr, Evm, TxEnv};
 use revm::database::{AlloyDB, EmptyDB, WrapDatabaseAsync};
 use revm::handler::instructions::EthInstructions;
 use revm::inspector::{InspectCommitEvm, InspectEvm};
@@ -995,11 +995,14 @@ impl Chain {
                 .clone_ref(py),
         ));
         let collect_coverage = borrowed.collect_coverage;
-        let block_gas_limit = borrowed.get_evm()?.block.gas_limit;
+        let evm = borrowed.get_evm()?;
+        let block_gas_limit = evm.block.gas_limit;
+        let tx_gas_limit_cap = evm.cfg.tx_gas_limit_cap();
         let tx_env = prepare_tx_env(
             py,
             borrowed.chain_id,
             block_gas_limit,
+            tx_gas_limit_cap,
             data,
             to,
             value,
@@ -1123,11 +1126,14 @@ impl Chain {
         ));
         let collect_coverage = borrowed.collect_coverage;
 
-        let block_gas_limit = borrowed.get_evm()?.block.gas_limit;
+        let evm = borrowed.get_evm()?;
+        let block_gas_limit = evm.block.gas_limit;
+        let tx_gas_limit_cap = evm.cfg.tx_gas_limit_cap();
         let tx_env = prepare_tx_env(
             py,
             borrowed.chain_id,
             block_gas_limit,
+            tx_gas_limit_cap,
             data,
             to,
             value,
@@ -1239,11 +1245,14 @@ impl Chain {
                 .expect("Default call account not set")
                 .clone_ref(py),
         ));
-        let block_gas_limit = borrowed.get_evm()?.block.gas_limit;
+        let evm = borrowed.get_evm()?;
+        let block_gas_limit = evm.block.gas_limit;
+        let tx_gas_limit_cap = evm.cfg.tx_gas_limit_cap();
         let tx_env = prepare_tx_env(
             py,
             borrowed.chain_id,
             block_gas_limit,
+            tx_gas_limit_cap,
             data,
             to,
             value.try_into()?,
@@ -1354,11 +1363,14 @@ impl Chain {
                 .expect("Default access list account not set")
                 .clone_ref(py),
         ));
-        let block_gas_limit = borrowed.get_evm()?.block.gas_limit;
+        let evm = borrowed.get_evm()?;
+        let block_gas_limit = evm.block.gas_limit;
+        let tx_gas_limit_cap = evm.cfg.tx_gas_limit_cap();
         let tx_env = prepare_tx_env(
             py,
             borrowed.chain_id,
             block_gas_limit,
+            tx_gas_limit_cap,
             data,
             to,
             value.try_into()?,

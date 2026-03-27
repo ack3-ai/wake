@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cmp::min, collections::HashMap};
 
 use alloy::{
     eips::eip7702::SignedAuthorization,
@@ -29,6 +29,7 @@ pub(crate) fn prepare_tx_env(
     py: Python,
     chain_id: u64,
     block_gas_limit: u64,
+    tx_gas_limit_cap: u64,
     data: Vec<u8>,
     to: Option<Address>,
     value: U256,
@@ -46,9 +47,8 @@ pub(crate) fn prepare_tx_env(
 
     tx_env.gas_limit = match gas_limit {
         Some(GasLimitEnum::Int(v)) => v.try_into().unwrap(),
-        Some(GasLimitEnum::Max) => block_gas_limit, // TODO use max block gas limit or current block gas limit?
+        Some(GasLimitEnum::Max) | None => min(block_gas_limit, tx_gas_limit_cap),
         Some(GasLimitEnum::Auto) => todo!(),
-        None => block_gas_limit,
     };
 
     tx_env.gas_price = gas_price.unwrap_or(0);
