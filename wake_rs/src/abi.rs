@@ -6,7 +6,7 @@ use crate::{
     utils::{big_int_to_i256, big_uint_to_u256, get_py_objects, PyObjects},
 };
 use alloy::core::dyn_abi::{DynSolType, DynSolValue, Error as AlloyAbiError};
-use alloy::primitives::keccak256;
+use alloy::primitives::{keccak256, Function, FixedBytes, Address as RevmAddress};
 use num_bigint::{BigInt, BigUint};
 use pyo3::{types::PySequence, IntoPyObjectExt};
 use pyo3::{
@@ -193,7 +193,6 @@ impl abi {
     }
 }
 
-// TODO function
 fn convert_type(
     py: Python,
     value: &Bound<PyAny>,
@@ -229,6 +228,8 @@ fn convert_type(
             }
         } else if pytype.is_subclass(&py_objects.enums_int_enum.bind(py))? {
             Ok(DynSolType::Uint(8))
+        } else if pytype.is_subclass(&py_objects.wake_function_pointer.bind(py))? {
+            Ok(DynSolType::Function)
         } else if pytype.is_subclass(&py_objects.wake_fixed_bytes.bind(py))? {
             let length = value.getattr(intern!(py, "length"))?.extract::<usize>()?;
             Ok(DynSolType::FixedBytes(length))
@@ -305,8 +306,6 @@ fn convert_type(
     }
 }
 
-// TODO enum, Contract
-// TODO function
 fn normalize_input(
     py: Python,
     value: &Bound<PyAny>,
@@ -450,6 +449,23 @@ fn normalize_input(
         }
 
         Ok(DynSolValue::Tuple(values))
+    } else if let (Ok(selector), Ok(instance)) = (
+        value.getattr(intern!(py, "selector")),
+        value.getattr(intern!(py, "__self__")),
+    ) {
+        // bound method of a Contract instance
+        let address: RevmAddress = instance
+            .getattr(intern!(py, "address"))?
+            .extract::<crate::enums::AddressEnum>()?
+            .try_into()?;
+        let selector_bytes = selector.extract::<Vec<u8>>()?;
+
+        let mut buf = [0u8; 24];
+        buf[..20].copy_from_slice(address.as_slice());
+        buf[20..24].copy_from_slice(&selector_bytes[..4]);
+        Ok(DynSolValue::Function(Function::from(
+            FixedBytes::from(buf),
+        )))
     } else {
         Err(PyErr::new::<PyValueError, _>(format!(
             "Unsupported type for abi encoding: {:?}",

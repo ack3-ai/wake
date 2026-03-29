@@ -1,5 +1,5 @@
 use alloy::core::dyn_abi::{DynSolType, DynSolValue, Error as AlloyAbiError};
-use alloy::core::primitives::{FixedBytes, Function, Keccak256};
+use alloy::core::primitives::{FixedBytes, Function, Keccak256, Address as RevmAddress};
 use num_bigint::{BigInt, BigUint};
 use pyo3::exceptions::{PyException, PyValueError};
 use pyo3::{intern, prelude::*, IntoPyObjectExt};
@@ -216,7 +216,7 @@ pub(crate) fn alloy_to_py(py: Python<'_>, value: &DynSolValue, py_objects: &PyOb
             .map(|v| alloy_to_py(py, v, py_objects))
             .collect::<Result<Vec<_>, _>>()?)?.into_py_any(py),
         DynSolValue::Function(v) => {
-            py_objects.wake_fixed_bytes_map.bind(py).get_item(24)?.unwrap().call1((v.as_slice(),))?.into_py_any(py)
+            py_objects.wake_function_pointer.bind(py).call1((v.as_slice(),))?.into_py_any(py)
         }
         DynSolValue::CustomStruct {
             name: _,
@@ -306,7 +306,23 @@ pub(crate) fn py_to_alloy(py: Python<'_>, value: &Bound<PyAny>, t: &DynSolType, 
             return Ok(DynSolValue::FixedBytes(FixedBytes::from_slice(bytes.as_slice()), *size));
         }
         DynSolType::Function => {
-            // TODO callable?
+            // bound method of a Contract instance: extract address from __self__ and selector from method
+            if let (Ok(selector), Ok(instance)) = (
+                value.getattr(intern!(py, "selector")),
+                value.getattr(intern!(py, "__self__")),
+            ) {
+                let address: RevmAddress = instance
+                    .getattr(intern!(py, "address"))?
+                    .extract::<AddressEnum>()?
+                    .try_into()?;
+                let selector_bytes = selector.extract::<Vec<u8>>()?;
+
+                let mut buf = [0u8; 24];
+                buf[..20].copy_from_slice(address.as_slice());
+                buf[20..24].copy_from_slice(&selector_bytes[..4]);
+                return Ok(DynSolValue::Function(Function::from(FixedBytes::from(buf))));
+            }
+
             let tmp;
             let bytes = if let Ok(b) = value.cast::<PyBytes>() {
                 b.as_bytes()

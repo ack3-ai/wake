@@ -265,7 +265,10 @@ class TypeGenerator:
         self.__sol_to_py_lookup[types.String.__name__] = ("str", "str")
         self.__sol_to_py_lookup[types.Bool.__name__] = ("bool", "bool")
         self.__sol_to_py_lookup[types.Bytes.__name__] = ("bytes", "bytes")
-        self.__sol_to_py_lookup[types.Function.__name__] = ("Callable", "Callable")
+        self.__sol_to_py_lookup[types.Function.__name__] = (
+            "Union[Callable, FunctionPointer]",
+            "FunctionPointer",
+        )
 
     @property
     def current_source_unit(self) -> str:
@@ -2129,6 +2132,7 @@ class NameSanitizer:
             "Optional",
             "Literal",
             "Callable",
+            "FunctionPointer",
             "Path",
             "bytearray",
             "IntEnum",
