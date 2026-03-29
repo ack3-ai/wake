@@ -32,7 +32,6 @@ mod eip712;
 mod chain_interface;
 mod chain_snapshot;
 mod txs;
-mod wei;
 mod inspectors;
 pub mod db;
 
