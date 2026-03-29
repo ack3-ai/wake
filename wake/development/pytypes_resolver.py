@@ -71,12 +71,17 @@ def _new_external_or_unknown_error(
     decoded = Abi.decode(types, revert_data[4:])
 
     kwargs = {}
-    for i, (input_abi, value) in enumerate(zip(error_abi["inputs"], decoded)):
-        input_name = input_abi.get("name")
-        if not input_name:
-            kwargs[f"arg{i}"] = value
-        else:
-            kwargs[input_name] = value
+    unnamed_params_index = 0
+    param_names = {input_abi.get("name") for input_abi in error_abi["inputs"]}
+    for input_abi, value in zip(error_abi["inputs"], decoded):
+        param_name = input_abi.get("name")
+        if not param_name:
+            param_name = f"param{unnamed_params_index}"
+            unnamed_params_index += 1
+            while param_name in param_names:
+                param_name += "_"
+
+        kwargs[param_name] = value
 
     error = ExternalError(f"{name}.{error_abi['name']}", **kwargs)
     error.tx = tx
@@ -327,12 +332,17 @@ def _new_external_or_unknown_event(
     decoded = _decode_event(event_abi, topics, data)
 
     kwargs = {}
-    for i, (input_abi, value) in enumerate(zip(event_abi["inputs"], decoded)):
-        input_name = input_abi.get("name")
-        if not input_name:
-            kwargs[f"arg{i}"] = value
-        else:
-            kwargs[input_name] = value
+    unnamed_params_index = 0
+    param_names = {input_abi.get("name") for input_abi in event_abi["inputs"]}
+    for input_abi, value in zip(event_abi["inputs"], decoded):
+        param_name = input_abi.get("name")
+        if not param_name:
+            param_name = f"param{unnamed_params_index}"
+            unnamed_params_index += 1
+            while param_name in param_names:
+                param_name += "_"
+
+        kwargs[param_name] = value
 
     event = ExternalEvent(f"{name}.{event_abi['name']}", **kwargs)
     event.origin = origin
