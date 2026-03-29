@@ -21,6 +21,7 @@ from wake.config import WakeConfig
 from wake.core import get_logger
 from wake.development.chain_interfaces import TxParams
 from wake.development.core import (
+    Account,
     Address,
     Chain,
     get_fqn_from_address,
@@ -488,12 +489,12 @@ class CoverageHandler:
         self._callback = callback
 
     def add_coverage(
-        self, params: TxParams, chain: Chain, debug_trace: Dict[str, Any]
+        self,
+        params: TxParams,
+        block: Union[int, str],
+        chain: Chain,
+        debug_trace: Dict[str, Any],
     ) -> None:
-        fqn_overrides: ChainMap[Address, Optional[str]] = ChainMap()
-        # TODO process fqn overrides for tx: process txs in the same block before the given tx
-        # TODO what to do with call?
-
         if "to" not in params or params["to"] is None:
             assert "data" in params
             bytecode = params["data"]
@@ -505,16 +506,18 @@ class CoverageHandler:
                 contract_fqn = None
 
             self.process_trace(
-                contract_fqn, debug_trace, chain, fqn_overrides, is_from_deployment=True
+                contract_fqn, debug_trace, chain, block, is_from_deployment=True
             )
         else:
             to = Address(params["to"])
-            if to in fqn_overrides:
-                contract_fqn = fqn_overrides[to]
+
+            if (
+                resolver := chain._pytypes_resolvers.get(Account(to, chain))
+            ) is not None:
+                contract_fqn = getattr(resolver, "_fqn", None)
             else:
-                contract_fqn = get_fqn_from_address(
-                    Address(params["to"]), "latest", chain
-                )
+                contract_fqn = get_fqn_from_address(to, block, chain)
+
             if contract_fqn is None:
                 logger.warning(f"Failed to get contract FQN for {params['to']}")
 
@@ -522,7 +525,7 @@ class CoverageHandler:
                 contract_fqn,
                 debug_trace,
                 chain,
-                fqn_overrides,
+                block,
                 is_from_deployment=False,
             )
 
@@ -568,12 +571,13 @@ class CoverageHandler:
         contract_fqn: Optional[str],
         trace: Dict[str, Any],
         chain: Chain,
-        fqn_overrides: ChainMap[Address, Optional[str]],
+        block: Union[int, str],
         is_from_deployment: bool = False,
     ):
         """
         Processes debug_traceTransaction and it's struct_logs
         """
+        fqn_overrides: ChainMap[Address, Optional[str]] = ChainMap()
         contract_fqn_stack = [contract_fqn]
         is_deployment_stack = [is_from_deployment]
         assert len(fqn_overrides.maps) == 1
@@ -601,7 +605,7 @@ class CoverageHandler:
                 if addr in fqn_overrides:
                     new_fqn = fqn_overrides[addr]
                 else:
-                    new_fqn = get_fqn_from_address(addr, "latest", chain)
+                    new_fqn = get_fqn_from_address(addr, block, chain)
                 contract_fqn_stack.append(new_fqn)
                 is_deployment_stack.append(False)
                 fqn_overrides.maps.insert(0, {})

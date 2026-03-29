@@ -27,6 +27,7 @@ from wake.development.core import (
 )
 from wake.development.globals import chain_interfaces_manager, get_config, get_verbosity
 from wake.development.json_rpc.communicator import JsonRpcError
+from wake.development.pytypes_resolver import resolve_call_error
 from wake.development.transactions import (
     Eip1559Transaction,
     Eip2930Transaction,
@@ -263,17 +264,17 @@ class Chain(wake.development.core.Chain):
 
         if "gas" not in params or params["gas"] == "auto":
             # use "auto" when unset
+            tx_copy = tx.copy()
+            tx_copy.pop("gas", None)
+            tx_copy.pop("gasPrice", None)
+            tx_copy.pop("maxPriorityFeePerGas", None)
+            tx_copy.pop("maxFeePerGas", None)
             try:
-                tx_copy = tx.copy()
-                tx_copy.pop("gas", None)
-                tx_copy.pop("gasPrice", None)
-                tx_copy.pop("maxPriorityFeePerGas", None)
-                tx_copy.pop("maxFeePerGas", None)
                 tx["gas"] = int(
                     self._chain_interface.estimate_gas(tx_copy, block_identifier) * 1.1
                 )
             except JsonRpcError as e:
-                raise self._process_call_revert(e) from None
+                raise resolve_call_error(self, tx_copy, block_identifier, e) from None
         elif isinstance(params["gas"], int):
             tx["gas"] = params["gas"]
         else:
@@ -288,7 +289,19 @@ class Chain(wake.development.core.Chain):
                 response = self._chain_interface.create_access_list(
                     tx, block_identifier
                 )
+            except (JsonRpcError, HTTPError) as e:
+                if isinstance(e, JsonRpcError):
+                    try:
+                        raise resolve_call_error(
+                            self, tx, block_identifier, e
+                        ) from None
+                    except JsonRpcError:
+                        pass  # eth_createAccessList probably not supported
 
+                if params.get("accessList") == "auto":
+                    raise
+                tx["accessList"] = []
+            else:
                 tx_copy = tx.copy()
                 tx_copy.pop("gas", None)
                 tx_copy.pop("gasPrice", None)
@@ -297,32 +310,21 @@ class Chain(wake.development.core.Chain):
                 tx_copy["accessList"] = response["accessList"]
 
                 # gas estimate returned by eth_createAccessList cannot be trusted
-                gas_used = int(
-                    self._chain_interface.estimate_gas(tx_copy, block_identifier) * 1.1
-                )
+                try:
+                    gas_used = int(
+                        self._chain_interface.estimate_gas(tx_copy, block_identifier)
+                        * 1.1
+                    )
+                except JsonRpcError as e:
+                    raise resolve_call_error(
+                        self, tx_copy, block_identifier, e
+                    ) from None
 
-                if params.get("accessList", None) == "auto" or (
+                if params.get("accessList") == "auto" or (
                     "accessList" not in params and gas_used <= tx["gas"]
                 ):
                     tx["accessList"] = response["accessList"]
                     tx["gas"] = gas_used
-            except (JsonRpcError, HTTPError) as e:
-                try:
-                    if isinstance(e, JsonRpcError):
-                        # will re-raise if not a revert error
-                        raise self._process_call_revert(e) from None
-                    else:
-                        # HTTPError -> eth_createAccessList not supported
-                        if "accessList" not in params:
-                            tx["accessList"] = []
-                        else:
-                            raise
-                except JsonRpcError:
-                    # eth_createAccessList probably not supported
-                    if "accessList" not in params:
-                        tx["accessList"] = []
-                    else:
-                        raise
 
         return tx
 

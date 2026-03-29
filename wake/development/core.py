@@ -48,7 +48,6 @@ from wake_rs import (
 )
 
 from ..utils import StrEnum
-from ..utils.keyed_default_dict import KeyedDefaultDict
 from . import hardhat_console
 from .blocks import ChainBlocks
 from .chain_interfaces import (
@@ -78,9 +77,10 @@ from .primitive_types import (
     uint256,
     uint_map,
 )
+from .pytypes_resolver import resolve_call_error, resolve_error
 
 if TYPE_CHECKING:
-    from .transactions import ChainTransactions, RevertError, TransactionAbc
+    from .transactions import ChainTransactions, TransactionAbc
 
 
 # selector => (contract_fqn => pytypes_object)
@@ -91,8 +91,6 @@ events: Dict[bytes, Dict[str, Any]] = {}
 contracts_by_fqn: Dict[str, Any] = {}
 # contract_metadata => contract_fqn
 contracts_by_metadata: Dict[bytes, str] = {}
-# contract_fqn => tuple of linearized base contract fqns
-contracts_inheritance: Dict[str, Tuple[str, ...]] = {}
 # list of pairs of (creation code segments, contract_fqn)
 # where creation code segments is a tuple of (length, BLAKE2b hash)
 creation_code_index: List[Tuple[Tuple[Tuple[int, bytes], ...], str]] = []
@@ -353,7 +351,6 @@ class Chain(ABC):
     _default_access_list_account: Optional[Account]
     _default_tx_confirmations: int
     _deployed_libraries: DefaultDict[bytes, List[Library]]
-    _single_source_errors: Set[bytes]
     _snapshots: Dict[str, Dict]
     _blocks: ChainBlocks
     _txs: ChainTransactions
@@ -364,7 +361,7 @@ class Chain(ABC):
     _forked_chain_id: Optional[int]
     _debug_trace_call_supported: bool
     _client_version: str
-    optimistic_pytypes_resolving: bool
+    _pytypes_resolvers: DefaultDict[Account, Type[Contract] | None]
 
     tx_callback: Optional[Callable[[TransactionAbc], None]]
 
@@ -462,7 +459,6 @@ class Chain(ABC):
     def __init__(self):
         self._connected = False
         self._labels = {}
-        self.optimistic_pytypes_resolving = False
 
     def _connect(
         self,
@@ -575,6 +571,7 @@ class Chain(ABC):
             self._accounts_set = set(self._accounts)
             self._snapshots = {}
             self._deployed_libraries = defaultdict(list)
+            self._pytypes_resolvers = defaultdict(lambda: None)
 
             if len(self._accounts) > 0:
                 self.set_default_accounts(self._accounts[0])
@@ -583,12 +580,6 @@ class Chain(ABC):
             self._default_tx_confirmations = 1
             self._blocks = ChainBlocks(self)
             self._fork = fork
-
-            self._single_source_errors = {
-                selector
-                for selector, sources in errors.items()
-                if len({source for fqn, source in sources.items()}) == 1
-            }
 
             self.tx_callback = None
 
@@ -1064,9 +1055,14 @@ class Chain(ABC):
         elif expected_type is Callable:
             assert isinstance(value, bytes)
             address = Address("0x" + value[:20].hex())
-            fqn = get_fqn_from_address(
-                address, tx.block.number - 1 if tx is not None else "latest", self
-            )
+            if (
+                resolver := self._pytypes_resolvers.get(Account(address, self))
+            ) is not None:
+                fqn = getattr(resolver, "_fqn", None)
+            else:
+                fqn = get_fqn_from_address(
+                    address, tx.block.number if tx is not None else "latest", self
+                )
             if fqn not in contracts_by_fqn:
                 raise ValueError(f"Unknown contract: {fqn}")
 
@@ -1128,229 +1124,6 @@ class Chain(ABC):
                 return expected_type(value)
         return value
 
-    def _process_revert_data(
-        self,
-        tx: Optional[TransactionAbc],
-        revert_data: bytes,
-    ) -> RevertError:
-        from .transactions import UnknownRevertError
-
-        selector = revert_data[0:4]
-        if selector not in errors:
-            e = UnknownRevertError(revert_data)
-            e.tx = tx
-            raise e from None
-
-        if (
-            selector not in self._single_source_errors
-            and not self.optimistic_pytypes_resolving
-        ):
-            if tx is None:
-                e = UnknownRevertError(revert_data)
-                e.tx = tx
-                raise e from None
-
-            # ambiguous error, try to find the source contract
-            tx._fetch_debug_trace_transaction()
-            debug_trace = tx._debug_trace_transaction
-            try:
-                fqn_overrides: ChainMap[Address, Optional[str]] = ChainMap()
-                for i in range(tx.tx_index):
-                    prev_tx = tx.block.txs[i]
-                    prev_tx._fetch_debug_trace_transaction()
-                    process_debug_trace_for_fqn_overrides(
-                        prev_tx,
-                        prev_tx._debug_trace_transaction,  # pyright: ignore reportGeneralTypeIssues
-                        fqn_overrides,
-                    )
-                fqn = process_debug_trace_for_revert(
-                    tx,
-                    debug_trace,  # pyright: ignore reportGeneralTypeIssues
-                    fqn_overrides,
-                )
-                for base_fqn in contracts_inheritance[fqn]:
-                    if base_fqn in errors[selector]:
-                        fqn = base_fqn
-                        break
-                if fqn not in errors[selector]:
-                    e = UnknownRevertError(revert_data)
-                    e.tx = tx
-                    raise e from None
-            except ValueError:
-                e = UnknownRevertError(revert_data)
-                e.tx = tx
-                raise e from None
-        else:
-            fqn = sorted(errors[selector].keys())[0]
-
-        module_name, attrs = errors[selector][fqn]
-        obj = getattr(importlib.import_module(module_name), attrs[0])
-        for attr in attrs[1:]:
-            obj = getattr(obj, attr)
-        abi = obj._abi
-
-        types = [
-            eth_utils.abi.collapse_if_tuple(cast(Dict[str, Any], arg))
-            for arg in fix_library_abi(abi["inputs"])
-        ]
-        decoded = Abi.decode(types, revert_data[4:])
-        generated_error = self._convert_from_web3_type(tx, decoded, obj)
-        generated_error.tx = tx
-        return generated_error
-
-    def _process_events(self, tx: TransactionAbc) -> list:
-        fqn_overrides: ChainMap[Address, Optional[str]] = ChainMap()
-        generated_events = []
-
-        # process fqn_overrides for all txs before this one in the same block
-        for i in range(tx.tx_index):
-            tx_before = tx.block.txs[i]
-            tx_before._fetch_debug_trace_transaction()
-            process_debug_trace_for_fqn_overrides(
-                tx_before,
-                tx_before._debug_trace_transaction,  # pyright: ignore reportGeneralTypeIssues
-                fqn_overrides,
-            )
-        assert len(fqn_overrides.maps) == 1
-
-        logs = sorted(
-            (
-                l
-                for l in tx.chain.chain_interface.get_logs(
-                    from_block=tx.block.number, to_block=tx.block.number
-                )
-                if l["transactionHash"] == tx.tx_hash
-            ),
-            key=lambda l: int(l["logIndex"], 16),
-        )
-        for log in logs:
-            topics = [
-                bytes.fromhex(t[2:].zfill(64))
-                if t.startswith("0x")
-                else bytes.fromhex(t.zfill(64))
-                for t in log["topics"]
-            ]
-            data = (
-                bytes.fromhex(log["data"][2:])
-                if log["data"].startswith("0x")
-                else bytes.fromhex(log["data"])
-            )
-            address = Address(log["address"])
-            unknown_event = UnknownEvent(topics, data)
-            unknown_event.origin = Account(address, tx.chain)
-
-            if len(topics) == 0:
-                generated_events.append(unknown_event)
-                continue
-
-            selector = topics[0]
-
-            if selector not in events:
-                generated_events.append(unknown_event)
-                continue
-
-            if (
-                len({source for source in events[selector].values()}) > 1
-                and not self.optimistic_pytypes_resolving
-            ):
-                addresses = {address}
-
-                if isinstance(tx.chain.chain_interface, AnvilChainInterface):
-                    tx._fetch_trace_transaction()
-                    trace = tx._trace_transaction
-                    assert trace is not None
-
-                    # `address` may not be the address of the syntatic contract that emitted the event
-                    # it may be the address of a contract that delegatecalled into the syntatic contract
-                    # find all delegatecalls from `address` recursively
-                    finished = False
-                    while not finished:
-                        finished = True
-                        for t in trace:
-                            if (
-                                "callType" in t["action"]
-                                and t["action"]["callType"] == "delegatecall"
-                                and Address(t["action"]["from"]) in addresses
-                            ):
-                                to = Address(t["action"]["to"])
-                                if to not in addresses:
-                                    addresses.add(to)
-                                    finished = False
-
-                candidates = []
-                for a in addresses:
-                    if a in fqn_overrides:
-                        fqn = fqn_overrides[a]
-                    else:
-                        fqn = get_fqn_from_address(a, tx.block.number - 1, tx.chain)
-
-                    if fqn is None:
-                        continue
-
-                    for base_fqn in contracts_inheritance[fqn]:
-                        if base_fqn in events[selector]:
-                            candidates.append(base_fqn)
-                            break
-
-                if len(candidates) != 1:
-                    generated_events.append(unknown_event)
-                    continue
-                else:
-                    fqn = candidates[0]
-            else:
-                fqn = sorted(events[selector].keys())[0]
-
-            module_name, attrs = events[selector][fqn]
-            obj = getattr(importlib.import_module(module_name), attrs[0])
-            for attr in attrs[1:]:
-                obj = getattr(obj, attr)
-            abi = obj._abi
-
-            topic_index = 1
-            types = []
-
-            decoded_indexed = []
-
-            for input in fix_library_abi(abi["inputs"]):
-                if input["indexed"]:
-                    if input["type"] in {"string", "bytes", "tuple"} or input[
-                        "type"
-                    ].endswith("]"):
-                        topic_type = "bytes32"
-                    else:
-                        topic_type = input["type"]
-                    topic_data = log["topics"][topic_index]
-                    if topic_data.startswith("0x"):
-                        topic_data = topic_data[2:]
-                    decoded_indexed.append(
-                        Abi.decode([topic_type], bytes.fromhex(topic_data.zfill(64)))[0]
-                    )
-                    topic_index += 1
-                else:
-                    types.append(eth_utils.abi.collapse_if_tuple(input))
-            decoded = list(
-                Abi.decode(
-                    types,
-                    bytes.fromhex(log["data"][2:])
-                    if log["data"].startswith("0x")
-                    else bytes.fromhex(log["data"]),
-                )
-            )
-            merged = []
-
-            for input in abi["inputs"]:
-                if input["indexed"]:
-                    merged.append(decoded_indexed.pop(0))
-                else:
-                    merged.append(decoded.pop(0))
-
-            merged = tuple(merged)
-            generated_event = self._convert_from_web3_type(tx, merged, obj)
-            generated_event.origin = Account(address, tx.chain)
-            generated_events.append(generated_event)
-
-        return generated_events
-
     def _process_return_data(
         self, tx: Optional[TransactionAbc], output: bytes, abi: Dict, return_type: Type
     ):
@@ -1399,36 +1172,6 @@ class Chain(ABC):
                     console_logs.append(self._parse_console_log_data(data))
 
         return console_logs
-
-    def _process_call_revert_data(self, e: JsonRpcError) -> bytes:
-        try:
-            # Hermez does not provide revert data for estimate
-            if (
-                isinstance(
-                    self._chain_interface,
-                    (AnvilChainInterface, GethLikeChainInterfaceAbc),
-                )
-                and e.data["code"] == 3
-            ):
-                revert_data = e.data["data"]
-            elif (
-                isinstance(self._chain_interface, HardhatChainInterface)
-                and e.data["code"] == -32603
-            ):
-                revert_data = e.data["data"]["data"]
-            else:
-                raise e from None
-        except Exception:
-            raise e from None
-
-        if revert_data.startswith("0x"):
-            revert_data = revert_data[2:]
-
-        return bytes.fromhex(revert_data)
-
-    def _process_call_revert(self, e: JsonRpcError) -> RevertError:
-
-        return self._process_revert_data(None, self._process_call_revert_data(e))
 
     def _send_transaction(
         self, tx_params: TxParams, from_: Optional[Union[Account, Address, str]]
@@ -1528,18 +1271,26 @@ class Chain(ABC):
             coverage_handler = get_coverage_handler()
             if coverage_handler is not None and self._debug_trace_call_supported:
                 ret = self._chain_interface.debug_trace_call(tx_params, block)
-                coverage_handler.add_coverage(tx_params, self, ret)
+                coverage_handler.add_coverage(tx_params, block, self, ret)
 
                 ret_value = ret["returnValue"]
                 if ret_value.startswith("0x"):
                     ret_value = ret_value[2:]
                 output = bytes.fromhex(ret_value)
                 if ret["failed"]:
-                    raise self._process_revert_data(None, output) from None
+                    raise resolve_error(
+                        self,
+                        block,
+                        None,
+                        output,
+                        lambda: self._chain_interface.debug_trace_call(
+                            tx_params, block, {"tracer": "callTracer"}
+                        ),
+                    )
             else:
                 output = self._chain_interface.call(tx_params, block)
         except JsonRpcError as e:
-            raise self._process_call_revert(e) from None
+            raise resolve_call_error(self, tx_params, block, e) from None
 
         if abi is None:
             return output
@@ -1563,7 +1314,7 @@ class Chain(ABC):
         try:
             return self._chain_interface.estimate_gas(tx_params, block)
         except JsonRpcError as e:
-            raise self._process_call_revert(e) from None
+            raise resolve_call_error(self, tx_params, block, e) from None
 
     @check_connected
     def _access_list(
@@ -1586,7 +1337,7 @@ class Chain(ABC):
                 for e in response["accessList"]
             }, int(response["gasUsed"], 16)
         except JsonRpcError as e:
-            raise self._process_call_revert(e) from None
+            raise resolve_call_error(self, tx_params, block, e) from None
 
     @check_connected
     def _transact(
@@ -1640,6 +1391,7 @@ class Chain(ABC):
                 tx._fetch_debug_trace_transaction()
                 coverage_handler.add_coverage(
                     tx_params,
+                    tx.block.number,
                     self,
                     tx._debug_trace_transaction,  # pyright: ignore reportGeneralTypeIssues
                 )
@@ -1728,246 +1480,3 @@ def get_fqn_from_address(
 
 def get_contract_from_fqn(fqn: str):
     return contracts_by_fqn[fqn]
-
-
-def process_debug_trace_for_fqn_overrides(
-    tx: TransactionAbc,
-    debug_trace: Dict[str, Any],
-    fqn_overrides: ChainMap[Address, Optional[str]],
-) -> None:
-    if tx.status == 0:
-        return
-
-    trace_is_create = [tx.to is None]
-    addresses: List[Optional[Address]] = [tx.to.address if tx.to is not None else None]
-    fqns: List[Optional[str]] = []
-
-    fqn_overrides.maps.insert(0, {})
-
-    if tx.to is None:
-        fqns.append(None)  # contract is not deployed yet
-    else:
-        if tx.to.address in fqn_overrides:
-            fqns.append(fqn_overrides[tx.to.address])
-        else:
-            fqns.append(
-                get_fqn_from_address(tx.to.address, tx.block.number - 1, tx.chain)
-            )
-
-    for i, trace in enumerate(debug_trace["structLogs"]):
-        if i > 0:
-            prev_trace = debug_trace["structLogs"][i - 1]
-            if (
-                prev_trace["op"] in {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"}
-                and prev_trace["depth"] == trace["depth"]
-            ):
-                # precompiled contract was called in the previous trace
-                fqn_overrides.maps[1].update(fqn_overrides.maps[0])
-                fqn_overrides.maps.pop(0)
-                trace_is_create.pop()
-                addresses.pop()
-                fqns.pop()
-
-        if trace["op"] in {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"}:
-            trace_is_create.append(False)
-            addr = Address(int(trace["stack"][-2], 16))
-            addresses.append(addr)
-            if addr in fqn_overrides:
-                fqns.append(fqn_overrides[addr])
-            else:
-                fqns.append(get_fqn_from_address(addr, tx.block.number - 1, tx.chain))
-
-            fqn_overrides.maps.insert(0, {})
-        elif trace["op"] in {"CREATE", "CREATE2"}:
-            offset = int(trace["stack"][-2], 16)
-            length = int(trace["stack"][-3], 16)
-            creation_code = read_from_memory(offset, length, trace["memory"])
-
-            trace_is_create.append(True)
-            addresses.append(None)
-            fqns.append(get_fqn_from_creation_code(creation_code)[0])
-            fqn_overrides.maps.insert(0, {})
-        elif trace["op"] in {"INVALID", "RETURN", "REVERT", "STOP", "SELFDESTRUCT"}:
-            if trace["op"] == "SELFDESTRUCT":
-                if addresses[-1] is not None:
-                    fqn_overrides.maps[0][addresses[-1]] = None
-
-            if trace["op"] not in {"INVALID", "REVERT"} and len(fqn_overrides.maps) > 1:
-                fqn_overrides.maps[1].update(fqn_overrides.maps[0])
-            fqn_overrides.maps.pop(0)
-            addresses.pop()
-
-            if trace_is_create.pop():
-                try:
-                    addr = Address(
-                        int(debug_trace["structLogs"][i + 1]["stack"][-1], 16)
-                    )
-                    if addr != Address(0):
-                        fqn_overrides.maps[0][addr] = fqns[-1]
-                except IndexError:
-                    pass
-            fqns.pop()
-
-
-def process_debug_trace_for_revert(
-    tx: TransactionAbc,
-    debug_trace: Dict,
-    fqn_overrides: ChainMap[Address, Optional[str]],
-) -> str:
-    if tx.to is None:
-        origin = get_fqn_from_creation_code(tx.data)[0]
-    elif tx.to.address in fqn_overrides:
-        origin = fqn_overrides[tx.to.address]
-    else:
-        origin = get_fqn_from_address(tx.to.address, tx.block.number - 1, tx.chain)
-
-    addresses: List[Optional[Address]] = [tx.to.address if tx.to is not None else None]
-    fqns: List[Optional[str]] = [origin]
-    trace_is_create: List[bool] = [tx.to is None]
-
-    # select latest the most nested revert origin
-    last_revert_origin = None
-    last_revert_depth = 0
-
-    for i, trace in enumerate(debug_trace["structLogs"]):
-        if i > 0:
-            prev_trace = debug_trace["structLogs"][i - 1]
-            if (
-                prev_trace["op"] in {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"}
-                and prev_trace["depth"] == trace["depth"]
-            ):
-                # precompiled contract was called in the previous trace
-                fqn_overrides.maps[1].update(fqn_overrides.maps[0])
-                fqn_overrides.maps.pop(0)
-                addresses.pop()
-                fqns.pop()
-                trace_is_create.pop()
-
-        if trace["op"] in {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"}:
-            trace_is_create.append(False)
-            addr = Address(int(trace["stack"][-2], 16))
-            addresses.append(addr)
-            if addr in fqn_overrides:
-                fqns.append(fqn_overrides[addr])
-            else:
-                fqns.append(get_fqn_from_address(addr, tx.block.number - 1, tx.chain))
-
-            fqn_overrides.maps.insert(0, {})
-        elif trace["op"] in {"CREATE", "CREATE2"}:
-            offset = int(trace["stack"][-2], 16)
-            length = int(trace["stack"][-3], 16)
-            creation_code = read_from_memory(offset, length, trace["memory"])
-
-            trace_is_create.append(True)
-            addresses.append(None)
-            fqns.append(get_fqn_from_creation_code(creation_code)[0])
-            fqn_overrides.maps.insert(0, {})
-        elif trace["op"] in {"INVALID", "REVERT"}:
-            depth = len(fqns)
-            fqn_overrides.maps.pop(0)
-            fqn = fqns.pop()
-            addresses.pop()
-
-            if trace["op"] == "REVERT" and depth >= last_revert_depth:
-                offset = int(trace["stack"][-1], 16)
-                length = int(trace["stack"][-2], 16)
-                data = read_from_memory(offset, length, trace["memory"])
-                if data == tx.raw_error.data:
-                    last_revert_origin = fqn
-                    last_revert_depth = depth
-        elif trace["op"] in {"RETURN", "STOP", "SELFDESTRUCT"}:
-            if len(fqn_overrides.maps) > 1:
-                fqn_overrides.maps[1].update(fqn_overrides.maps[0])
-            fqn_overrides.maps.pop(0)
-            addresses.pop()
-
-            if trace_is_create.pop():
-                try:
-                    addr = Address(
-                        int(debug_trace["structLogs"][i + 1]["stack"][-1], 16)
-                    )
-                    if addr != Address(0):
-                        fqn_overrides.maps[0][addr] = fqns[-1]
-                except IndexError:
-                    pass
-            fqns.pop()
-
-    if last_revert_origin is None:
-        raise ValueError("Could not find revert origin")
-    return last_revert_origin
-
-
-def process_debug_trace_for_events(
-    tx: TransactionAbc,
-    debug_trace: Dict,
-    fqn_overrides: ChainMap[Address, Optional[str]],
-) -> List[Tuple[bytes, Optional[str]]]:
-    if tx.to is None:
-        origin = get_fqn_from_creation_code(tx.data)[0]
-    elif tx.to.address in fqn_overrides:
-        origin = fqn_overrides[tx.to.address]
-    else:
-        origin = get_fqn_from_address(tx.to.address, tx.block.number - 1, tx.chain)
-
-    addresses: List[Optional[Address]] = [tx.to.address if tx.to is not None else None]
-    fqns: List[Optional[str]] = [origin]
-    trace_is_create: List[bool] = [tx.to is None]
-    event_fqns = []
-
-    for i, trace in enumerate(debug_trace["structLogs"]):
-        if i > 0:
-            prev_trace = debug_trace["structLogs"][i - 1]
-            if (
-                prev_trace["op"] in {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"}
-                and prev_trace["depth"] == trace["depth"]
-            ):
-                # precompiled contract was called in the previous trace
-                fqn_overrides.maps[1].update(fqn_overrides.maps[0])
-                fqn_overrides.maps.pop(0)
-                trace_is_create.pop()
-                addresses.pop()
-                fqns.pop()
-
-        if trace["op"] in {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"}:
-            trace_is_create.append(False)
-            addr = Address(int(trace["stack"][-2], 16))
-            addresses.append(addr)
-            if addr in fqn_overrides:
-                fqns.append(fqn_overrides[addr])
-            else:
-                fqns.append(get_fqn_from_address(addr, tx.block.number - 1, tx.chain))
-
-            fqn_overrides.maps.insert(0, {})
-        elif trace["op"] in {"CREATE", "CREATE2"}:
-            offset = int(trace["stack"][-2], 16)
-            length = int(trace["stack"][-3], 16)
-            creation_code = read_from_memory(offset, length, trace["memory"])
-
-            trace_is_create.append(True)
-            addresses.append(None)
-            fqns.append(get_fqn_from_creation_code(creation_code)[0])
-            fqn_overrides.maps.insert(0, {})
-        elif trace["op"] in {"INVALID", "RETURN", "REVERT", "STOP", "SELFDESTRUCT"}:
-            if trace["op"] not in {"INVALID", "REVERT"} and len(fqn_overrides.maps) > 1:
-                fqn_overrides.maps[1].update(fqn_overrides.maps[0])
-            fqn_overrides.maps.pop(0)
-            addresses.pop()
-
-            if trace_is_create.pop():
-                try:
-                    addr = Address(
-                        int(debug_trace["structLogs"][i + 1]["stack"][-1], 16)
-                    )
-                    if addr != Address(0):
-                        fqn_overrides.maps[0][addr] = fqns[-1]
-                except IndexError:
-                    pass
-            fqns.pop()
-        elif trace["op"] in {"LOG1", "LOG2", "LOG3", "LOG4"}:
-            selector = trace["stack"][-3]
-            if selector.startswith("0x"):
-                selector = selector[2:]
-            selector = bytes.fromhex(selector.zfill(64))
-            event_fqns.append((selector, fqns[-1]))
-
-    return event_fqns

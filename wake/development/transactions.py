@@ -43,13 +43,12 @@ from .core import (
     SignedAuthorization,
     Wei,
     get_contract_from_fqn,
-    get_contracts_by_fqn,
     get_fqn_from_address,
     get_fqn_from_creation_code,
-    process_debug_trace_for_fqn_overrides,
 )
 from .internal import UnknownEvent, read_from_memory
 from .json_rpc import JsonRpcError
+from .pytypes_resolver import resolve_tx_error, resolve_tx_events
 
 T = TypeVar("T")
 
@@ -127,15 +126,22 @@ class ChainTransactions:
         if "to" in tx_data and tx_data["to"] is not None:
             tx_params["to"] = tx_data["to"]
             try:
-                fqn = get_fqn_from_address(
-                    Address(tx_params["to"]),
-                    (
-                        int(tx_data["blockNumber"], 16) - 1
-                        if "blockNumber" in tx_data
-                        else "latest"
-                    ),
-                    self._chain,
-                )
+                if (
+                    resolver := self._chain._pytypes_resolvers.get(
+                        Account(tx_params["to"], self._chain)
+                    )
+                ) is not None:
+                    fqn = getattr(resolver, "_fqn", None)
+                else:
+                    fqn = get_fqn_from_address(
+                        Address(tx_params["to"]),
+                        (
+                            int(tx_data["blockNumber"], 16)
+                            if "blockNumber" in tx_data
+                            else "latest"
+                        ),
+                        self._chain,
+                    )
                 module_name, attrs = get_contract_from_fqn(
                     fqn  # pyright: ignore reportGeneralTypeIssues
                 )
@@ -430,7 +436,7 @@ class TransactionAbc(ABC, Generic[T]):
             self._events = []
             return self._events
 
-        self._events = self._chain._process_events(self)
+        self._events = resolve_tx_events(self)
         return self._events
 
     @property
@@ -471,7 +477,7 @@ class TransactionAbc(ABC, Generic[T]):
             self._error = raw_error
             return self._error
 
-        self._error = self._chain._process_revert_data(self, raw_error.data)
+        self._error = resolve_tx_error(self._chain, self, raw_error.data)
         return self._error
 
     @property
@@ -628,27 +634,12 @@ class TransactionAbc(ABC, Generic[T]):
         assert self._debug_trace_transaction is not None
         assert self._tx_data is not None
 
-        fqn_overrides: ChainMap[Address, Optional[str]] = ChainMap()
-
-        # process fqn_overrides for all txs before this one in the same block
-        for i in range(self.tx_index):
-            tx_before = self.block.txs[i]
-            tx_before._fetch_debug_trace_transaction()
-            process_debug_trace_for_fqn_overrides(
-                tx_before,
-                tx_before._debug_trace_transaction,  # pyright: ignore reportGeneralTypeIssues
-                fqn_overrides,
-            )
-
-        assert len(fqn_overrides.maps) == 1
-
         return CallTrace.from_debug_trace(
             self._debug_trace_transaction,  # pyright: ignore reportGeneralTypeIssues
             self._tx_params,
             self.chain,
             self.return_value if self.status == TransactionStatusEnum.SUCCESS else None,
-            self.block_number - 1,
-            fqn_overrides,
+            self.block_number,
         )
 
     @property
