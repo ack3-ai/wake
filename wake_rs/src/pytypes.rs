@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use alloy::dyn_abi::{DynSolType, DynSolValue};
 use num_bigint::{BigInt, BigUint};
@@ -89,14 +89,35 @@ fn external_or_unknown_error(
                 if let DynSolValue::Tuple(ref tuple) = decoded {
                     let inputs = abi.get_item(intern!(py, "inputs"))?.unwrap();
                     let inputs_list = inputs.cast::<PyList>()?;
+                    let mut unnamed_params_index = 0;
+
+                    // collect all parameter names
+                    let mut param_names = HashSet::new();
+                    for input in inputs_list.iter() {
+                        let input_dict = input.cast::<PyDict>()?;
+                        let param_name = input_dict
+                            .get_item(intern!(py, "name"))?
+                            .unwrap()
+                            .cast_into::<PyString>()?;
+                        param_names.insert(param_name.to_string());
+                    }
+
                     for (input, value) in inputs_list.iter().zip(tuple.iter()) {
                         let input_dict = input.cast::<PyDict>()?;
-                        let input_name = input_dict
+                        let mut param_name = input_dict
                             .get_item(intern!(py, "name"))?
                             .unwrap()
                             .cast_into::<PyString>()?;
 
-                        kwargs.set_item(input_name, alloy_to_py(py, &value, py_objects)?)?;
+                        if param_name.is_empty()? {
+                            let mut tmp = format!("param{}", unnamed_params_index);
+                            unnamed_params_index += 1;
+                            while param_names.contains(&tmp) {
+                                tmp += "_";
+                            }
+                            param_name = PyString::new(py, &tmp);
+                        }
+                        kwargs.set_item(param_name, alloy_to_py(py, &value, py_objects)?)?;
                     }
                 } else {
                     panic!("Expected tuple");
@@ -319,14 +340,35 @@ pub(crate) fn external_or_unknown_event(
 
                 let inputs = abi.get_item(intern!(py, "inputs"))?;
                 let inputs_list = inputs.cast::<PyList>()?;
+                let mut unnamed_params_index = 0;
+
+                // collect all parameter names
+                let mut param_names = HashSet::new();
+                for input in inputs_list.iter() {
+                    let input_dict = input.cast::<PyDict>()?;
+                    let param_name = input_dict
+                        .get_item(intern!(py, "name"))?
+                        .unwrap()
+                        .cast_into::<PyString>()?;
+                    param_names.insert(param_name.to_string());
+                }
 
                 let kwargs = PyDict::new(py);
                 for (input, value) in inputs_list.iter().zip(values.iter()) {
                     let input_dict = input.cast::<PyDict>()?;
-                    let input_name = input_dict
+                    let mut input_name = input_dict
                         .get_item(intern!(py, "name"))?
                         .unwrap()
                         .cast_into::<PyString>()?;
+
+                    if input_name.is_empty()? {
+                        let mut tmp = format!("param{}", unnamed_params_index);
+                        unnamed_params_index += 1;
+                        while param_names.contains(&tmp) {
+                            tmp += "_";
+                        }
+                        input_name = PyString::new(py, &tmp);
+                    }
 
                     kwargs.set_item(input_name, alloy_to_py(py, &value, py_objects)?)?;
                 }

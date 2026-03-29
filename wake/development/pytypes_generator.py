@@ -823,13 +823,20 @@ class TypeGenerator:
             assert error_abi is not None
 
             parameters: List[Tuple[str, str, str, str]] = []
-            unnamed_params_index = 1
+            unnamed_params_index = 0
+            generated_names = {
+                self.get_name(par) for par in error.parameters.parameters if par.name
+            }
+
             for parameter in error.parameters.parameters:
                 if parameter.name:
                     parameter_name = self.get_name(parameter)
                 else:
                     parameter_name = f"param{unnamed_params_index}"
                     unnamed_params_index += 1
+                    while parameter_name in generated_names:
+                        parameter_name += "_"
+
                 parameter_type = self.parse_type_and_import(parameter.type, True)
                 parameter_type_desc = parameter.type_string
                 parameters.append(
@@ -908,13 +915,19 @@ class TypeGenerator:
             assert event_abi is not None
 
             parameters: List[Tuple[str, str, str, str]] = []
-            unnamed_params_index = 1
+            unnamed_params_index = 0
+            generated_names = {
+                self.get_name(par) for par in event.parameters.parameters if par.name
+            }
+
             for parameter in event.parameters.parameters:
                 if parameter.name:
                     parameter_name = self.get_name(parameter)
                 else:
                     parameter_name = f"param{unnamed_params_index}"
                     unnamed_params_index += 1
+                    while parameter_name in generated_names:
+                        parameter_name += "_"
 
                 if parameter.indexed and isinstance(
                     parameter.type,
@@ -1036,15 +1049,15 @@ class TypeGenerator:
     ) -> Tuple[List[Tuple[str, str]], List[str]]:
         params = []
         param_names = []
-        unnamed_params_identifier: int = 1
+        unnamed_params_index: int = 0
         generated_names = {
-            self.get_name(par) for par in fn.parameters.parameters if par.name != ""
+            self.get_name(par) for par in fn.parameters.parameters if par.name
         }
 
         for param in fn.parameters.parameters:
             if param.name == "":
-                param_name: str = "arg" + str(unnamed_params_identifier)
-                unnamed_params_identifier += 1
+                param_name = f"param{unnamed_params_index}"
+                unnamed_params_index += 1
                 while param_name in generated_names:
                     param_name += "_"
             else:
