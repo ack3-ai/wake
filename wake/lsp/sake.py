@@ -18,6 +18,7 @@ from wake.development.chain_interfaces import AnvilChainInterface
 from wake.development.core import Library, RequestType, get_fqn_from_address
 from wake.development.globals import set_config
 from wake.development.json_rpc import JsonRpcError
+from wake.development.pytypes_resolver import extract_call_revert_data
 from wake.development.transactions import TransactionStatusEnum
 from wake.development.utils import (
     AbiNotFound,
@@ -633,8 +634,7 @@ class SakeContext:
                 tx._tx_params,
                 chain,
                 tx.return_value if success else None,
-                tx.block_number - 1,
-                ChainMap(),
+                tx.block_number,
                 self.info_by_fqn.keys(),
                 fqn_to_contract_abi,
             )
@@ -690,8 +690,7 @@ class SakeContext:
                 tx._tx_params,
                 chain,
                 None,
-                tx.block_number - 1,
-                ChainMap(),
+                tx.block_number,
                 self.info_by_fqn.keys(),
                 fqn_to_contract_abi,
             )
@@ -755,7 +754,6 @@ class SakeContext:
                 chain,
                 None,
                 chain.blocks["latest"].number,
-                ChainMap(),
                 self.info_by_fqn.keys(),
                 fqn_to_contract_abi,
             )
@@ -777,7 +775,7 @@ class SakeContext:
                 )
             except JsonRpcError as e:
                 try:
-                    revert_data = chain._process_call_revert_data(e)
+                    revert_data = extract_call_revert_data(chain, e)
                     return SakeCallResult(
                         success=False,
                         return_value=revert_data.hex(),

@@ -171,13 +171,13 @@ class TypeGenerator:
     __events_index: Dict[bytes, Dict[str, Any]]
     __user_defined_value_types_index: Dict[str, str]
     __contracts_by_metadata_index: Dict[bytes, str]
-    __contracts_inheritance_index: Dict[str, Tuple[str, ...]]
     __creation_code_index: List[Tuple[Tuple[Tuple[int, bytes], ...], str]]
     __line_indexes: Dict[Path, List[Tuple[bytes, int]]]
     # source unit name -> other source unit names in the cycle
     __cyclic_source_units: DefaultDict[str, Set[str]]
     # used to generate ListN types for N > 32
     __fixed_size_arrays: Set[int]
+    __generated_contracts: Set[str]
 
     def __init__(self, config: WakeConfig, return_tx_obj: bool):
         self.__config = config
@@ -200,11 +200,11 @@ class TypeGenerator:
         self.__events_index = {}
         self.__user_defined_value_types_index = {}
         self.__contracts_by_metadata_index = {}
-        self.__contracts_inheritance_index = {}
         self.__creation_code_index = []
         self.__line_indexes = {}
         self.__cyclic_source_units = defaultdict(set)
         self.__fixed_size_arrays = set()
+        self.__generated_contracts = set()
 
         # built-in Error(str) and Panic(uint256) errors
         error_abi = {
@@ -532,13 +532,8 @@ class TypeGenerator:
             assert metadata not in self.__contracts_by_metadata_index
             self.__contracts_by_metadata_index[metadata] = fqn
 
-        assert (
-            fqn not in self.__contracts_inheritance_index
-        ), f"Generating contract {fqn} twice"
-        self.__contracts_inheritance_index[fqn] = tuple(
-            f"{base.parent.source_unit_name}:{base.name}"
-            for base in contract.linearized_base_contracts
-        )
+        assert fqn not in self.__generated_contracts, f"Generating contract {fqn} twice"
+        self.__generated_contracts.add(fqn)
 
         abi_by_selector: Dict[
             Union[
@@ -1862,7 +1857,6 @@ class TypeGenerator:
                 events=self.__events_index,
                 contracts_by_fqn=self.__contracts_index,
                 contracts_by_metadata=self.__contracts_by_metadata_index,
-                contracts_inheritance=self.__contracts_inheritance_index,
                 creation_code_index=self.__creation_code_index,
                 user_defined_value_types_index=self.__user_defined_value_types_index,
             )

@@ -996,8 +996,7 @@ class CallTrace:
         tx_params: TxParams,
         chain: Chain,
         created_contract: Optional[Account],
-        fqn_block_number: int,  # the last block before the tx (or call) to fetch fqn
-        fqn_overrides: Optional[ChainMap[Address, Optional[str]]] = None,
+        fqn_block_number: int,  # post-tx/same-call block number to fetch fqn from code
         all_fqns: Optional[AbstractSet[str]] = None,
         fqn_to_contract_abi: Optional[
             Callable[[str], Tuple[Optional[Contract], Dict]]
@@ -1007,8 +1006,7 @@ class CallTrace:
 
         assert tx_params["gas"] != "auto"
 
-        if fqn_overrides is None:
-            fqn_overrides = ChainMap()
+        fqn_overrides = ChainMap()
 
         contracts_by_fqn = get_contracts_by_fqn()
 
@@ -1028,7 +1026,9 @@ class CallTrace:
             except ValueError:
                 origin_fqn = None
         else:
-            if to.address in fqn_overrides:
+            if (resolver := chain._pytypes_resolvers.get(to)) is not None:
+                origin_fqn = getattr(resolver, "_fqn", None)
+            elif to.address in fqn_overrides:
                 origin_fqn = fqn_overrides[to.address]
             else:
                 origin_fqn = get_fqn_from_address(to.address, fqn_block_number, chain)
@@ -1341,7 +1341,11 @@ class CallTrace:
                 assert current_trace is not None
 
                 addr = Address(int(log["stack"][-2], 16))
-                if addr in fqn_overrides:
+                if (
+                    resolver := chain._pytypes_resolvers.get(Account(addr, chain))
+                ) is not None:
+                    fqn = getattr(resolver, "_fqn", None)
+                elif addr in fqn_overrides:
                     fqn = fqn_overrides[addr]
                 else:
                     fqn = get_fqn_from_address(addr, fqn_block_number, chain)

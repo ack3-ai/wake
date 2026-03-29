@@ -453,7 +453,17 @@ impl Account {
                     .get(&self.address.borrow(py).0)
                     .map(|pytype| pytype.clone_ref(py)),
             ),
-            ChainWrapper::Python(_) => Ok(None),
+            ChainWrapper::Python(chain) => {
+                let resolver = chain.bind(py)
+                    .getattr(intern!(py, "_pytypes_resolvers"))?
+                    .get_item(self.address.clone_ref(py))?;
+
+                if resolver.is_none() {
+                    Ok(None)
+                } else {
+                    Ok(Some(resolver.cast_into::<PyType>()?.unbind()))
+                }
+            }
         }
     }
 
@@ -467,10 +477,8 @@ impl Account {
                         .expect("fqn_overrides Arc should be uniquely owned while holding GIL");
                     fqn_overrides.remove(&self.address.borrow(py).0);
                 }
-                ChainWrapper::Python(_) => {
-                    return Err(PyNotImplementedError::new_err(
-                        "Setting pytypes_resolver is currently not supported with non-revm chains",
-                    ));
+                ChainWrapper::Python(chain) => {
+                    chain.bind(py).getattr(intern!(py, "_pytypes_resolvers"))?.set_item(self.address.clone_ref(py), value)?;
                 }
             }
         } else {
@@ -485,10 +493,8 @@ impl Account {
                         .expect("fqn_overrides Arc should be uniquely owned while holding GIL");
                     fqn_overrides.insert(self.address.borrow(py).0, pytype.unbind());
                 }
-                ChainWrapper::Python(_) => {
-                    return Err(PyNotImplementedError::new_err(
-                        "Setting pytypes_resolver is currently not supported with non-revm chains",
-                    ));
+                ChainWrapper::Python(chain) => {
+                    chain.bind(py).getattr(intern!(py, "_pytypes_resolvers"))?.set_item(self.address.clone_ref(py), pytype)?;
                 }
             }
         }

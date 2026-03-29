@@ -22,6 +22,7 @@ from wake.development.globals import chain_interfaces_manager, random
 from wake.development.json_rpc import JsonRpcError
 
 from ..development.chain_interfaces import AnvilChainInterface
+from ..development.pytypes_resolver import resolve_call_error
 from ..development.transactions import TransactionAbc, TransactionStatusEnum
 
 
@@ -119,7 +120,6 @@ class Chain(wake.development.core.Chain):
             "default_access_list_account": self._default_access_list_account,
             "default_tx_confirmations": self._default_tx_confirmations,
             "deployed_libraries": self._deployed_libraries,
-            "single_source_errors": self._single_source_errors.copy(),
             "chain_id": self._chain_id,
             "labels": self._labels.copy(),
             "require_signed_txs": self._require_signed_txs,
@@ -154,7 +154,6 @@ class Chain(wake.development.core.Chain):
         self._default_access_list_account = snapshot["default_access_list_account"]
         self._default_tx_confirmations = snapshot["default_tx_confirmations"]
         self._deployed_libraries = snapshot["deployed_libraries"]
-        self._single_source_errors = snapshot["single_source_errors"]
         self._chain_id = snapshot["chain_id"]
         self._labels = snapshot["labels"]
         self._require_signed_txs = snapshot["require_signed_txs"]
@@ -317,7 +316,7 @@ class Chain(wake.development.core.Chain):
                     if "gas" in params and params["gas"] == "auto":
                         tx["gas"] = int(response["gasUsed"], 16)
                 except JsonRpcError as e:
-                    raise self._process_call_revert(e) from None
+                    raise resolve_call_error(self, tx, block_identifier, e) from None
 
         if "gas" not in params:
             # use "max" when unset
@@ -331,7 +330,7 @@ class Chain(wake.development.core.Chain):
                     self._chain_interface.estimate_gas(tx, block_identifier) * 1.1
                 )
             except JsonRpcError as e:
-                raise self._process_call_revert(e) from None
+                raise resolve_call_error(self, tx, block_identifier, e) from None
         else:
             raise ValueError(f"Invalid gas value: {params['gas']}")
 

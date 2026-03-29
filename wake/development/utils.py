@@ -1342,7 +1342,11 @@ def _get_storage_layout(
 
         return SolcOutputStorageLayout.model_validate(contract._storage_layout)
 
-    fqn = get_fqn_from_address(contract.address, "latest", contract.chain)
+    if (resolver := contract.chain._pytypes_resolvers.get(contract)) is not None:
+        fqn = getattr(resolver, "_fqn", None)
+    else:
+        fqn = get_fqn_from_address(contract.address, "latest", contract.chain)
+
     if fqn is None:
         if contract.chain.forked_chain_id is None:
             raise ValueError("Contract not found")

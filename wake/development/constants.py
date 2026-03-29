@@ -33,7 +33,6 @@ recursive_update(wake.development.core.errors, {errors})
 recursive_update(wake.development.core.events, {events})
 wake.development.core.contracts_by_fqn.update({contracts_by_fqn})
 wake.development.core.contracts_by_metadata.update({contracts_by_metadata})
-wake.development.core.contracts_inheritance.update({contracts_inheritance})
 wake.development.core.creation_code_index.extend({creation_code_index})
 wake.development.core.user_defined_value_types_index.update({user_defined_value_types_index})
 """
