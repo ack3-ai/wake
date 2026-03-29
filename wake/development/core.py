@@ -1052,35 +1052,6 @@ class Chain(ABC):
 
         if isinstance(expected_type, type(None)):
             return None
-        elif expected_type is Callable:
-            assert isinstance(value, bytes)
-            address = Address("0x" + value[:20].hex())
-            if (
-                resolver := self._pytypes_resolvers.get(Account(address, self))
-            ) is not None:
-                fqn = getattr(resolver, "_fqn", None)
-            else:
-                fqn = get_fqn_from_address(
-                    address, tx.block.number if tx is not None else "latest", self
-                )
-            if fqn not in contracts_by_fqn:
-                raise ValueError(f"Unknown contract: {fqn}")
-
-            module_name, attrs = contracts_by_fqn[fqn]
-            obj = getattr(importlib.import_module(module_name), attrs[0])
-            for attr in attrs[1:]:
-                obj = getattr(obj, attr)
-
-            selector = value[20:24]
-
-            for x in dir(obj):
-                m = getattr(obj, x)
-                if hasattr(m, "selector") and m.selector == selector:
-                    return getattr(obj(address, self), x)
-
-            raise ValueError(
-                f"Unable to find function with selector {selector.hex()} in contract {fqn}"
-            )
         elif isinstance(origin, type) and issubclass(origin, list):
             return origin(
                 [
@@ -1088,12 +1059,6 @@ class Chain(ABC):
                     for v in value
                 ]
             )
-        elif isinstance(expected_type, type) and issubclass(expected_type, Integer):
-            return expected_type(value)
-        elif isinstance(expected_type, type) and issubclass(
-            expected_type, FixedSizeBytes
-        ):
-            return expected_type(value)
         elif origin is tuple:
             return tuple(
                 self._convert_from_web3_type(tx, v, t)

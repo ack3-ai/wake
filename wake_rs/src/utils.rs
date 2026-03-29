@@ -313,6 +313,14 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .cast_into::<PyType>()
                 .unwrap()
                 .unbind(),
+            wake_function_pointer: py
+                .import("wake.development.primitive_types")
+                .unwrap()
+                .getattr("FunctionPointer")
+                .unwrap()
+                .cast_into::<PyType>()
+                .unwrap()
+                .unbind(),
         });
 
         PY_FUNCTIONS.get_mut().unwrap()
@@ -355,6 +363,7 @@ pub(crate) struct PyObjects {
     pub click_prompt: Py<PyFunction>,
     pub hardhat_console_abi: Py<PyDict>,
     pub tx_status_enum: Py<PyType>,
+    pub wake_function_pointer: Py<PyType>,
 
     type_hints_cache: HashMap<String, Py<PyDict>>,
 }

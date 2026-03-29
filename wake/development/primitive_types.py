@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 from typing import TYPE_CHECKING, Iterable, List, TypeVar
 
@@ -5,6 +7,8 @@ NoneType = type(None)
 
 
 if TYPE_CHECKING:
+    from .core import Account, Address
+
     uint8 = int
     uint16 = int
     uint24 = int
@@ -1029,3 +1033,35 @@ else:
         cls = type(f"List{length}", (FixedSizeList,), {"length": length})
         cls.__module__ = "wake.development.primitive_types"
         return cls(items)
+
+
+class FunctionPointer(bytes24):
+    @classmethod
+    def from_parts(
+        cls, address: Account | Address | int | str, selector: bytes4
+    ) -> FunctionPointer:
+        from .core import Account, Address
+
+        if isinstance(address, (int, str)):
+            address = Address(address)
+        elif isinstance(address, Account):
+            address = address.address
+
+        return cls(bytes(address) + bytes(selector))
+
+    @property
+    def address(self) -> Address:
+        from .core import Address
+
+        return Address(int.from_bytes(self[:20], byteorder="big"))
+
+    @property
+    def selector(self) -> bytes4:
+        return bytes4(self[20:24])
+
+    def __repr__(self) -> str:
+        return (
+            f"FunctionPointer(address={self.address}, selector=0x{self.selector.hex()})"
+        )
+
+    __str__ = __repr__

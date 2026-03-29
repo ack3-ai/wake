@@ -680,8 +680,8 @@ pub(crate) fn normalize_output(
                 Ok(PyTuple::new(py, vec)?.into())
             }
         }
-        DynSolValue::Function(_) => {
-            todo!()
+        DynSolValue::Function(v) => {
+            py_objects.wake_function_pointer.bind(py).call1((v.as_slice(),))?.into_py_any(py)
         }
         DynSolValue::CustomStruct {
             name: _,
