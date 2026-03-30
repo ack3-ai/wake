@@ -154,14 +154,20 @@ class Chain(wake.development.core.Chain):
         abi: Optional[Dict],
         block_identifier: Union[int, str],
     ) -> TxParams:
+        # default to tx_type >= 2 if base fee is present
+        block = self.chain_interface.get_block(block_identifier)
+        base_fee = block.get("baseFeePerGas")
+
         if "authorizationList" in params and len(params["authorizationList"]) > 0:
             tx_type = 4
         elif "blobs" in params or "blobVersionedHashes" in params:
             raise NotImplementedError("Type 3 transactions are not supported")
         elif "maxFeePerGas" in params or "maxPriorityFeePerGas" in params:
             tx_type = 2
-        elif "accessList" in params:
+        elif "accessList" in params and base_fee is None:
             tx_type = 1
+        elif base_fee is not None:
+            tx_type = 2
         else:
             tx_type = 0
 
@@ -215,15 +221,8 @@ class Chain(wake.development.core.Chain):
         if tx_type in [0, 1]:
             if "gasPrice" in params:
                 tx["gasPrice"] = params["gasPrice"]
-            elif block_identifier == "pending":
-                tx["gasPrice"] = self.gas_price
             else:
-                tx["gasPrice"] = int(
-                    self.chain_interface.get_block(block_identifier).get(
-                        "baseFeePerGas", "0x0"
-                    ),
-                    16,
-                )
+                tx["gasPrice"] = self.gas_price
         elif tx_type >= 2:
             tx["maxPriorityFeePerGas"] = (
                 params["maxPriorityFeePerGas"]
@@ -238,13 +237,7 @@ class Chain(wake.development.core.Chain):
                     or self.require_signed_txs
                 ):
                     tx["maxFeePerGas"] = tx["maxPriorityFeePerGas"] + int(
-                        int(
-                            self.chain_interface.get_block(block_identifier).get(
-                                "baseFeePerGas", "0x0"
-                            ),
-                            16,
-                        )
-                        * 2
+                        int(base_fee or "0x0", 16) * 2
                     )
 
         # must be set before gas estimation
