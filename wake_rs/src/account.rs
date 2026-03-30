@@ -951,7 +951,7 @@ impl Account {
 
             let signed = typed_tx.into_signed(signature);
             let mut buffer = Vec::new();
-            signed.network_encode(&mut buffer);
+            signed.eip2718_encode(&mut buffer);
             Ok(PyBytes::new(py, &buffer))
         } else {
             match &self.chain {
