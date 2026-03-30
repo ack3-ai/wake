@@ -428,6 +428,12 @@ class Chain(wake.development.core.Chain):
         tx_copy = tx.copy()
         if "data" in tx_copy:
             tx_copy["data"] = "0x" + tx_copy["data"].hex()
+        if "gasPrice" in tx_copy:
+            tx_copy["gasPrice"] = str(tx_copy["gasPrice"])
+        if "maxFeePerGas" in tx_copy:
+            tx_copy["maxFeePerGas"] = str(tx_copy["maxFeePerGas"])
+        if "maxPriorityFeePerGas" in tx_copy:
+            tx_copy["maxPriorityFeePerGas"] = str(tx_copy["maxPriorityFeePerGas"])
 
         if get_verbosity() > 0:
             pprint(tx_copy, console=console, max_string=None)
