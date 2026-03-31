@@ -147,6 +147,9 @@ def attach_debugger(
             break
         frames_up += 1
 
+    for f, _ in frames:
+        f.f_globals["__exception__"] = e
+
     commands = []
     if frames_up > 0:
         commands.append("up %d" % frames_up)
@@ -157,6 +160,9 @@ def attach_debugger(
     p.default = lambda line: default_handler(p, line)
     p.reset()
     p.interaction(None, tb)
+
+    for f, _ in frames:
+        f.f_globals.pop("__exception__", None)
 
 
 def get_fuzz_mode() -> int:
