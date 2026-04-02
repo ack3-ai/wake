@@ -956,32 +956,21 @@ class ExceptionWrapper:
 
 @contextmanager
 def must_revert(
-    exceptions: Union[
-        str,
-        int,
-        Exception,
-        Type[Exception],
-        Tuple[Union[str, int, Exception, Type[Exception]], ...],
-    ] = RevertError,
+    *exceptions: Union[str, int, Exception, Type[Exception]],
 ) -> Iterator[ExceptionWrapper]:
-    if isinstance(exceptions, str):
-        exceptions = Error(exceptions)
-    elif isinstance(exceptions, int):
-        exceptions = Panic(PanicCodeEnum(exceptions))
+    if len(exceptions) == 0:
+        exceptions = (RevertError,)
 
-    if isinstance(exceptions, (tuple, list)):
-        tmp: List[Union[str, int, Exception, Type[Exception]]] = []
-        for ex in exceptions:
-            if isinstance(ex, str):
-                tmp.append(Error(ex))
-            elif isinstance(ex, int):
-                tmp.append(Panic(PanicCodeEnum(ex)))
-            else:
-                tmp.append(ex)
-        exceptions = tuple(tmp)
-        types = tuple(type(x) if not inspect.isclass(x) else x for x in exceptions)
-    else:
-        types = type(exceptions) if not inspect.isclass(exceptions) else exceptions
+    normalized: List[Union[Exception, Type[Exception]]] = []
+    for ex in exceptions:
+        if isinstance(ex, str):
+            normalized.append(Error(ex))
+        elif isinstance(ex, int):
+            normalized.append(Panic(PanicCodeEnum(ex)))
+        else:
+            normalized.append(ex)
+
+    types = tuple(type(x) if not inspect.isclass(x) else x for x in normalized)
 
     wrapper = ExceptionWrapper()
 
@@ -991,47 +980,31 @@ def must_revert(
     except types as e:  # pyright: ignore reportGeneralTypeIssues
         wrapper.value = e
 
-        if isinstance(exceptions, (tuple, list)):
-            if any(
-                (inspect.isclass(ex) and issubclass(type(e), ex)) or e == ex
-                for ex in exceptions
-            ):
-                return
-            raise
-        else:
-            if not inspect.isclass(exceptions):
-                if e != exceptions:
-                    raise
+        if any(
+            (inspect.isclass(ex) and issubclass(type(e), ex)) or e == ex
+            for ex in normalized
+        ):
+            return
+        raise
 
 
 @contextmanager
 def may_revert(
-    exceptions: Union[
-        str,
-        int,
-        Exception,
-        Type[Exception],
-        Tuple[Union[str, int, Exception, Type[Exception]], ...],
-    ] = RevertError,
+    *exceptions: Union[str, int, Exception, Type[Exception]],
 ) -> Iterator[ExceptionWrapper]:
-    if isinstance(exceptions, str):
-        exceptions = Error(exceptions)
-    elif isinstance(exceptions, int):
-        exceptions = Panic(PanicCodeEnum(exceptions))
+    if len(exceptions) == 0:
+        exceptions = (RevertError,)
 
-    if isinstance(exceptions, (tuple, list)):
-        tmp: List[Union[str, int, Exception, Type[Exception]]] = []
-        for ex in exceptions:
-            if isinstance(ex, str):
-                tmp.append(Error(ex))
-            elif isinstance(ex, int):
-                tmp.append(Panic(PanicCodeEnum(ex)))
-            else:
-                tmp.append(ex)
-        exceptions = tuple(tmp)
-        types = tuple(type(x) if not inspect.isclass(x) else x for x in exceptions)
-    else:
-        types = type(exceptions) if not inspect.isclass(exceptions) else exceptions
+    normalized: List[Union[Exception, Type[Exception]]] = []
+    for ex in exceptions:
+        if isinstance(ex, str):
+            normalized.append(Error(ex))
+        elif isinstance(ex, int):
+            normalized.append(Panic(PanicCodeEnum(ex)))
+        else:
+            normalized.append(ex)
+
+    types = tuple(type(x) if not inspect.isclass(x) else x for x in normalized)
 
     wrapper = ExceptionWrapper()
 
@@ -1040,17 +1013,12 @@ def may_revert(
     except types as e:  # pyright: ignore reportGeneralTypeIssues
         wrapper.value = e
 
-        if isinstance(exceptions, (tuple, list)):
-            if any(
-                (inspect.isclass(ex) and issubclass(type(e), ex)) or e == ex
-                for ex in exceptions
-            ):
-                return
-            raise
-        else:
-            if not inspect.isclass(exceptions):
-                if e != exceptions:
-                    raise
+        if any(
+            (inspect.isclass(ex) and issubclass(type(e), ex)) or e == ex
+            for ex in normalized
+        ):
+            return
+        raise
 
 
 def on_revert(callback: Callable[[RevertError], None]):
