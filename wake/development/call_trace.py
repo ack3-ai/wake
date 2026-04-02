@@ -44,6 +44,7 @@ from .core import (
     get_fqn_from_address,
     get_fqn_from_creation_code,
 )
+from .errors import PanicCodeEnum
 from .globals import get_config, get_verbosity
 from .internal import read_from_memory
 from .utils import get_name_abi_from_explorer_cached
@@ -1002,8 +1003,6 @@ class CallTrace:
             Callable[[str], Tuple[Optional[Contract], Dict]]
         ] = None,
     ):
-        from .transactions import PanicCodeEnum
-
         assert tx_params["gas"] != "auto"
 
         fqn_overrides = ChainMap()
@@ -1775,7 +1774,6 @@ class CallTrace:
         *,
         depth: int = 0,
     ) -> CallTrace:
-        from .transactions import PanicCodeEnum
 
         origin = Account(sender, chain)
         fqn_to_contract_abi = partial(

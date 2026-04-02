@@ -12,16 +12,10 @@ from wake.development.core import (
     get_eip712_struct_hash,
     gwei,
 )
-from wake.development.internal import ExternalEvent, UnknownEvent
-from wake.development.primitive_types import *
-from wake.development.transactions import (
-    Eip1559Transaction,
-    Eip2930Transaction,
-    Eip7702Transaction,
+from wake.development.errors import (
     Error,
     ExternalError,
     Halt,
-    LegacyTransaction,
     Panic,
     PanicCodeEnum,
     RevertError,
@@ -30,6 +24,15 @@ from wake.development.transactions import (
     may_revert,
     must_revert,
     on_revert,
+)
+from wake.development.internal import ExternalEvent, UnknownEvent
+from wake.development.primitive_types import *
+from wake.development.transactions import (
+    Eip1559Transaction,
+    Eip2930Transaction,
+    Eip7702Transaction,
+    LegacyTransaction,
+    TransactionAbc,
 )
 from wake.development.utils import (
     get_create2_address_from_code,

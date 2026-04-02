@@ -10,7 +10,8 @@ from typing_extensions import Literal
 
 from wake.development.core import Contract, Library, Address, Account, Chain, RequestType, SignedAuthorization, Struct
 from wake.development.primitive_types import *
-from wake.development.transactions import TransactionAbc, RevertError
+from wake.development.errors import RevertError
+from wake.development.transactions import TransactionAbc
 """
 
 

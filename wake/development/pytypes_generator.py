@@ -222,7 +222,7 @@ class TypeGenerator:
             selector = eth_utils.abi.function_abi_to_4byte_selector(item)
             self.__errors_index[selector] = {}
             self.__errors_index[selector][""] = (
-                "wake.development.transactions",
+                "wake.development.errors",
                 (item["name"],),
             )
 

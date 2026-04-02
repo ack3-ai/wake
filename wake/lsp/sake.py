@@ -16,6 +16,7 @@ from wake.config import WakeConfig
 from wake.development.call_trace import CallTrace
 from wake.development.chain_interfaces import AnvilChainInterface
 from wake.development.core import Library, RequestType, get_fqn_from_address
+from wake.development.errors import Halt, RevertError, UnknownRevertError
 from wake.development.globals import set_config
 from wake.development.json_rpc import JsonRpcError
 from wake.development.pytypes_resolver import extract_call_revert_data
@@ -29,7 +30,7 @@ from wake.lsp.context import LspContext
 from wake.lsp.exceptions import LspError
 from wake.lsp.lsp_data_model import LspModel
 from wake.lsp.protocol_structures import ErrorCodes
-from wake.testing import Account, Address, Chain, UnknownRevertError
+from wake.testing import Account, Address, Chain
 from wake.utils.file_utils import is_relative_to
 
 

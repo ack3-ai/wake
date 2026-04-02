@@ -16,6 +16,7 @@ from typing_extensions import get_type_hints
 
 from wake.cli.console import console
 from wake.development.core import Chain
+from wake.development.errors import Error, Panic
 from wake.development.globals import (
     add_fuzz_test_stats,
     get_config,
@@ -23,17 +24,16 @@ from wake.development.globals import (
     get_executing_flow_num,
     get_fuzz_mode,
     get_sequence_initial_internal_state,
-    get_shrunk_path,
     get_shrink_exact_exception,
     get_shrink_exact_flow,
     get_shrink_target_invariants_only,
+    get_shrunk_path,
     random,
     set_executing_flow_num,
     set_executing_sequence_num,
     set_is_fuzzing,
     set_sequence_initial_internal_state,
 )
-from wake.development.transactions import Error, Panic
 from wake.testing.core import chain as global_default_chain
 from wake.utils.file_utils import is_relative_to
 
