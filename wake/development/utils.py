@@ -58,6 +58,7 @@ from .core import (
     get_fqn_from_address,
     get_user_defined_value_types_index,
 )
+from .errors import RevertError
 from .globals import get_config
 from .primitive_types import FixedSizeList, bytes32, fixed_list_map, uint256
 
@@ -896,7 +897,6 @@ def _try_remove_erc721_owner(
         slot,
         abi.encode(Address.ZERO),
     )
-    from wake.development.transactions import RevertError
 
     # As Specification of ERC721, ZERO address is not a valid owner and must throw.
     try:

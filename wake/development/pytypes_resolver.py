@@ -12,18 +12,14 @@ from .chain_interfaces import (
     GethLikeChainInterfaceAbc,
     HardhatChainInterface,
 )
+from .errors import ExternalError, RevertError, UnknownRevertError
 from .json_rpc.communicator import JsonRpcError
 
 if TYPE_CHECKING:
     from wake.development.chain_interfaces import TxParams
     from wake.development.core import Chain
     from wake.development.internal import ExternalEvent, UnknownEvent
-    from wake.development.transactions import (
-        ExternalError,
-        RevertError,
-        TransactionAbc,
-        UnknownRevertError,
-    )
+    from wake.development.transactions import TransactionAbc
 
 
 def _str_to_bytes(s: str) -> bytes:
@@ -35,8 +31,6 @@ def _str_to_bytes(s: str) -> bytes:
 def _new_unknown_error(
     revert_data: bytes, tx: TransactionAbc | None
 ) -> UnknownRevertError:
-    from wake.development.transactions import UnknownRevertError
-
     err = UnknownRevertError(revert_data)
     err.tx = tx
     return err
@@ -46,7 +40,6 @@ def _new_external_or_unknown_error(
     revert_data: bytes, tx: TransactionAbc | None, fqn_addr: Address, chain: Chain
 ) -> ExternalError | UnknownRevertError:
     from .core import Abi, fix_library_abi
-    from .transactions import ExternalError
     from .utils import get_name_abi_from_explorer_cached
 
     if chain.forked_chain_id is None or len(revert_data) < 4:

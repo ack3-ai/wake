@@ -129,7 +129,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .unbind(),
             wake_halt_exception: py
-                .import("wake.development.transactions")
+                .import("wake.development.errors")
                 .unwrap()
                 .getattr("Halt")
                 .unwrap()
@@ -137,7 +137,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .unbind(),
             wake_unknown_revert_exception: py
-                .import("wake.development.transactions")
+                .import("wake.development.errors")
                 .unwrap()
                 .getattr("UnknownRevertError")
                 .unwrap()
@@ -145,7 +145,7 @@ pub(crate) fn get_py_objects(py: Python<'_>) -> &mut PyObjects {
                 .unwrap()
                 .unbind(),
             wake_external_error: py
-                .import("wake.development.transactions")
+                .import("wake.development.errors")
                 .unwrap()
                 .getattr("ExternalError")
                 .unwrap()

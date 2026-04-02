@@ -1066,8 +1066,9 @@ class Chain(ABC):
             )
         elif dataclasses.is_dataclass(expected_type):
             assert isinstance(value, tuple)
+
             resolved_types = get_type_hints(
-                expected_type  # pyright: ignore reportGeneralTypeIssues
+                expected_type,  # pyright: ignore reportGeneralTypeIssues
             )
             field_types = [
                 resolved_types[field.name]

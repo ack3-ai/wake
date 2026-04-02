@@ -13,6 +13,18 @@ from wake.development.core import (
     get_eip712_struct_hash,
     gwei,
 )
+from wake.development.errors import (
+    Error,
+    ExternalError,
+    Halt,
+    Panic,
+    PanicCodeEnum,
+    RevertError,
+    UnknownRevertError,
+    may_revert,
+    must_revert,
+    on_revert,
+)
 from wake.development.globals import get_config, random
 from wake.development.internal import ExternalEvent, UnknownEvent
 from wake.development.primitive_types import *
@@ -20,18 +32,9 @@ from wake.development.transactions import (
     Eip1559Transaction,
     Eip2930Transaction,
     Eip7702Transaction,
-    Error,
-    ExternalError,
     Halt,
     LegacyTransaction,
-    Panic,
-    PanicCodeEnum,
-    RevertError,
     TransactionAbc,
-    UnknownRevertError,
-    may_revert,
-    must_revert,
-    on_revert,
 )
 from wake.development.utils import (
     burn_erc20,
