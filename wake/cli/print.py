@@ -186,13 +186,10 @@ class PrintCli(click.RichGroup):  # pyright: ignore reportPrivateImportUsage
     def _load_plugins(
         self, plugin_paths: AbstractSet[Path], verify_paths: bool
     ) -> None:
-        import tomli
-
-        if sys.version_info < (3, 10):
-            from importlib_metadata import entry_points
-        else:
-            from importlib.metadata import entry_points
+        from importlib.metadata import entry_points
         from importlib.util import module_from_spec, spec_from_file_location
+
+        import tomli
 
         self._loading_from_plugins = True
         for cmd in self.loaded_from_plugins.keys():
@@ -319,9 +316,9 @@ class PrintCli(click.RichGroup):  # pyright: ignore reportPrivateImportUsage
         self._inject_params(cmd)
         super().add_command(cmd, name)
         if self._loading_from_plugins:
-            self.loaded_from_plugins[name] = (
-                self._current_plugin
-            )  # pyright: ignore reportGeneralTypeIssues
+            self.loaded_from_plugins[
+                name
+            ] = self._current_plugin  # pyright: ignore reportGeneralTypeIssues
 
     def get_command(
         self,

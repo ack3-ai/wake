@@ -64,7 +64,7 @@ Wake 4 (`4.22.1`) stays available with `pip3 install eth-wake` and its documenta
 
 ## Dependencies
 
-- Python (version 3.8 or higher)
+- Python (version 3.10 or higher)
 - Rosetta must be enabled on Apple Silicon Macs
 
 ## Installation

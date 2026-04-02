@@ -33,12 +33,9 @@ from .api import DetectorImpact, DetectorResult
 def create_sarif_log(
     detectors: List[Command], detections: List[Tuple[str, DetectorResult, bool]]
 ) -> SarifLog:
-    from wake.cli.detect import run_detect
+    from importlib.metadata import packages_distributions
 
-    if sys.version_info < (3, 10):
-        from importlib_metadata import packages_distributions
-    else:
-        from importlib.metadata import packages_distributions
+    from wake.cli.detect import run_detect
 
     distributions = packages_distributions()
 
