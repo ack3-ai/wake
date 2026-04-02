@@ -50,7 +50,7 @@ Built by [Ackee Blockchain Security](https://ackee.xyz) — trusted auditors of 
 
 ## Dependencies
 
-- Python (version 3.8 or higher)
+- Python (version 3.10 or higher)
 - Rosetta must be enabled on Apple Silicon Macs
 
 ## Installation
