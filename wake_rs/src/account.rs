@@ -473,9 +473,11 @@ impl Account {
             match &self.chain {
                 ChainWrapper::Native(chain) => {
                     let mut chain = chain.borrow_mut(py);
-                    let fqn_overrides = Arc::get_mut(&mut chain.fqn_overrides)
-                        .expect("fqn_overrides Arc should be uniquely owned while holding GIL");
-                    fqn_overrides.remove(&self.address.borrow(py).0);
+                    if Arc::strong_count(&chain.fqn_overrides) > 1 {
+                        // perform a deep copy manually
+                        chain.fqn_overrides = Arc::new(chain.fqn_overrides.iter().map(|(k, v)| (*k, v.clone_ref(py))).collect());
+                    }
+                    Arc::get_mut(&mut chain.fqn_overrides).unwrap().remove(&self.address.borrow(py).0);
                 }
                 ChainWrapper::Python(chain) => {
                     chain.bind(py).getattr(intern!(py, "_pytypes_resolvers"))?.set_item(self.address.clone_ref(py), value)?;
@@ -489,9 +491,11 @@ impl Account {
             match &self.chain {
                 ChainWrapper::Native(chain) => {
                     let mut chain = chain.borrow_mut(py);
-                    let fqn_overrides = Arc::get_mut(&mut chain.fqn_overrides)
-                        .expect("fqn_overrides Arc should be uniquely owned while holding GIL");
-                    fqn_overrides.insert(self.address.borrow(py).0, pytype.unbind());
+                    if Arc::strong_count(&chain.fqn_overrides) > 1 {
+                        // perform a deep copy manually
+                        chain.fqn_overrides = Arc::new(chain.fqn_overrides.iter().map(|(k, v)| (*k, v.clone_ref(py))).collect());
+                    }
+                    Arc::get_mut(&mut chain.fqn_overrides).unwrap().insert(self.address.borrow(py).0, pytype.unbind());
                 }
                 ChainWrapper::Python(chain) => {
                     chain.bind(py).getattr(intern!(py, "_pytypes_resolvers"))?.set_item(self.address.clone_ref(py), pytype)?;
