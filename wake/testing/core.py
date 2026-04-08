@@ -1,7 +1,18 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import eth_utils
 from Crypto.Hash import keccak
@@ -21,9 +32,9 @@ from wake.development.core import (
 from wake.development.globals import chain_interfaces_manager, random
 from wake.development.json_rpc import JsonRpcError
 
+from ..development.call import Call
 from ..development.chain_interfaces import AnvilChainInterface
-from ..development.pytypes_resolver import resolve_call_error
-from ..development.transactions import TransactionAbc, TransactionStatusEnum
+from ..development.transactions import ExecutionStatusEnum, TransactionAbc
 
 
 class Chain(wake.development.core.Chain):
@@ -204,7 +215,9 @@ class Chain(wake.development.core.Chain):
         params: TxParams,
         arguments: Iterable,
         abi: Optional[Dict],
-        block_identifier: Union[int, str],
+        block_identifier: int
+        | Literal["latest", "pending", "earliest", "safe", "finalized"],
+        return_type: Type,
     ) -> TxParams:
         if "authorizationList" in params and len(params["authorizationList"]) > 0:
             tx_type = 4
@@ -316,7 +329,19 @@ class Chain(wake.development.core.Chain):
                     if "gas" in params and params["gas"] == "auto":
                         tx["gas"] = int(response["gasUsed"], 16)
                 except JsonRpcError as e:
-                    raise resolve_call_error(self, tx, block_identifier, e) from None
+                    call = Call[return_type](
+                        tx_params=tx,
+                        block=block_identifier,
+                        chain=self,
+                        abi=abi,
+                        return_type=return_type,
+                        raw_return_value=None,
+                        raw_error=self._extract_call_revert_data(e),
+                        estimated_gas=None,
+                        access_list=None,
+                    )
+                    assert call.error is not None
+                    raise call.error from None
 
         if "gas" not in params:
             # use "max" when unset
@@ -330,7 +355,19 @@ class Chain(wake.development.core.Chain):
                     self._chain_interface.estimate_gas(tx, block_identifier) * 1.1
                 )
             except JsonRpcError as e:
-                raise resolve_call_error(self, tx, block_identifier, e) from None
+                call = Call[return_type](
+                    tx_params=tx,
+                    block=block_identifier,
+                    chain=self,
+                    abi=abi,
+                    return_type=return_type,
+                    raw_return_value=None,
+                    raw_error=self._extract_call_revert_data(e),
+                    estimated_gas=None,
+                    access_list=None,
+                )
+                assert call.error is not None
+                raise call.error from None
         else:
             raise ValueError(f"Invalid gas value: {params['gas']}")
 
@@ -344,7 +381,7 @@ class Chain(wake.development.core.Chain):
         elif confirmations is None:
             confirmations = self.default_tx_confirmations
 
-        while tx.status == TransactionStatusEnum.PENDING:
+        while tx.status == ExecutionStatusEnum.PENDING:
             pass
 
         if confirmations == 1:

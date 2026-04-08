@@ -601,7 +601,7 @@ impl Account {
         )
     }
 
-    #[pyo3(signature = (data=vec![], value=ValueEnum::Int(BigUint::ZERO), from_=None, gas_limit=None, gas_price=None, max_fee_per_gas=None, max_priority_fee_per_gas=None, access_list=None, authorization_list=None, block=BlockEnum::Latest))]
+    #[pyo3(signature = (data=vec![], value=ValueEnum::Int(BigUint::ZERO), from_=None, gas_limit=None, gas_price=None, max_fee_per_gas=None, max_priority_fee_per_gas=None, access_list=None, authorization_list=None, block=BlockEnum::Latest, return_call=false))]
     fn call<'py>(
         slf: &Bound<Self>,
         py: Python<'py>,
@@ -615,6 +615,7 @@ impl Account {
         access_list: Option<AccessListEnum>,
         authorization_list: Option<Vec<Bound<'py, PyDict>>>,
         block: BlockEnum,
+        return_call: bool,
     ) -> PyResult<Py<PyAny>> {
         let borrowed = slf.borrow();
         match &borrowed.chain {
@@ -634,6 +635,7 @@ impl Account {
                 block,
                 None,
                 None,
+                return_call,
             ),
             ChainWrapper::Python(chain) => {
                 let params = prepare_tx_params(
@@ -660,6 +662,7 @@ impl Account {
                         params,
                         PyBytes::type_object(py),
                         block,
+                        return_call,
                     ),
                 )
             }
@@ -667,7 +670,7 @@ impl Account {
     }
 
     #[pyo3(signature = (
-        data=vec![], value=ValueEnum::Int(BigUint::ZERO), from_=None, gas_limit=None, gas_price=None, max_fee_per_gas=None, max_priority_fee_per_gas=None, access_list=None, authorization_list=None, block=BlockEnum::Pending, revert_on_failure=true))]
+        data=vec![], value=ValueEnum::Int(BigUint::ZERO), from_=None, gas_limit=None, gas_price=None, max_fee_per_gas=None, max_priority_fee_per_gas=None, access_list=None, authorization_list=None, block=BlockEnum::Pending, revert_on_failure=true, return_call=false))]
     fn estimate<'py>(
         slf: &Bound<Self>,
         py: Python<'py>,
@@ -682,6 +685,7 @@ impl Account {
         authorization_list: Option<Vec<Bound<'py, PyDict>>>,
         block: BlockEnum,
         revert_on_failure: bool,
+        return_call: bool,
     ) -> PyResult<Py<PyAny>> {
         let borrowed = slf.borrow();
         match &borrowed.chain {
@@ -699,7 +703,10 @@ impl Account {
                 access_list,
                 authorization_list,
                 block,
+                None,
+                None,
                 revert_on_failure,
+                return_call,
             )?.into_py_any(py),
             ChainWrapper::Python(chain) => {
                 if !revert_on_failure {
@@ -725,13 +732,13 @@ impl Account {
                 chain.call_method1(
                     py,
                     intern!(py, "_estimate"),
-                    (PyNone::get(py), args, params, block),
+                    (PyNone::get(py), args, params, block, return_call),
                 )
             }
         }
     }
 
-    #[pyo3(signature = (data=vec![], value=ValueEnum::Int(BigUint::ZERO), from_=None, gas_limit=None, gas_price=None, max_fee_per_gas=None, max_priority_fee_per_gas=None, authorization_list=None, block=BlockEnum::Pending, revert_on_failure=true))]
+    #[pyo3(signature = (data=vec![], value=ValueEnum::Int(BigUint::ZERO), from_=None, gas_limit=None, gas_price=None, max_fee_per_gas=None, max_priority_fee_per_gas=None, authorization_list=None, block=BlockEnum::Pending, revert_on_failure=true, return_call=false))]
     fn access_list<'py>(
         slf: &Bound<Self>,
         py: Python<'py>,
@@ -745,6 +752,7 @@ impl Account {
         authorization_list: Option<Vec<Bound<'py, PyDict>>>,
         block: BlockEnum,
         revert_on_failure: bool,
+        return_call: bool,
     ) -> PyResult<Py<PyAny>> {
         let borrowed = slf.borrow();
         match &borrowed.chain {
@@ -761,7 +769,10 @@ impl Account {
                 max_priority_fee_per_gas.map(|v| v.try_into()).transpose()?,
                 authorization_list,
                 block,
+                None,
+                None,
                 revert_on_failure,
+                return_call,
             )?.into_py_any(py),
             ChainWrapper::Python(chain) => {
                 if !revert_on_failure {
@@ -787,7 +798,7 @@ impl Account {
                 chain.call_method1(
                     py,
                     intern!(py, "_access_list"),
-                    (PyNone::get(py), args, params, block),
+                    (PyNone::get(py), args, params, block, return_call),
                 )
             }
         }

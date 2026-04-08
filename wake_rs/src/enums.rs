@@ -262,7 +262,7 @@ impl FromPyObject<'_, '_> for AccessListEnum {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum BlockEnum {
     Int(i64),
     Latest,

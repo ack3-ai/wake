@@ -1,5 +1,6 @@
 from rich import print
 
+from wake.development.call import Call
 from wake.development.core import (
     Abi,
     Account,
@@ -32,7 +33,6 @@ from wake.development.transactions import (
     Eip1559Transaction,
     Eip2930Transaction,
     Eip7702Transaction,
-    Halt,
     LegacyTransaction,
     TransactionAbc,
 )

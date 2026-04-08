@@ -5,43 +5,38 @@ use pyo3::{
     intern, prelude::*, types::{PyBytes, PyDict, PyList, PyNone, PyTuple}, IntoPyObjectExt, PyTypeInfo
 };
 use revm::{
-    context::{result::{ExecutionResult, Output}, BlockEnv, TxEnv}, primitives::{
+    context::{result::{ExecutionResult, Output}, TxEnv}, primitives::{
         bytes::Buf, Log, TxKind, B256
     },
 };
 
 use crate::{
-    abi_old::{alloy_to_py, AbiError}, account::Account, address::Address, blocks::Block, chain::Chain, inspectors::fqn_inspector::{ErrorMetadata, EventMetadata}, pytypes::{
+    abi_old::{alloy_to_py, AbiError}, account::Account, address::Address, blocks::Block, chain::{BlockInfo, Chain}, inspectors::fqn_inspector::{ErrorMetadata, EventMetadata}, pytypes::{
         collapse_if_tuple, decode_and_normalize, new_unknown_error,
         resolve_error, resolve_event,
     }, utils::get_py_objects
 };
-
-pub enum BlockInfo {
-    Mined(Py<Block>),
-    Pending(BlockEnv),
-}
 
 #[pyclass(subclass)]
 pub struct TransactionAbc {
     chain: Py<Chain>,
     pub(crate) block: BlockInfo,
     return_type: Py<PyAny>,
-    result: ExecutionResult,
+    pub(crate) result: ExecutionResult,
     abi: Option<Py<PyDict>>,
-    errors_metadata: HashMap<[u8; 4], ErrorMetadata>,
-    events_metadata: HashMap<Log, EventMetadata>,
+    pub(crate) errors_metadata: HashMap<[u8; 4], ErrorMetadata>,
+    pub(crate) events_metadata: HashMap<Log, EventMetadata>,
 
     cached_events: Option<Py<PyTuple>>,
     cached_error: Option<PyErr>,
     cached_return_value: Option<Py<PyAny>>,
     cached_call_trace: Option<Py<PyAny>>,
     pub(crate) journal_index: usize, // used for EVM DB journal rollbacks; index into DB journal before this tx happened
-    tx_env: TxEnv,
-    gas_limit_before: u64, // gas limit before this tx was executed
-    tx_hash: B256,
+    pub(crate) tx_env: TxEnv,
+    pub(crate) gas_limit_before: u64, // gas limit before this tx was executed
+    pub(crate) tx_hash: B256,
     #[pyo3(get)]
-    tx_index: u32,
+    pub(crate) tx_index: u32,
 }
 
 impl TransactionAbc {
@@ -161,9 +156,9 @@ impl TransactionAbc {
         let py_objects = get_py_objects(py);
 
         match &self.result {
-            ExecutionResult::Success { .. } => py_objects.tx_status_enum.bind(py).call1((1,)),
-            ExecutionResult::Revert { .. } => py_objects.tx_status_enum.bind(py).call1((0,)),
-            ExecutionResult::Halt { .. } => py_objects.tx_status_enum.bind(py).call1((0,)),
+            ExecutionResult::Success { .. } => py_objects.wake_exec_status_enum.bind(py).call1((1,)),
+            ExecutionResult::Revert { .. } => py_objects.wake_exec_status_enum.bind(py).call1((0,)),
+            ExecutionResult::Halt { .. } => py_objects.wake_exec_status_enum.bind(py).call1((0,)),
         }
     }
 
@@ -318,6 +313,7 @@ impl TransactionAbc {
                     &output,
                     &borrowed.chain,
                     Some(slf),
+                    None,
                     &borrowed.errors_metadata,
                     get_py_objects(py),
                 )?
@@ -344,8 +340,7 @@ impl TransactionAbc {
                 logs: _,
                 output,
             } => {
-                let error = new_unknown_error(py, output, Some(slf), get_py_objects(py))?;
-                error.setattr(py, "tx", slf)?;
+                let error = new_unknown_error(py, output, Some(slf), None, get_py_objects(py))?;
                 Ok(Some(PyErr::from_value(error.into_bound(py),)))
             }
             ExecutionResult::Halt { reason, .. } => {

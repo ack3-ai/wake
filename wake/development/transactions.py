@@ -40,17 +40,12 @@ from .core import (
     get_fqn_from_address,
     get_fqn_from_creation_code,
 )
-from .internal import UnknownEvent, read_from_memory
+from .internal import ExecutionStatusEnum, UnknownEvent, read_from_memory
 from .json_rpc import JsonRpcError
 from .pytypes_resolver import resolve_tx_error, resolve_tx_events
 
+R = TypeVar("R", bytes, Account)
 T = TypeVar("T")
-
-
-class TransactionStatusEnum(IntEnum):
-    PENDING = -1
-    SUCCESS = 1
-    FAILURE = 0
 
 
 class TransactionTypeEnum(IntEnum):
@@ -205,7 +200,7 @@ class ChainTransactions:
         self._tx_hashes.append(tx_hash)
 
 
-class TransactionAbc(ABC, Generic[T]):
+class TransactionAbc(ABC, Generic[R, T]):
     _tx_hash: str
     _tx_params: TxParams
     _chain: Chain
@@ -352,18 +347,18 @@ class TransactionAbc(ABC, Generic[T]):
         )
 
     @property
-    def status(self) -> TransactionStatusEnum:
+    def status(self) -> ExecutionStatusEnum:
         if self._tx_receipt is None:
             receipt = self._chain.chain_interface.get_transaction_receipt(self._tx_hash)
             if receipt is None:
-                return TransactionStatusEnum.PENDING
+                return ExecutionStatusEnum.PENDING
             else:
                 self._tx_receipt = receipt
 
         if int(self._tx_receipt["status"], 16) == 0:
-            return TransactionStatusEnum.FAILURE
+            return ExecutionStatusEnum.FAILURE
         else:
-            return TransactionStatusEnum.SUCCESS
+            return ExecutionStatusEnum.SUCCESS
 
     def wait(self, confirmations: Optional[int] = None) -> None:
         self._chain._wait_for_transaction(self, confirmations)
@@ -458,7 +453,9 @@ class TransactionAbc(ABC, Generic[T]):
     @property
     @_fetch_tx_receipt
     def error(self) -> Optional[Union[RevertError, Halt]]:
-        if self.status == TransactionStatusEnum.SUCCESS:
+        from .errors import Halt
+
+        if self.status == ExecutionStatusEnum.SUCCESS:
             return None
 
         if self._error is not None:
@@ -479,7 +476,7 @@ class TransactionAbc(ABC, Generic[T]):
     def raw_error(self) -> Optional[Union[UnknownRevertError, Halt]]:
         from .errors import Halt, UnknownRevertError
 
-        if self.status == TransactionStatusEnum.SUCCESS:
+        if self.status == ExecutionStatusEnum.SUCCESS:
             return None
 
         if self._raw_error is not None:
@@ -497,7 +494,9 @@ class TransactionAbc(ABC, Generic[T]):
                 "result" not in self._trace_transaction[0]
                 or self._trace_transaction[0]["result"] is None
             ):
-                return Halt(self._trace_transaction[0]["error"])
+                self._raw_error = Halt(self._trace_transaction[0]["error"])
+                self._raw_error.tx = self
+                return self._raw_error
 
         # due to a bug, Anvil does not return revert data for failed contract creations
         if isinstance(chain_interface, AnvilChainInterface) and self.to is not None:
@@ -563,7 +562,7 @@ class TransactionAbc(ABC, Generic[T]):
                 return self._return_type(raw_value)
 
             return self._chain._process_return_data(
-                self, raw_value, self._abi, self._return_type
+                raw_value, self._abi, self._return_type
             )
         else:
             raise TypeError(
@@ -572,8 +571,8 @@ class TransactionAbc(ABC, Generic[T]):
 
     @property
     @_fetch_tx_receipt
-    def raw_return_value(self) -> Union[Account, bytes]:
-        if self.status != TransactionStatusEnum.SUCCESS:
+    def raw_return_value(self) -> R:
+        if self.status != ExecutionStatusEnum.SUCCESS:
             e = self.error
             assert e is not None
             raise e
@@ -622,19 +621,17 @@ class TransactionAbc(ABC, Generic[T]):
         return output
 
     @property
-    @_fetch_tx_data
     @_fetch_tx_receipt
     def call_trace(self) -> CallTrace:
         if self._debug_trace_transaction is None:
             self._fetch_debug_trace_transaction()
         assert self._debug_trace_transaction is not None
-        assert self._tx_data is not None
 
         return CallTrace.from_debug_trace(
             self._debug_trace_transaction,  # pyright: ignore reportGeneralTypeIssues
             self._tx_params,
             self.chain,
-            self.return_value if self.status == TransactionStatusEnum.SUCCESS else None,
+            self.return_value if self.status == ExecutionStatusEnum.SUCCESS else None,
             self.block_number,
         )
 
@@ -644,7 +641,7 @@ class TransactionAbc(ABC, Generic[T]):
         ...
 
 
-class LegacyTransaction(TransactionAbc[T]):
+class LegacyTransaction(TransactionAbc[R, T]):
     @property
     @_fetch_tx_data
     def v(self) -> int:
@@ -660,7 +657,7 @@ class LegacyTransaction(TransactionAbc[T]):
         return TransactionTypeEnum.LEGACY
 
 
-class Eip2930Transaction(TransactionAbc[T]):
+class Eip2930Transaction(TransactionAbc[R, T]):
     @property
     def chain_id(self) -> int:
         assert "chainId" in self._tx_params
@@ -695,7 +692,7 @@ class Eip2930Transaction(TransactionAbc[T]):
         return TransactionTypeEnum.EIP2930
 
 
-class Eip1559Transaction(TransactionAbc[T]):
+class Eip1559Transaction(TransactionAbc[R, T]):
     @property
     def max_fee_per_gas(self) -> Wei:
         if "maxFeePerGas" not in self._tx_params:
@@ -740,7 +737,7 @@ class Eip1559Transaction(TransactionAbc[T]):
         return TransactionTypeEnum.EIP1559
 
 
-class Eip7702Transaction(TransactionAbc[T]):
+class Eip7702Transaction(TransactionAbc[R, T]):
     @property
     def max_fee_per_gas(self) -> Wei:
         if "maxFeePerGas" not in self._tx_params:

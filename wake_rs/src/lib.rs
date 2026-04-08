@@ -33,6 +33,7 @@ mod chain_interface;
 mod chain_snapshot;
 mod txs;
 mod inspectors;
+mod call;
 pub mod db;
 
 

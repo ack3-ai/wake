@@ -44,7 +44,6 @@ from .core import (
     get_fqn_from_address,
     get_fqn_from_creation_code,
 )
-from .errors import PanicCodeEnum
 from .globals import get_config, get_verbosity
 from .internal import read_from_memory
 from .utils import get_name_abi_from_explorer_cached
@@ -399,6 +398,10 @@ class CallTraceEvent:
 
 
 class CallTrace:
+    _fqn_to_contract_abi: Optional[
+        Callable[[str], Tuple[Optional[Contract], Dict]]
+    ] = None
+
     _contract: Optional[Contract]
     _contract_name: Optional[str]
     _function_name: Optional[str]
@@ -997,12 +1000,12 @@ class CallTrace:
         tx_params: TxParams,
         chain: Chain,
         created_contract: Optional[Account],
-        fqn_block_number: int,  # post-tx/same-call block number to fetch fqn from code
+        fqn_block_number: int
+        | str,  # post-tx/same-call block number to fetch fqn from code
         all_fqns: Optional[AbstractSet[str]] = None,
-        fqn_to_contract_abi: Optional[
-            Callable[[str], Tuple[Optional[Contract], Dict]]
-        ] = None,
     ):
+        from .errors import PanicCodeEnum
+
         assert tx_params["gas"] != "auto"
 
         fqn_overrides = ChainMap()
@@ -1012,10 +1015,12 @@ class CallTrace:
         if all_fqns is None:
             all_fqns = contracts_by_fqn.keys()
 
-        if fqn_to_contract_abi is None:
+        if cls._fqn_to_contract_abi is None:
             fqn_to_contract_abi = partial(
                 fqn_to_contract_abi_impl, contracts_by_fqn=contracts_by_fqn
             )
+        else:
+            fqn_to_contract_abi = cls._fqn_to_contract_abi
 
         to = Account(tx_params["to"], chain) if "to" in tx_params else None
 
@@ -1774,11 +1779,16 @@ class CallTrace:
         *,
         depth: int = 0,
     ) -> CallTrace:
+        from .errors import PanicCodeEnum
+
+        if cls._fqn_to_contract_abi is None:
+            fqn_to_contract_abi = partial(
+                fqn_to_contract_abi_impl, contracts_by_fqn=get_contracts_by_fqn()
+            )
+        else:
+            fqn_to_contract_abi = cls._fqn_to_contract_abi
 
         origin = Account(sender, chain)
-        fqn_to_contract_abi = partial(
-            fqn_to_contract_abi_impl, contracts_by_fqn=get_contracts_by_fqn()
-        )
 
         if trace.metadata is not None:
             try:

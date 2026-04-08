@@ -12,8 +12,8 @@ use revm_inspectors::access_list::AccessListInspector as RevmAccessListInspector
 use super::fqn_inspector::{ErrorMetadata, FqnInspector};
 
 pub(crate) struct AccessListInspector {
-    inner: RevmAccessListInspector,
-    fqn_inspector: FqnInspector,
+    pub(crate) inner: RevmAccessListInspector,
+    pub(crate) fqn_inspector: FqnInspector,
 }
 
 impl AccessListInspector {

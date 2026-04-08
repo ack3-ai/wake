@@ -1,7 +1,7 @@
 import os
 import time
 from contextlib import contextmanager, nullcontext
-from typing import Any, Dict, Iterable, Optional, Union, cast
+from typing import Any, Dict, Iterable, Literal, Optional, Type, Union, cast
 from urllib.error import HTTPError
 
 import eth_utils
@@ -14,6 +14,7 @@ from rich.table import Table
 
 import wake.development.core
 from wake.cli.console import console
+from wake.development.call import Call
 from wake.development.chain_interfaces import AnvilChainInterface, TxParams
 from wake.development.core import (
     Abi,
@@ -27,14 +28,13 @@ from wake.development.core import (
 )
 from wake.development.globals import chain_interfaces_manager, get_config, get_verbosity
 from wake.development.json_rpc.communicator import JsonRpcError
-from wake.development.pytypes_resolver import resolve_call_error
 from wake.development.transactions import (
     Eip1559Transaction,
     Eip2930Transaction,
     Eip7702Transaction,
+    ExecutionStatusEnum,
     LegacyTransaction,
     TransactionAbc,
-    TransactionStatusEnum,
 )
 from wake.development.utils import get_etherscan_explorer_info
 from wake.utils.formatters import format_wei
@@ -152,7 +152,9 @@ class Chain(wake.development.core.Chain):
         params: TxParams,
         arguments: Iterable,
         abi: Optional[Dict],
-        block_identifier: Union[int, str],
+        block_identifier: int
+        | Literal["latest", "pending", "earliest", "safe", "finalized"],
+        return_type: Type,
     ) -> TxParams:
         # default to tx_type >= 2 if base fee is present
         block = self.chain_interface.get_block(block_identifier)
@@ -267,7 +269,19 @@ class Chain(wake.development.core.Chain):
                     self._chain_interface.estimate_gas(tx_copy, block_identifier) * 1.1
                 )
             except JsonRpcError as e:
-                raise resolve_call_error(self, tx_copy, block_identifier, e) from None
+                call = Call[return_type](
+                    tx_params=tx_copy,
+                    block=block_identifier,
+                    chain=self,
+                    abi=abi,
+                    return_type=return_type,
+                    raw_return_value=None,
+                    raw_error=self._extract_call_revert_data(e),
+                    estimated_gas=None,
+                    access_list=None,
+                )
+                assert call.error is not None
+                raise call.error from None
         elif isinstance(params["gas"], int):
             tx["gas"] = params["gas"]
         else:
@@ -285,9 +299,19 @@ class Chain(wake.development.core.Chain):
             except (JsonRpcError, HTTPError) as e:
                 if isinstance(e, JsonRpcError):
                     try:
-                        raise resolve_call_error(
-                            self, tx, block_identifier, e
-                        ) from None
+                        call = Call[return_type](
+                            tx_params=tx,
+                            block=block_identifier,
+                            chain=self,
+                            abi=abi,
+                            return_type=return_type,
+                            raw_return_value=None,
+                            raw_error=self._extract_call_revert_data(e),
+                            estimated_gas=None,
+                            access_list=None,
+                        )
+                        assert call.error is not None
+                        raise call.error from None
                     except JsonRpcError:
                         pass  # eth_createAccessList probably not supported
 
@@ -309,9 +333,19 @@ class Chain(wake.development.core.Chain):
                         * 1.1
                     )
                 except JsonRpcError as e:
-                    raise resolve_call_error(
-                        self, tx_copy, block_identifier, e
-                    ) from None
+                    call = Call[return_type](
+                        tx_params=tx_copy,
+                        block=block_identifier,
+                        chain=self,
+                        abi=abi,
+                        return_type=return_type,
+                        raw_return_value=None,
+                        raw_error=self._extract_call_revert_data(e),
+                        estimated_gas=None,
+                        access_list=None,
+                    )
+                    assert call.error is not None
+                    raise call.error from None
 
                 if params.get("accessList") == "auto" or (
                     "accessList" not in params and gas_used <= tx["gas"]
@@ -374,7 +408,7 @@ class Chain(wake.development.core.Chain):
         )
 
         with ctx_manager as status:
-            while tx.status == TransactionStatusEnum.PENDING:
+            while tx.status == ExecutionStatusEnum.PENDING:
                 time.sleep(0.5)
                 if status is not None:
                     status.update(get_pending_text())

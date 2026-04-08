@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import IntEnum
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from .core import Account
+
+
+class ExecutionStatusEnum(IntEnum):
+    PENDING = -1
+    SUCCESS = 1
+    FAILURE = 0
 
 
 @dataclass

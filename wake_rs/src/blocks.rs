@@ -14,7 +14,7 @@ use log::info;
 #[pyclass]
 pub(crate) struct Blocks {
     chain: Py<Chain>,
-    blocks: Vec<Py<Block>>,
+    pub(crate) blocks: Vec<Py<Block>>,
     blocks_start_index: usize,
     forked_blocks: HashMap<u64, Py<Block>>,
     forked_block: Option<u64>,

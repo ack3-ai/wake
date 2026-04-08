@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from os import PathLike
-from typing import Dict, List, Sequence, Union, Optional, Any, Callable, Type, Tuple
+from typing import Dict, List, Sequence, Union, Optional, Any, Callable, Type, Tuple, overload
 from typing_extensions import Literal
 
 from wake.development.core import Chain, SignedAuthorization, TransactionAbc, TxParams, Eip712Domain, Wei
+from wake.development.call import Call
 from wake.development.primitive_types import bytes32
 
 
@@ -185,6 +186,7 @@ class Account:
 
     pytypes_resolver: Optional[Type[Contract]]
 
+    @overload
     def call(
         self,
         data: bytes = b"",
@@ -206,8 +208,35 @@ class Account:
             Literal["safe"],
             Literal["finalized"],
         ] = "latest",
+        return_call: Literal[False] = False,
     ) -> bytes: ...
 
+    @overload
+    def call(
+        self,
+        data: bytes = b"",
+        value: Union[int, str] = 0,
+        from_: Optional[Union[Account, Address, str]] = None,
+        gas_limit: Optional[Union[int, Literal["max"], Literal["auto"]]] = None,
+        gas_price: Optional[Union[int, str]] = None,
+        max_fee_per_gas: Optional[Union[int, str]] = None,
+        max_priority_fee_per_gas: Optional[Union[int, str]] = None,
+        access_list: Optional[
+            Union[Dict[Union[Account, Address, str], List[int]], Literal["auto"]]
+        ] = None,
+        authorization_list: Optional[List[SignedAuthorization]] = None,
+        block: Union[
+            int,
+            Literal["latest"],
+            Literal["pending"],
+            Literal["earliest"],
+            Literal["safe"],
+            Literal["finalized"],
+        ] = "latest",
+        return_call: Literal[True] = ...,
+    ) -> Call[bytes]: ...
+
+    @overload
     def estimate(
         self,
         data: bytes = b"",
@@ -230,8 +259,36 @@ class Account:
             Literal["finalized"],
         ] = "pending",
         revert_on_failure: bool = True,
+        return_call: Literal[False] = False,
     ) -> int: ...
 
+    @overload
+    def estimate(
+        self,
+        data: bytes = b"",
+        value: Union[int, str] = 0,
+        from_: Optional[Union[Account, Address, str]] = None,
+        gas_limit: Optional[Union[int, Literal["max"], Literal["auto"]]] = None,
+        gas_price: Optional[Union[int, str]] = None,
+        max_fee_per_gas: Optional[Union[int, str]] = None,
+        max_priority_fee_per_gas: Optional[Union[int, str]] = None,
+        access_list: Optional[
+            Union[Dict[Union[Account, Address, str], List[int]], Literal["auto"]]
+        ] = None,
+        authorization_list: Optional[List[SignedAuthorization]] = None,
+        block: Union[
+            int,
+            Literal["latest"],
+            Literal["pending"],
+            Literal["earliest"],
+            Literal["safe"],
+            Literal["finalized"],
+        ] = "pending",
+        revert_on_failure: bool = True,
+        return_call: Literal[True] = ...,
+    ) -> Call[int]: ...
+
+    @overload
     def access_list(
         self,
         data: bytes = b"",
@@ -251,7 +308,31 @@ class Account:
             Literal["finalized"],
         ] = "pending",
         revert_on_failure: bool = True,
+        return_call: Literal[False] = False,
     ) -> Tuple[Dict[Address, List[int]], int]: ...
+
+    @overload
+    def access_list(
+        self,
+        data: bytes = b"",
+        value: Union[int, str] = 0,
+        from_: Optional[Union[Account, Address, str]] = None,
+        gas_limit: Optional[Union[int, Literal["max"], Literal["auto"]]] = None,
+        gas_price: Optional[Union[int, str]] = None,
+        max_fee_per_gas: Optional[Union[int, str]] = None,
+        max_priority_fee_per_gas: Optional[Union[int, str]] = None,
+        authorization_list: Optional[List[SignedAuthorization]] = None,
+        block: Union[
+            int,
+            Literal["latest"],
+            Literal["pending"],
+            Literal["earliest"],
+            Literal["safe"],
+            Literal["finalized"],
+        ] = "pending",
+        revert_on_failure: bool = True,
+        return_call: Literal[True] = ...,
+    ) -> Call[Tuple[Dict[Address, List[int]], int]]: ...
 
     def transact(
         self,
@@ -267,7 +348,7 @@ class Account:
         ] = None,
         authorization_list: Optional[List[SignedAuthorization]] = None,
         confirmations: Optional[int] = None,
-    ) -> TransactionAbc[bytes]: ...
+    ) -> TransactionAbc[bytes, bytes]: ...
 
     def sign(self, data: bytes) -> bytes: ...
 
