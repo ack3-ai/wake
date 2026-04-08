@@ -121,7 +121,31 @@ class SolidityName(ParamType):
 class Chain(ParamType):
     name = "chain"
 
-    choices = {"mainnet": 1, "bsc": 56, "polygon": 137, "avax": 43114}
+    choices = {
+        "mainnet": 1,
+        "ethereum": 1,
+        "eth": 1,
+        "optimism": 10,
+        "op": 10,
+        "bsc": 56,
+        "bnb": 56,
+        "polygon": 137,
+        "gnosis": 100,
+        "xdai": 100,
+        "fantom": 250,
+        "ftm": 250,
+        "zksync": 324,
+        "base": 8453,
+        "arbitrum": 42161,
+        "arb": 42161,
+        "avax": 43114,
+        "avalanche": 43114,
+        "linea": 59144,
+        "blast": 81457,
+        "scroll": 534352,
+        "sepolia": 11155111,
+        "holesky": 17000,
+    }
 
     def get_metavar(self, param: Parameter, ctx: Context | None = None) -> str:
         choices_str = "|".join(self.choices.keys())
