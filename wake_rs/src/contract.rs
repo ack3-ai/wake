@@ -96,7 +96,7 @@ impl Contract {
         }
     }
 
-    #[pyo3(signature = (request_type, arguments, return_tx, return_type, from_, value, gas_limit, libraries, chain, gas_price, max_fee_per_gas, max_priority_fee_per_gas, access_list, authorization_list, block, confirmations, revert))]
+    #[pyo3(signature = (request_type, arguments, return_tx, return_type, from_, value, gas_limit, libraries, chain, gas_price, max_fee_per_gas, max_priority_fee_per_gas, access_list, authorization_list, block, confirmations, revert, return_call))]
     #[classmethod]
     pub(crate) fn _deploy(
         cls: &Bound<PyType>,
@@ -118,6 +118,7 @@ impl Contract {
         block: Option<BlockEnum>,
         confirmations: Option<u64>,
         revert: bool,
+        return_call: bool,
     ) -> PyResult<Py<PyAny>> {
         let chain = match chain {
             Some(chain) => chain,
@@ -224,10 +225,11 @@ impl Contract {
             block,
             confirmations,
             revert,
+            return_call,
         )
     }
 
-    #[pyo3(signature = (chain, request_type, data, arguments, return_tx, return_type, from_, to, value, gas_limit, gas_price, max_fee_per_gas, max_priority_fee_per_gas, access_list, authorization_list, block, confirmations, revert))]
+    #[pyo3(signature = (chain, request_type, data, arguments, return_tx, return_type, from_, to, value, gas_limit, gas_price, max_fee_per_gas, max_priority_fee_per_gas, access_list, authorization_list, block, confirmations, revert, return_call))]
     #[classmethod]
     pub(crate) fn _execute(
         cls: &Bound<PyType>,
@@ -250,6 +252,7 @@ impl Contract {
         block: Option<BlockEnum>,
         confirmations: Option<u64>,
         revert: bool,
+        return_call: bool,
     ) -> PyResult<Py<PyAny>> {
         if request_type == RequestTypeEnum::Tx && block.is_some() {
             return Err(PyValueError::new_err(
@@ -274,6 +277,11 @@ impl Contract {
         if request_type != RequestTypeEnum::AccessList && request_type != RequestTypeEnum::Estimate && !revert {
             return Err(PyValueError::new_err(
                 "revert may only be changed for access list and estimate requests",
+            ));
+        }
+        if request_type == RequestTypeEnum::Tx && return_call {
+            return Err(PyValueError::new_err(
+                "return_call cannot be specified for tx requests",
             ));
         }
 
@@ -353,6 +361,7 @@ impl Contract {
                     block.unwrap_or(BlockEnum::Latest),
                     Some(return_type),
                     abi,
+                    return_call,
                 ),
                 RequestTypeEnum::Estimate => Chain::estimate(
                     chain,
@@ -368,7 +377,10 @@ impl Contract {
                     access_list,
                     authorization_list,
                     block.unwrap_or(BlockEnum::Pending),
+                    Some(return_type),
+                    abi,
                     revert,
+                    return_call,
                 )?.into_py_any(py),
                 RequestTypeEnum::AccessList => Chain::access_list(
                     chain,
@@ -383,7 +395,10 @@ impl Contract {
                     max_priority_fee_per_gas.map(|v| v.try_into()).transpose()?,
                     authorization_list,
                     block.unwrap_or(BlockEnum::Pending),
+                    Some(return_type),
+                    abi,
                     revert,
+                    return_call,
                 )?.into_py_any(py),
             }
         } else {
@@ -446,19 +461,34 @@ impl Contract {
                         params,
                         return_type,
                         block.unwrap_or(BlockEnum::Latest),
+                        return_call,
                     ),
                     None,
                 ),
                 RequestTypeEnum::Estimate => chain.call_method(
                     py,
                     intern!(py, "_estimate"),
-                    (abi, arguments, params, block.unwrap_or(BlockEnum::Pending)),
+                    (
+                        abi,
+                        arguments,
+                        params,
+                        return_type,
+                        block.unwrap_or(BlockEnum::Pending),
+                        return_call,
+                    ),
                     None,
                 ),
                 RequestTypeEnum::AccessList => chain.call_method(
                     py,
                     intern!(py, "_access_list"),
-                    (abi, arguments, params, block.unwrap_or(BlockEnum::Pending)),
+                    (
+                        abi,
+                        arguments,
+                        params,
+                        return_type,
+                        block.unwrap_or(BlockEnum::Pending),
+                        return_call,
+                    ),
                     None,
                 ),
             }

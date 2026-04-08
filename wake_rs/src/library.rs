@@ -28,7 +28,7 @@ impl Library {
         Ok(PyClassInitializer::from(Contract::new(py, address, chain)?).add_subclass(Library {}))
     }
 
-    #[pyo3(signature = (request_type, arguments, return_tx, return_type, from_, value, gas_limit, libraries, chain, gas_price, max_fee_per_gas, max_priority_fee_per_gas, access_list, authorization_list, block, confirmations, revert))]
+    #[pyo3(signature = (request_type, arguments, return_tx, return_type, from_, value, gas_limit, libraries, chain, gas_price, max_fee_per_gas, max_priority_fee_per_gas, access_list, authorization_list, block, confirmations, revert, return_call))]
     #[classmethod]
     fn _deploy(
         cls: &Bound<PyType>,
@@ -50,6 +50,7 @@ impl Library {
         block: Option<BlockEnum>,
         confirmations: Option<u64>,
         revert: bool,
+        return_call: bool,
     ) -> PyResult<Py<PyAny>> {
         let chain = match chain {
             Some(chain) => chain,
@@ -79,6 +80,7 @@ impl Library {
             block,
             confirmations,
             revert,
+            return_call,
         )?;
 
         if confirmations != Some(0) {

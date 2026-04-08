@@ -8,14 +8,7 @@ use pyo3::{
 use revm::{context::ContextTr, primitives::Log};
 
 use crate::{
-    abi_old::{alloy_to_py, AbiError},
-    account::Account,
-    address::Address,
-    chain::Chain,
-    contract::Contract,
-    inspectors::fqn_inspector::{CallErrorMetadata, CallEventMetadata, ErrorMetadata, EventMetadata},
-    tx::TransactionAbc,
-    utils::{get_fqn_from_creation_code, PyObjects},
+    abi_old::{AbiError, alloy_to_py}, account::Account, address::Address, call::Call, chain::Chain, contract::Contract, inspectors::fqn_inspector::{CallErrorMetadata, CallEventMetadata, ErrorMetadata, EventMetadata}, tx::TransactionAbc, utils::{PyObjects, get_fqn_from_creation_code}
 };
 
 pub(crate) fn decode_and_normalize(
@@ -49,6 +42,7 @@ fn external_or_unknown_error(
     data: &[u8],
     chain: &Py<Chain>,
     tx: Option<&Bound<TransactionAbc>>,
+    call: Option<&Bound<Call>>,
     metadata: &CallErrorMetadata,
     py_objects: &mut PyObjects,
 ) -> PyResult<Py<PyAny>> {
@@ -135,6 +129,8 @@ fn external_or_unknown_error(
 
                 if let Some(tx) = tx {
                     error.setattr(py, "tx", tx)?;
+                } else if let Some(call) = call {
+                    error.setattr(py, "call", call)?;
                 }
 
                 return Ok(error);
@@ -142,7 +138,7 @@ fn external_or_unknown_error(
         }
     }
 
-    new_unknown_error(py, data, tx, py_objects)
+    new_unknown_error(py, data, tx, call, py_objects)
 }
 
 pub(crate) fn resolve_error(
@@ -150,11 +146,12 @@ pub(crate) fn resolve_error(
     data: &[u8],
     chain: &Py<Chain>,
     tx: Option<&Bound<TransactionAbc>>,
+    call: Option<&Bound<Call>>,
     errors_metadata: &HashMap<[u8; 4], ErrorMetadata>,
     py_objects: &mut PyObjects,
 ) -> PyResult<Py<PyAny>> {
     if data.len() < 4 {
-        return new_unknown_error(py, data, tx, py_objects);
+        return new_unknown_error(py, data, tx, call, py_objects);
     }
 
     let errors = py_objects
@@ -178,7 +175,7 @@ pub(crate) fn resolve_error(
                         PyString::new(py, &fqn).into_any()
                     } else {
                         // e.g. forked contract factory creating an unknown contract
-                        return new_unknown_error(py, data, tx, py_objects);
+                        return new_unknown_error(py, data, tx, call, py_objects);
                     }
                 }
                 ErrorMetadata::Call(call_metadata) => {
@@ -191,12 +188,12 @@ pub(crate) fn resolve_error(
                     {
                         fqn
                     } else {
-                        return external_or_unknown_error(py, data, chain, tx, call_metadata, py_objects);
+                        return external_or_unknown_error(py, data, chain, tx, call, call_metadata, py_objects);
                     }
                 }
             }
         } else {
-            return new_unknown_error(py, data, tx, py_objects);
+            return new_unknown_error(py, data, tx, call, py_objects);
         };
 
         let tmp = match errors.get_item(fqn)? {
@@ -207,10 +204,10 @@ pub(crate) fn resolve_error(
                 // https://github.com/ethereum/solidity/issues/13149
                 match metadata {
                     Some(ErrorMetadata::Call(call_metadata)) => {
-                        return external_or_unknown_error(py, data, chain, tx, call_metadata, py_objects);
+                        return external_or_unknown_error(py, data, chain, tx, call, call_metadata, py_objects);
                     }
                     _ => {
-                        return new_unknown_error(py, data, tx, py_objects);
+                        return new_unknown_error(py, data, tx, call, py_objects);
                     }
                 }
             }
@@ -250,14 +247,14 @@ pub(crate) fn resolve_error(
             match metadata {
                 ErrorMetadata::Create(_) => {
                     // e.g. forked contract factory creating an unknown contract
-                    return new_unknown_error(py, data, tx, py_objects);
+                    return new_unknown_error(py, data, tx, call, py_objects);
                 }
                 ErrorMetadata::Call(call_metadata) => {
-                    return external_or_unknown_error(py, data, chain, tx, call_metadata, py_objects);
+                    return external_or_unknown_error(py, data, chain, tx, call, call_metadata, py_objects);
                 }
             }
         } else {
-            return new_unknown_error(py, data, tx, py_objects);
+            return new_unknown_error(py, data, tx, call, py_objects);
         }
     }
 }
@@ -290,6 +287,7 @@ pub(crate) fn new_unknown_error(
     py: Python,
     data: &[u8],
     tx: Option<&Bound<TransactionAbc>>,
+    call: Option<&Bound<Call>>,
     py_objects: &mut PyObjects,
 ) -> PyResult<Py<PyAny>> {
     let err = py_objects.wake_unknown_revert_exception.call(
@@ -300,6 +298,8 @@ pub(crate) fn new_unknown_error(
 
     if let Some(tx) = tx {
         err.setattr(py, "tx", tx)?;
+    } else if let Some(call) = call {
+        err.setattr(py, "call", call)?;
     }
 
     Ok(err)

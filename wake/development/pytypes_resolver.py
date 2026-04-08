@@ -12,14 +12,14 @@ from .chain_interfaces import (
     GethLikeChainInterfaceAbc,
     HardhatChainInterface,
 )
-from .errors import ExternalError, RevertError, UnknownRevertError
 from .json_rpc.communicator import JsonRpcError
 
 if TYPE_CHECKING:
-    from wake.development.chain_interfaces import TxParams
-    from wake.development.core import Chain
-    from wake.development.internal import ExternalEvent, UnknownEvent
-    from wake.development.transactions import TransactionAbc
+    from .chain_interfaces import TxParams
+    from .core import Chain
+    from .errors import ExternalError, RevertError, UnknownRevertError
+    from .internal import ExternalEvent, UnknownEvent
+    from .transactions import TransactionAbc
 
 
 def _str_to_bytes(s: str) -> bytes:
@@ -31,6 +31,8 @@ def _str_to_bytes(s: str) -> bytes:
 def _new_unknown_error(
     revert_data: bytes, tx: TransactionAbc | None
 ) -> UnknownRevertError:
+    from .errors import UnknownRevertError
+
     err = UnknownRevertError(revert_data)
     err.tx = tx
     return err
@@ -40,6 +42,7 @@ def _new_external_or_unknown_error(
     revert_data: bytes, tx: TransactionAbc | None, fqn_addr: Address, chain: Chain
 ) -> ExternalError | UnknownRevertError:
     from .core import Abi, fix_library_abi
+    from .errors import ExternalError
     from .utils import get_name_abi_from_explorer_cached
 
     if chain.forked_chain_id is None or len(revert_data) < 4:
@@ -154,12 +157,12 @@ def _build_revert_error(
         for arg in fix_library_abi(abi["inputs"])
     ]
     decoded = Abi.decode(types, revert_data[4:])
-    generated_error = chain._convert_from_web3_type(tx, decoded, obj)
+    generated_error = chain._convert_from_web3_type(decoded, obj)
     generated_error.tx = tx
     return generated_error
 
 
-def resolve_error(
+def _resolve_error(
     chain: Chain,
     block: str | int,
     tx: TransactionAbc | None,
@@ -210,7 +213,7 @@ def resolve_error(
 def resolve_tx_error(
     chain: Chain, tx: TransactionAbc, revert_data: bytes
 ) -> RevertError:
-    return resolve_error(
+    return _resolve_error(
         chain,
         tx.block.number,
         tx,
@@ -246,13 +249,13 @@ def extract_call_revert_data(chain: Chain, e: JsonRpcError) -> bytes:
 
 
 def resolve_call_error(
-    chain: Chain, call: TxParams, block: Union[int, str], error: JsonRpcError
+    chain: Chain, call: TxParams, block: Union[int, str], error: bytes
 ) -> RevertError:
-    return resolve_error(
+    return _resolve_error(
         chain,
         block,
         None,
-        extract_call_revert_data(chain, error),
+        error,
         lambda: chain.chain_interface.debug_trace_call(
             call, block, {"tracer": "callTracer"}
         ),
@@ -390,7 +393,7 @@ def _build_event(
 
     decoded = _decode_event(obj._abi, topics, data)
 
-    generated_event = tx.chain._convert_from_web3_type(tx, decoded, obj)
+    generated_event = tx.chain._convert_from_web3_type(decoded, obj)
     generated_event.origin = origin
     return generated_event
 

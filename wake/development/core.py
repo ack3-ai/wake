@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import dataclasses
 import functools
-import importlib
 import sys
 from abc import ABC, abstractmethod
 from bdb import BdbQuit
-from collections import ChainMap, defaultdict
+from collections import defaultdict
 from contextlib import contextmanager
 from decimal import Decimal
 from enum import IntEnum
@@ -77,9 +76,9 @@ from .primitive_types import (
     uint256,
     uint_map,
 )
-from .pytypes_resolver import resolve_call_error, resolve_error
 
 if TYPE_CHECKING:
+    from .call import Call
     from .transactions import ChainTransactions, TransactionAbc
 
 
@@ -397,7 +396,9 @@ class Chain(ABC):
         params: TxParams,
         arguments: Iterable,
         abi: Optional[Dict],
-        block_identifier: Union[int, str],
+        block_identifier: int
+        | Literal["latest", "pending", "earliest", "safe", "finalized"],
+        return_type: Type,
     ) -> TxParams:
         ...
 
@@ -855,7 +856,33 @@ class Chain(ABC):
         ] = None,
         confirmations: Optional[int] = None,
         revert_on_failure: bool = True,
+        return_call: Literal[False] = False,
     ) -> bytes:
+        ...
+
+    @overload
+    def deploy(
+        self,
+        creation_code: bytes,
+        *,
+        request_type: Literal["call"],
+        return_tx: Literal[False] = False,
+        from_: Optional[Union[Account, Address, str]] = None,
+        value: Union[int, str] = 0,
+        gas_limit: Optional[Union[int, Literal["max", "auto"]]] = None,
+        gas_price: Optional[Union[int, str]] = None,
+        max_fee_per_gas: Optional[Union[int, str]] = None,
+        max_priority_fee_per_gas: Optional[Union[int, str]] = None,
+        access_list: Optional[
+            Union[Dict[Union[Account, Address, str], List[int]], Literal["auto"]]
+        ] = None,
+        block: Optional[
+            Union[int, Literal["latest", "pending", "earliest", "safe", "finalized"]]
+        ] = None,
+        confirmations: Optional[int] = None,
+        revert_on_failure: bool = True,
+        return_call: Literal[True] = ...,
+    ) -> Call[bytes]:
         ...
 
     @overload
@@ -879,6 +906,7 @@ class Chain(ABC):
         ] = None,
         confirmations: Optional[int] = None,
         revert_on_failure: bool = True,
+        return_call: Literal[False] = False,
     ) -> Contract:
         ...
 
@@ -903,7 +931,33 @@ class Chain(ABC):
         ] = None,
         confirmations: Optional[int] = None,
         revert_on_failure: bool = True,
+        return_call: Literal[False] = False,
     ) -> int:
+        ...
+
+    @overload
+    def deploy(
+        self,
+        creation_code: bytes,
+        *,
+        request_type: Literal["estimate"],
+        return_tx: Literal[False] = False,
+        from_: Optional[Union[Account, Address, str]] = None,
+        value: Union[int, str] = 0,
+        gas_limit: Optional[Union[int, Literal["max", "auto"]]] = None,
+        gas_price: Optional[Union[int, str]] = None,
+        max_fee_per_gas: Optional[Union[int, str]] = None,
+        max_priority_fee_per_gas: Optional[Union[int, str]] = None,
+        access_list: Optional[
+            Union[Dict[Union[Account, Address, str], List[int]], Literal["auto"]]
+        ] = None,
+        block: Optional[
+            Union[int, Literal["latest", "pending", "earliest", "safe", "finalized"]]
+        ] = None,
+        confirmations: Optional[int] = None,
+        revert_on_failure: bool = True,
+        return_call: Literal[True] = ...,
+    ) -> Call[bytes]:
         ...
 
     @overload
@@ -927,7 +981,33 @@ class Chain(ABC):
         ] = None,
         confirmations: Optional[int] = None,
         revert_on_failure: bool = True,
+        return_call: Literal[False] = False,
     ) -> Tuple[Dict[Address, List[int]], int]:
+        ...
+
+    @overload
+    def deploy(
+        self,
+        creation_code: bytes,
+        *,
+        request_type: Literal["access_list"],
+        return_tx: Literal[False] = False,
+        from_: Optional[Union[Account, Address, str]] = None,
+        value: Union[int, str] = 0,
+        gas_limit: Optional[Union[int, Literal["max", "auto"]]] = None,
+        gas_price: Optional[Union[int, str]] = None,
+        max_fee_per_gas: Optional[Union[int, str]] = None,
+        max_priority_fee_per_gas: Optional[Union[int, str]] = None,
+        access_list: Optional[
+            Union[Dict[Union[Account, Address, str], List[int]], Literal["auto"]]
+        ] = None,
+        block: Optional[
+            Union[int, Literal["latest", "pending", "earliest", "safe", "finalized"]]
+        ] = None,
+        confirmations: Optional[int] = None,
+        revert_on_failure: bool = True,
+        return_call: Literal[True] = ...,
+    ) -> Call[bytes]:
         ...
 
     @overload
@@ -951,7 +1031,8 @@ class Chain(ABC):
         ] = None,
         confirmations: Optional[int] = None,
         revert_on_failure: bool = True,
-    ) -> TransactionAbc[Contract]:
+        return_call: Literal[False] = False,
+    ) -> TransactionAbc[Account, Contract]:
         ...
 
     def deploy(
@@ -974,13 +1055,8 @@ class Chain(ABC):
         ] = None,
         confirmations: Optional[int] = None,
         revert_on_failure: bool = True,
-    ) -> Union[
-        bytes,
-        Contract,
-        int,
-        Tuple[Dict[Address, List[int]], int],
-        TransactionAbc[Contract],
-    ]:
+        return_call: bool = False,
+    ) -> Union[bytes, Contract, TransactionAbc[Account, Contract], Call[bytes],]:
         return Contract._execute(
             self,
             request_type,
@@ -1000,6 +1076,7 @@ class Chain(ABC):
             block,
             confirmations,
             revert_on_failure,
+            return_call,
         )
 
     def _convert_to_web3_type(self, value: Any) -> Any:
@@ -1045,9 +1122,7 @@ class Chain(ABC):
 
         return decoded_data
 
-    def _convert_from_web3_type(
-        self, tx: Optional[TransactionAbc], value: Any, expected_type: Type
-    ) -> Any:
+    def _convert_from_web3_type(self, value: Any, expected_type: Type) -> Any:
         origin = get_origin(expected_type)
 
         if isinstance(expected_type, type(None)):
@@ -1055,13 +1130,13 @@ class Chain(ABC):
         elif isinstance(origin, type) and issubclass(origin, list):
             return origin(
                 [
-                    self._convert_from_web3_type(tx, v, get_args(expected_type)[0])
+                    self._convert_from_web3_type(v, get_args(expected_type)[0])
                     for v in value
                 ]
             )
         elif origin is tuple:
             return tuple(
-                self._convert_from_web3_type(tx, v, t)
+                self._convert_from_web3_type(v, t)
                 for v, t in zip(value, get_args(expected_type))
             )
         elif dataclasses.is_dataclass(expected_type):
@@ -1077,8 +1152,7 @@ class Chain(ABC):
             ]
             assert len(value) == len(field_types)
             converted_values = [
-                self._convert_from_web3_type(tx, v, t)
-                for v, t in zip(value, field_types)
+                self._convert_from_web3_type(v, t) for v, t in zip(value, field_types)
             ]
             return expected_type(*converted_values)
         elif isinstance(expected_type, type):
@@ -1090,9 +1164,7 @@ class Chain(ABC):
                 return expected_type(value)
         return value
 
-    def _process_return_data(
-        self, tx: Optional[TransactionAbc], output: bytes, abi: Dict, return_type: Type
-    ):
+    def _process_return_data(self, output: bytes, abi: Dict, return_type: Type):
         output_types = [
             eth_utils.abi.collapse_if_tuple(cast(Dict[str, Any], arg))
             for arg in fix_library_abi(abi["outputs"])
@@ -1100,7 +1172,7 @@ class Chain(ABC):
         decoded_data = Abi.decode(output_types, output)
         if isinstance(decoded_data, (list, tuple)) and len(decoded_data) == 1:
             decoded_data = decoded_data[0]
-        return self._convert_from_web3_type(tx, decoded_data, return_type)
+        return self._convert_from_web3_type(decoded_data, return_type)
 
     def _process_console_logs(self, trace_output: List[Dict[str, Any]]) -> List:
         hardhat_console_address = bytes.fromhex(
@@ -1218,6 +1290,34 @@ class Chain(ABC):
 
         return tx_hash
 
+    def _extract_call_revert_data(self, e: JsonRpcError) -> bytes | str:
+        try:
+            # Hermez does not provide revert data for estimate
+            if (
+                isinstance(
+                    self._chain_interface,
+                    (AnvilChainInterface, GethLikeChainInterfaceAbc),
+                )
+                and e.data["code"] == 3
+            ):
+                revert_data = e.data["data"]
+            elif e.data.get("message") is not None:
+                return e.data["message"]
+            elif (
+                isinstance(self._chain_interface, HardhatChainInterface)
+                and e.data["code"] == -32603
+            ):
+                revert_data = e.data["data"]["data"]
+            else:
+                raise e from None
+        except Exception:
+            raise e from None
+
+        if revert_data.startswith("0x"):
+            revert_data = revert_data[2:]
+
+        return bytes.fromhex(revert_data)
+
     @check_connected
     def _call(
         self,
@@ -1225,13 +1325,16 @@ class Chain(ABC):
         arguments: Iterable,
         params: TxParams,
         return_type: Type,
-        block: Union[int, str],
+        block: int | Literal["latest", "pending", "earliest", "safe", "finalized"],
+        return_call: bool,
     ) -> Any:
+        from .call import Call
+
         if isinstance(block, int) and block < 0:
             block = self._chain_interface.get_block_number() + 1 + block
 
         tx_params = self._build_transaction(
-            RequestType.CALL, params, arguments, abi, block
+            RequestType.CALL, params, arguments, abi, block, return_type
         )
         try:
             coverage_handler = get_coverage_handler()
@@ -1244,24 +1347,36 @@ class Chain(ABC):
                     ret_value = ret_value[2:]
                 output = bytes.fromhex(ret_value)
                 if ret["failed"]:
-                    raise resolve_error(
-                        self,
-                        block,
-                        None,
-                        output,
-                        lambda: self._chain_interface.debug_trace_call(
-                            tx_params, block, {"tracer": "callTracer"}
-                        ),
-                    )
+                    raw_output = None
+                    raw_error = output
+                else:
+                    raw_output = output
+                    raw_error = None
             else:
-                output = self._chain_interface.call(tx_params, block)
+                raw_output = self._chain_interface.call(tx_params, block)
+                raw_error = None
         except JsonRpcError as e:
-            raise resolve_call_error(self, tx_params, block, e) from None
+            raw_error = self._extract_call_revert_data(e)
+            raw_output = None
 
-        if abi is None:
-            return output
+        call = Call[return_type](
+            tx_params=tx_params,
+            block=block,
+            chain=self,
+            abi=abi,
+            return_type=return_type,
+            raw_return_value=raw_output,
+            raw_error=raw_error,
+            estimated_gas=None,
+            access_list=None,
+        )
+        if call.error is not None:
+            raise call.error
 
-        return self._process_return_data(None, output, abi, return_type)
+        if return_call:
+            return call
+
+        return call.return_value
 
     @check_connected
     def _estimate(
@@ -1269,18 +1384,40 @@ class Chain(ABC):
         abi: Optional[Dict],
         arguments: Iterable,
         params: TxParams,
-        block: Union[int, str],
-    ) -> int:
+        return_type: Type,
+        block: int | Literal["latest", "pending", "earliest", "safe", "finalized"],
+        return_call: bool,
+    ) -> int | Call:
         if isinstance(block, int) and block < 0:
             block = self._chain_interface.get_block_number() + 1 + block
 
         tx_params = self._build_transaction(
-            RequestType.ESTIMATE, params, arguments, abi, block
+            RequestType.ESTIMATE, params, arguments, abi, block, return_type
         )
         try:
-            return self._chain_interface.estimate_gas(tx_params, block)
+            estimate = self._chain_interface.estimate_gas(tx_params, block)
+            raw_error = None
         except JsonRpcError as e:
-            raise resolve_call_error(self, tx_params, block, e) from None
+            estimate = None
+            raw_error = self._extract_call_revert_data(e)
+
+        call = Call[return_type](
+            tx_params=tx_params,
+            block=block,
+            chain=self,
+            abi=abi,
+            return_type=return_type,
+            raw_return_value=None,
+            raw_error=raw_error,
+            estimated_gas=estimate,
+            access_list=None,
+        )
+        if call.error is not None:
+            raise call.error from None
+
+        if return_call:
+            return call
+        return call.estimated_gas
 
     @check_connected
     def _access_list(
@@ -1288,22 +1425,47 @@ class Chain(ABC):
         abi: Optional[Dict],
         arguments: Iterable,
         params: TxParams,
-        block: Union[int, str],
-    ):
+        return_type: Type,
+        block: int | Literal["latest", "pending", "earliest", "safe", "finalized"],
+        return_call: bool,
+    ) -> tuple[dict[Address, list[int]], int] | Call:
         if isinstance(block, int) and block < 0:
             block = self._chain_interface.get_block_number() + 1 + block
 
         tx_params = self._build_transaction(
-            RequestType.ACCESS_LIST, params, arguments, abi, block
+            RequestType.ACCESS_LIST, params, arguments, abi, block, return_type
         )
+        # TODO - pass gas used?
         try:
             response = self._chain_interface.create_access_list(tx_params, block)
-            return {
+            access_list = {
                 Address(e["address"]): [int(s, 16) for s in e["storageKeys"]]
                 for e in response["accessList"]
-            }, int(response["gasUsed"], 16)
+            }
+            gas_used = int(response["gasUsed"], 16)
+            raw_error = None
         except JsonRpcError as e:
-            raise resolve_call_error(self, tx_params, block, e) from None
+            access_list = None
+            gas_used = None
+            raw_error = self._extract_call_revert_data(e)
+
+        call = Call[return_type](
+            tx_params=tx_params,
+            block=block,
+            chain=self,
+            abi=abi,
+            return_type=return_type,
+            raw_return_value=None,
+            raw_error=raw_error,
+            estimated_gas=None,
+            access_list=access_list,
+        )
+        if call.error is not None:
+            raise call.error from None
+
+        if return_call:
+            return call
+        return call.return_value
 
     @check_connected
     def _transact(
@@ -1317,7 +1479,7 @@ class Chain(ABC):
         from_: Optional[Union[Account, Address, str]],
     ) -> Any:
         tx_params = self._build_transaction(
-            RequestType.TX, params, arguments, abi, "pending"
+            RequestType.TX, params, arguments, abi, "pending", return_type
         )
 
         tx_hash = self._send_transaction(tx_params, from_)
@@ -1325,19 +1487,19 @@ class Chain(ABC):
         if "type" not in tx_params:
             from wake.development.transactions import LegacyTransaction
 
-            tx_type = LegacyTransaction[return_type]
+            tx_type = LegacyTransaction[bytes, return_type]
         elif tx_params["type"] == 1:
             from wake.development.transactions import Eip2930Transaction
 
-            tx_type = Eip2930Transaction[return_type]
+            tx_type = Eip2930Transaction[bytes, return_type]
         elif tx_params["type"] == 2:
             from wake.development.transactions import Eip1559Transaction
 
-            tx_type = Eip1559Transaction[return_type]
+            tx_type = Eip1559Transaction[bytes, return_type]
         elif tx_params["type"] == 4:
             from wake.development.transactions import Eip7702Transaction
 
-            tx_type = Eip7702Transaction[return_type]
+            tx_type = Eip7702Transaction[bytes, return_type]
         else:
             raise ValueError(f"Unknown transaction type {tx_params['type']}")
 

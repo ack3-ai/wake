@@ -32,6 +32,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use pyo3::{intern, prelude::*, IntoPyObjectExt, PyTypeInfo};
 use std::sync::Arc;
 
+use crate::call::Call;
 use crate::chain_snapshot::ChainSnapshot;
 use crate::inspectors::access_list_inspector::AccessListInspector;
 use crate::account::Account;
@@ -48,8 +49,8 @@ use crate::enums::{
 use crate::evm::prepare_tx_env;
 use crate::inspectors::fqn_inspector::{ErrorMetadata, EventMetadata, FqnInspector};
 use crate::globals::{DEFAULT_CHAIN, TOKIO_RUNTIME};
-use crate::pytypes::{decode_and_normalize, resolve_error};
-use crate::tx::{BlockInfo, TransactionAbc};
+use crate::pytypes::decode_and_normalize;
+use crate::tx::TransactionAbc;
 use crate::txs::Txs;
 use crate::utils::get_py_objects;
 use crate::memory_db::CacheDB;
@@ -187,6 +188,10 @@ impl std::ops::DerefMut for EvmCell {
     }
 }
 
+pub enum BlockInfo {
+    Mined(Py<Block>),
+    Pending(BlockEnv),
+}
 
 #[pyclass]
 pub struct Chain {
@@ -842,6 +847,7 @@ impl Chain {
         block=None,
         confirmations=None,
         revert_on_failure=true,
+        return_call=false,
     ))]
     fn deploy(
         slf: &Bound<Self>,
@@ -860,6 +866,7 @@ impl Chain {
         block: Option<BlockEnum>,
         confirmations: Option<u64>,
         revert_on_failure: bool,
+        return_call: bool,
     ) -> PyResult<Py<PyAny>> {
         Contract::_execute(
             &Contract::type_object(py),
@@ -882,6 +889,7 @@ impl Chain {
             block,
             confirmations,
             revert_on_failure,
+            return_call,
         )
     }
 }
@@ -928,7 +936,7 @@ impl Chain {
         self.latest_block_env = Some(evm.block.clone());
 
         let last_block_number = self.latest_block_env.as_ref().unwrap().number.try_into().unwrap();
-        let block_hash = B256::from_slice(&self.rng.gen::<[u8; 32]>());
+        let block_hash = B256::from_slice(&self.rng.r#gen::<[u8; 32]>());
 
         evm.db_mut().set_last_block_number(last_block_number);
         evm.db_mut().set_block_hash(last_block_number, block_hash);
@@ -985,6 +993,7 @@ impl Chain {
         block: BlockEnum,
         return_type: Option<Bound<PyAny>>,
         abi: Option<Bound<PyDict>>,
+        return_call: bool,
     ) -> PyResult<Py<PyAny>> {
         let mut borrowed = slf.borrow_mut();
         let default_call_account = from_.unwrap_or(AddressEnum::Account(
@@ -996,6 +1005,7 @@ impl Chain {
         ));
         let collect_coverage = borrowed.collect_coverage;
         let evm = borrowed.get_evm()?;
+        let current_journal_index = evm.db().get_journal_index();
         let block_gas_limit = evm.block.gas_limit;
         let tx_gas_limit_cap = evm.cfg.tx_gas_limit_cap();
         let tx_env = prepare_tx_env(
@@ -1023,14 +1033,18 @@ impl Chain {
             Box::new(CoverageInspector::new())
         };
 
-        let res = match block {
-            BlockEnum::Pending => borrowed
+        let (res, journal_index) = match block {
+            BlockEnum::Pending => {
+                let res = borrowed
                 .with_evm_with_inspector(py, &mut *inspector, |evm| evm.inspect_tx(tx_env))
-                .map_err(|e: EVMError<DBError>| PyErr::new::<PyRuntimeError, _>(e.to_string()))?,
+                .map_err(|e: EVMError<DBError>| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
+
+                (res, current_journal_index)
+            }
             BlockEnum::Int(_) | BlockEnum::Latest => {
                 let block = borrowed.blocks.as_ref().unwrap().borrow_mut(py).get_block(
                     py,
-                    block,
+                    block.clone(),
                     borrowed.last_block_number()?,
                     borrowed.provider.clone(),
                     borrowed.forked_chain_id,
@@ -1044,7 +1058,7 @@ impl Chain {
                 };
                 let block_env = block.block_env.clone();
 
-                borrowed
+                let res = borrowed
                     .with_evm_with_inspector(py, &mut *inspector, |evm| {
                         let block_env_backup =
                             mem::replace(&mut evm.block, block_env);
@@ -1054,49 +1068,66 @@ impl Chain {
                         evm.block = block_env_backup;
                         res
                     })
-                    .map_err(|e: EVMError<DBError>| PyErr::new::<PyRuntimeError, _>(e.to_string()))?
+                    .map_err(|e: EVMError<DBError>| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
+
+                (res, journal_index)
             }
             _ => return Err(PyValueError::new_err("Invalid block")),
         };
 
         inspector.sync_coverage(py)?;
 
-        match res.result {
-            ExecutionResult::Success { output, .. } => {
-                if let Some(abi) = abi {
-                    Ok(decode_and_normalize(
-                        py,
-                        output.data(),
-                        &abi,
-                        &return_type.unwrap(),
-                        &Py::from(borrowed),
-                        intern!(py, "outputs"),
-                        py_objects,
-                    )?)
-                } else {
-                    PyBytes::new(py, output.data()).into_py_any(py)
-                }
-            }
-            ExecutionResult::Revert {
-                gas: _,
-                logs: _,
-                output,
-            } => Err(PyErr::from_value(
-                resolve_error(
+        if !return_call && let ExecutionResult::Success { output, .. } = res.result {
+            // happy fast path
+            if let Some(abi) = abi && let Some(return_type) = return_type {
+                Ok(decode_and_normalize(
                     py,
-                    &output,
+                    output.data(),
+                    &abi,
+                    &return_type,
                     &Py::from(borrowed),
-                    None,
-                    inspector.errors_metadata(),
+                    intern!(py, "outputs"),
                     py_objects,
-                )?
-                .bind(py)
-                .clone(),
-            )),
-            ExecutionResult::Halt { reason, .. } => Err(PyErr::from_type(
-                py_objects.wake_halt_exception.bind(py).clone(),
-                format!("{:?}", reason),
-            )),
+                )?)
+            } else {
+                PyBytes::new(py, output.data()).into_py_any(py)
+            }
+        } else {
+            let evm = borrowed.get_evm()?;
+            let block = match block {
+                BlockEnum::Pending => BlockInfo::Pending(evm.block.clone()),
+                BlockEnum::Int(_) | BlockEnum::Latest => {
+                    let block = borrowed.blocks.as_ref().unwrap().borrow_mut(py).get_block(
+                        py,
+                        block,
+                        borrowed.last_block_number()?,
+                        borrowed.provider.clone(),
+                        borrowed.forked_chain_id,
+                    )?;
+                    BlockInfo::Mined(block.clone_ref(py))
+                },
+                _ => return Err(PyValueError::new_err("Invalid block")),
+            };
+            // TODO: possibly dangerous: assumes that inspect_tx has set the tx_env and didn't change it
+            let tx_env = evm.tx.clone();
+            let call = Py::new(
+                py,
+                Call::new(
+                    Py::from(borrowed),
+                    block,
+                    journal_index,
+                    tx_env,
+                    return_type.map(|r| Py::from(r)),
+                    res.result,
+                    abi.map(|abi| Py::from(abi)),
+                    inspector.into_metadata().0,
+                    None,
+                )
+            )?;
+            match Call::error(call.bind(py), py)? {
+                Some(error) => Err(error),
+                None => Ok(call.into_any()),
+            }
         }
     }
 
@@ -1173,7 +1204,7 @@ impl Chain {
         };
         let mined = matches!(block, BlockInfo::Mined(_));
 
-        let tx_hash = B256::from_slice(&borrowed.rng.gen::<[u8; 32]>());
+        let tx_hash = B256::from_slice(&borrowed.rng.r#gen::<[u8; 32]>());
         let (errors_metadata, events_metadata) = inspector.into_metadata();
         let tx = Py::new(
             py,
@@ -1235,8 +1266,11 @@ impl Chain {
         access_list: Option<AccessListEnum>,
         authorization_list: Option<Vec<Bound<'_, PyDict>>>,
         block: BlockEnum,
+        return_type: Option<Bound<PyAny>>,
+        abi: Option<Bound<PyDict>>,
         revert: bool,
-    ) -> PyResult<u64> {
+        return_call: bool,
+    ) -> PyResult<Py<PyAny>> {
         let mut borrowed = slf.borrow_mut();
         let default_estimate_account = from_.unwrap_or(AddressEnum::Account(
             borrowed
@@ -1246,6 +1280,7 @@ impl Chain {
                 .clone_ref(py),
         ));
         let evm = borrowed.get_evm()?;
+        let current_journal_index = evm.db().get_journal_index();
         let block_gas_limit = evm.block.gas_limit;
         let tx_gas_limit_cap = evm.cfg.tx_gas_limit_cap();
         let tx_env = prepare_tx_env(
@@ -1265,17 +1300,20 @@ impl Chain {
             authorization_list,
         )?;
 
-        let py_objects = get_py_objects(py);
         let mut inspector = FqnInspector::new();
 
-        let res = match block {
-            BlockEnum::Pending => borrowed
+        let (res, journal_index) = match block {
+            BlockEnum::Pending => {
+                let res = borrowed
                 .with_evm_with_inspector(py, &mut inspector, |evm| evm.inspect_tx(tx_env))
-                .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?,
+                .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
+
+                (res, current_journal_index)
+            }
             BlockEnum::Int(_) | BlockEnum::Latest => {
                 let block = borrowed.blocks.as_ref().unwrap().borrow_mut(py).get_block(
                     py,
-                    block,
+                    block.clone(),
                     borrowed.last_block_number()?,
                     borrowed.provider.clone(),
                     borrowed.forked_chain_id,
@@ -1289,7 +1327,7 @@ impl Chain {
                 };
                 let block_env = block.block_env.clone();
 
-                borrowed
+                let res = borrowed
                     .with_evm_with_inspector(py, &mut inspector, |evm| {
                         let block_env_backup =
                             mem::replace(&mut evm.block, block_env);
@@ -1300,42 +1338,52 @@ impl Chain {
 
                         res
                     })
-                    .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?
+                    .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
+
+                (res, journal_index)
             }
             _ => return Err(PyValueError::new_err("Invalid block")),
         };
 
-        match res.result {
-            ExecutionResult::Success { gas, .. } => Ok(gas.used()),
-            ExecutionResult::Revert {
-                gas, output, ..
-            } => {
-                if revert {
-                    Err(PyErr::from_value(
-                        resolve_error(
-                            py,
-                            &output,
-                            &Py::from(borrowed),
-                            None,
-                            &inspector.errors_metadata,
-                            py_objects,
-                        )?
-                        .bind(py)
-                        .clone(),
-                    ))
-                } else {
-                    Ok(gas.used())
-                }
-            }
-            ExecutionResult::Halt { reason, gas, logs: _ } => {
-                if revert {
-                    Err(PyErr::from_type(
-                        py_objects.wake_halt_exception.bind(py).clone(),
-                        format!("{:?}", reason),
-                    ))
-                } else {
-                    Ok(gas.used())
-                }
+        if !return_call && (!revert || matches!(res.result, ExecutionResult::Success { .. })) {
+            res.result.gas_used().into_py_any(py)
+        } else {
+            let evm = borrowed.get_evm()?;
+            let block = match block {
+                BlockEnum::Pending => BlockInfo::Pending(evm.block.clone()),
+                BlockEnum::Int(_) | BlockEnum::Latest => {
+                    let block = borrowed.blocks.as_ref().unwrap().borrow_mut(py).get_block(
+                        py,
+                        block,
+                        borrowed.last_block_number()?,
+                        borrowed.provider.clone(),
+                        borrowed.forked_chain_id,
+                    )?;
+                    BlockInfo::Mined(block.clone_ref(py))
+                },
+                _ => return Err(PyValueError::new_err("Invalid block")),
+            };
+            // TODO: possibly dangerous: assumes that inspect_tx has set the tx_env and didn't change it
+            let tx_env = evm.tx.clone();
+            let call = Py::new(
+                py,
+                Call::new(
+                    Py::from(borrowed),
+                    block,
+                    journal_index,
+                    tx_env,
+                    return_type.map(|r| Py::from(r)),
+                    res.result,
+                    abi.map(|abi| Py::from(abi)),
+                    inspector.into_errors_metadata(),
+                    None,
+                )
+            )?;
+
+            if revert && let Some(error) = Call::error(call.bind(py), py)? {
+                Err(error)
+            } else {
+                Ok(call.into_any())
             }
         }
     }
@@ -1353,8 +1401,11 @@ impl Chain {
         max_priority_fee_per_gas: Option<U256>,
         authorization_list: Option<Vec<Bound<'_, PyDict>>>,
         block: BlockEnum,
+        return_type: Option<Bound<PyAny>>,
+        abi: Option<Bound<PyDict>>,
         revert: bool,
-    ) -> PyResult<(HashMap<Address, Vec<BigUint>>, u64)> {
+        return_call: bool,
+    ) -> PyResult<Py<PyAny>> {
         let mut borrowed = slf.borrow_mut();
         let default_access_list_account = from_.unwrap_or(AddressEnum::Account(
             borrowed
@@ -1364,6 +1415,7 @@ impl Chain {
                 .clone_ref(py),
         ));
         let evm = borrowed.get_evm()?;
+        let current_journal_index = evm.db().get_journal_index();
         let block_gas_limit = evm.block.gas_limit;
         let tx_gas_limit_cap = evm.cfg.tx_gas_limit_cap();
         let tx_env = prepare_tx_env(
@@ -1385,14 +1437,18 @@ impl Chain {
 
         let mut inspector = AccessListInspector::new(vec![].into());
 
-        let res = match block {
-            BlockEnum::Pending => borrowed
+        let (res, journal_index) = match block {
+            BlockEnum::Pending => {
+                let res = borrowed
                 .with_evm_with_inspector(py, &mut inspector, |evm| evm.inspect_tx(tx_env))
-                .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?,
+                .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
+
+                (res, current_journal_index)
+            }
             BlockEnum::Int(_) | BlockEnum::Latest => {
                 let block = borrowed.blocks.as_ref().unwrap().borrow_mut(py).get_block(
                     py,
-                    block,
+                    block.clone(),
                     borrowed.last_block_number()?,
                     borrowed.provider.clone(),
                     borrowed.forked_chain_id,
@@ -1406,7 +1462,7 @@ impl Chain {
                 };
                 let block_env = block.block_env.clone();
 
-                borrowed
+                let res = borrowed
                     .with_evm_with_inspector(py, &mut inspector, |evm| {
                         let block_env_backup =
                             mem::replace(&mut evm.block, block_env);
@@ -1417,44 +1473,53 @@ impl Chain {
 
                         res
                     })
-                    .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?
+                    .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
+
+                (res, journal_index)
             }
             _ => return Err(PyValueError::new_err("Invalid block")),
         };
 
-        let py_objects = get_py_objects(py);
+        if !return_call && (!revert || matches!(res.result, ExecutionResult::Success { .. })) {
+            (access_list_into_py(inspector.into_access_list()), res.result.gas_used()).into_py_any(py)
+        } else {
+            let evm = borrowed.get_evm()?;
+            let block = match block {
+                BlockEnum::Pending => BlockInfo::Pending(evm.block.clone()),
+                BlockEnum::Int(_) | BlockEnum::Latest => {
+                    let block = borrowed.blocks.as_ref().unwrap().borrow_mut(py).get_block(
+                        py,
+                        block,
+                        borrowed.last_block_number()?,
+                        borrowed.provider.clone(),
+                        borrowed.forked_chain_id,
+                    )?;
+                    BlockInfo::Mined(block.clone_ref(py))
+                },
+                _ => return Err(PyValueError::new_err("Invalid block")),
+            };
+            // TODO: possibly dangerous: assumes that inspect_tx has set the tx_env and didn't change it
+            let tx_env = evm.tx.clone();
 
-        match res.result {
-            ExecutionResult::Success { gas, .. } => {
-                Ok((access_list_into_py(inspector.into_access_list()), gas.used()))
-            }
-            ExecutionResult::Revert { gas, output, logs: _ } => {
-                if revert {
-                    Err(PyErr::from_value(
-                        resolve_error(
-                            py,
-                            &output,
-                            &Py::from(borrowed),
-                            None,
-                            &inspector.into_errors_metadata(),
-                            py_objects,
-                        )?
-                        .bind(py)
-                        .clone(),
-                    ))
-                } else {
-                    Ok((access_list_into_py(inspector.into_access_list()), gas.used()))
-                }
-            }
-            ExecutionResult::Halt { reason, gas, logs: _ } => {
-                if revert {
-                    Err(PyErr::from_type(
-                        py_objects.wake_halt_exception.bind(py).clone(),
-                        format!("{:?}", reason),
-                    ))
-                } else {
-                    Ok((access_list_into_py(inspector.into_access_list()), gas.used()))
-                }
+            let AccessListInspector { inner, fqn_inspector } = inspector;
+            let call = Py::new(
+                py,
+                Call::new(
+                    Py::from(borrowed),
+                    block,
+                    journal_index,
+                    tx_env,
+                    return_type.map(|r| Py::from(r)),
+                    res.result,
+                    abi.map(|abi| Py::from(abi)),
+                    fqn_inspector.into_errors_metadata(),
+                    Some(inner.into_access_list()),
+                )
+            )?;
+            if revert && let Some(error) = Call::error(call.bind(py), py)? {
+                Err(error)
+            } else {
+                Ok(call.into_any())
             }
         }
     }
@@ -1498,9 +1563,29 @@ impl Chain {
 
         Ok(inspector.into_inputs())
     }
+
+    pub(crate) fn get_access_list(
+        &mut self,
+        py: Python,
+        journal_index: usize,
+        tx_env: &TxEnv,
+        block_env: BlockEnv,
+    ) -> PyResult<AccessList> {
+        let mut inspector = AccessListInspector::new(vec![].into());
+
+        self.with_evm_with_inspector(py, &mut inspector, |evm| {
+            let block_env_backup = mem::replace(&mut evm.block, block_env);
+            let rollback = evm.db_mut().rollback(journal_index);
+            let _ = evm.inspect_tx(tx_env.clone());
+            evm.db_mut().restore_rollback(rollback);
+            evm.block = block_env_backup;
+        });
+
+        Ok(inspector.into_access_list())
+    }
 }
 
-fn access_list_into_py(access_list: AccessList) -> HashMap<Address, Vec<BigUint>> {
+pub(crate) fn access_list_into_py(access_list: AccessList) -> HashMap<Address, Vec<BigUint>> {
     access_list
         .iter()
         .map(|a| {

@@ -5,9 +5,13 @@ import inspect
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields
 from enum import IntEnum
-from typing import Callable, Iterator, Type
+from typing import TYPE_CHECKING, Callable, Iterator, Type
 
+from .call import Call
 from .transactions import TransactionAbc
+
+if TYPE_CHECKING:
+    from .call_trace import CallTrace
 
 
 @dataclass
@@ -15,6 +19,16 @@ class RevertError(Exception):
     tx: TransactionAbc | None = field(
         init=False, compare=False, default=None, repr=False
     )
+    call: Call | None = field(init=False, compare=False, default=None, repr=False)
+
+    @property
+    def call_trace(self) -> CallTrace:
+        if self.tx is not None:
+            return self.tx.call_trace
+        elif self.call is not None:
+            return self.call.call_trace
+        else:
+            raise ValueError("No call or transaction associated with this revert error")
 
     def __str__(self):
         s = ", ".join(
@@ -114,7 +128,17 @@ class Halt(Exception):
     tx: TransactionAbc | None = field(
         init=False, compare=False, default=None, repr=False
     )
+    call: Call | None = field(init=False, compare=False, default=None, repr=False)
     message: str
+
+    @property
+    def call_trace(self) -> CallTrace:
+        if self.tx is not None:
+            return self.tx.call_trace
+        elif self.call is not None:
+            return self.call.call_trace
+        else:
+            raise ValueError("No call or transaction associated with this halt error")
 
     def __str__(self):
         s = ", ".join(

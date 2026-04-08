@@ -1,5 +1,6 @@
 from rich import print
 
+from wake.development.call import Call
 from wake.development.core import (
     Abi,
     Account,
@@ -19,7 +20,6 @@ from wake.development.errors import (
     Panic,
     PanicCodeEnum,
     RevertError,
-    TransactionAbc,
     UnknownRevertError,
     may_revert,
     must_revert,

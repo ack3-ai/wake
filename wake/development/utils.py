@@ -58,7 +58,6 @@ from .core import (
     get_fqn_from_address,
     get_user_defined_value_types_index,
 )
-from .errors import RevertError
 from .globals import get_config
 from .primitive_types import FixedSizeList, bytes32, fixed_list_map, uint256
 
@@ -885,6 +884,8 @@ def burn_erc1155(
 def _try_remove_erc721_owner(
     contract: Account, owner_acc: Account, token_id: int, slot: int
 ):
+    from .errors import RevertError
+
     call_acc = contract.chain.default_call_account
     if call_acc is None and len(contract.chain.accounts) > 0:
         call_acc = contract.chain.accounts[0]
