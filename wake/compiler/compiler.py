@@ -985,6 +985,8 @@ class SolidityCompiler:
             else:
                 incremental = self._latest_build_info.incremental
 
+        self.__solc_semaphore = asyncio.Semaphore(os.cpu_count() or 4)
+
         target_versions_by_subproject: Dict[
             Optional[str], Optional[SolidityVersion]
         ] = {s: info.target_version for s, info in self.__config.subproject.items()}
