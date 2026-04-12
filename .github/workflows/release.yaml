@@ -33,7 +33,7 @@ jobs:
           cibuildwheel . --output-dir wheelhouse
         env:
           CIBW_BUILD: "*-${{ matrix.abi }}_*"
-          CIBW_SKIP: pp* cp314-* cp314t-*
+          CIBW_SKIP: pp*
           CIBW_ARCHS_LINUX: aarch64
           CIBW_ENABLE: cpython-freethreading
           CIBW_BEFORE_ALL_LINUX: |
@@ -78,7 +78,7 @@ jobs:
           cibuildwheel . --output-dir wheelhouse
         env:
           CIBW_BUILD: "*-${{ matrix.abi }}_*"
-          CIBW_SKIP: pp* cp314-* cp314t-*
+          CIBW_SKIP: pp*
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
           CIBW_ENABLE: cpython-freethreading
           CIBW_BEFORE_ALL_LINUX: |
@@ -126,7 +126,7 @@ jobs:
         run: |
           cibuildwheel . --output-dir wheelhouse
         env:
-          CIBW_SKIP: pp* cp314-* cp314t-*
+          CIBW_SKIP: pp*
           CIBW_ARCHS_MACOS: ${{ matrix.arch }}
           CIBW_ENABLE: cpython-freethreading
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: |
@@ -157,6 +157,11 @@ jobs:
         with:
           python-version: 3.12
 
+      - name: Add ARM64 Rust target
+        run: |
+          rustup target add aarch64-pc-windows-msvc
+          rustup default stable-aarch64-pc-windows-msvc
+
       - name: Install cibuildwheel
         run: |
           python3 -m pip install cibuildwheel
@@ -165,13 +170,9 @@ jobs:
         run: |
           cibuildwheel . --output-dir wheelhouse
         env:
-          CIBW_SKIP: pp* cp314-* cp314t-*
+          CIBW_SKIP: pp*
           CIBW_ARCHS_WINDOWS: ARM64
           CIBW_ENABLE: cpython-freethreading
-          CIBW_BEFORE_ALL_WINDOWS: |
-            curl -sSf https://sh.rustup.rs | sh -s -- --default-toolchain=stable --profile=minimal -y
-          CIBW_BEFORE_BUILD_WINDOWS: |
-            set PATH="%USERPROFILE%\.cargo\bin;%PATH%" && echo %USERPROFILE%\.cargo\bin
           CIBW_BUILD_VERBOSITY: 3
 
       - name: Upload wheels
@@ -182,9 +183,6 @@ jobs:
 
   build_windows_wheels:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        arch: [x86, AMD64]
     steps:
       - name: Checkout latest
         uses: actions/checkout@v4
@@ -197,12 +195,6 @@ jobs:
         with:
           python-version: 3.12
 
-      - name: Install Rust toolchain
-        if: matrix.arch == 'x86'
-        run: |
-          rustup target add i686-pc-windows-msvc
-          rustup default stable-i686-pc-windows-msvc
-
       - name: Install cibuildwheel
         run: |
           python3 -m pip install cibuildwheel
@@ -211,14 +203,14 @@ jobs:
         run: |
           cibuildwheel . --output-dir wheelhouse
         env:
-          CIBW_SKIP: pp* cp314-* cp314t-*
-          CIBW_ARCHS_WINDOWS: ${{ matrix.arch }}
+          CIBW_SKIP: pp*
+          CIBW_ARCHS_WINDOWS: AMD64
           CIBW_ENABLE: cpython-freethreading
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ runner.os }}-${{ matrix.arch }}
+          name: wheels-${{ runner.os }}-AMD64
           path: ./wheelhouse/*.whl
 
   pypi:
