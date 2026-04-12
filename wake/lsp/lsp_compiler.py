@@ -730,7 +730,11 @@ class LspCompiler:
 
         return ProjectBuildInfo(
             compilation_units={
-                cu_hash.hex(): CompilationUnitBuildInfo(errors=list(errors))
+                cu_hash.hex(): CompilationUnitBuildInfo(
+                    files=frozenset(),
+                    target_version=SolidityVersion(0, 0, 0),  # TODO!!!
+                    errors=list(errors),
+                )
                 for cu_hash, errors in self.__latest_errors_per_cu.items()
             },
             source_units_info={
