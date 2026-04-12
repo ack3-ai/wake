@@ -424,12 +424,15 @@ fn tx_params_access_list_convert<'py>(
             })?;
         let storage_keys = item
             .get_item(intern!(py, "storageKeys"))?
-            .extract::<Vec<BigUint>>()?;
+            .extract::<Vec<String>>()?;
         list.push(AccessListItem {
             address,
             storage_keys: storage_keys
                 .iter()
-                .map(|key| B256::from_slice(&key.to_bytes_le()))
+                .map(|key| {
+                    let hex_str = key.strip_prefix("0x").unwrap_or(key);
+                    B256::left_padding_from(&hex::decode(hex_str).unwrap())
+                })
                 .collect(),
         });
     }
