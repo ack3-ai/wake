@@ -1248,7 +1248,7 @@ class Chain(ABC):
                         tx_hash = e.args[0]["data"]["txHash"]
                     except Exception:
                         raise e from None
-            elif key is not None:
+            else:
                 signed_tx = Account(tx_params["from"], self).sign_transaction(tx_params)
                 try:
                     tx_hash = self._chain_interface.send_raw_transaction(signed_tx)
@@ -1257,10 +1257,6 @@ class Chain(ABC):
                         tx_hash = e.args[0]["data"]["txHash"]
                     except Exception:
                         raise e from None
-            else:
-                raise ValueError(
-                    f"Private key for account {tx_params['from']} not known and is not owned by the connected client either."
-                )
         else:
             if isinstance(self.chain_interface, AnvilChainInterface):
                 try:
