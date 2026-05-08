@@ -12,7 +12,9 @@ class SnapshotRevertContext:
         from wake.development.globals import get_exception_handler
 
         try:
-            if exc_type is not None and not isinstance(exc_value, BdbQuit):
+            if exc_type is not None and not isinstance(
+                exc_value, (BdbQuit, KeyboardInterrupt)
+            ):
                 exception_handler = get_exception_handler()
                 if exception_handler is not None:
                     exception_handler(exc_type, exc_value, traceback)

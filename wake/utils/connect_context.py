@@ -9,6 +9,7 @@ class ConnectContext:
     def __enter__(self):
         self.chain._connect(self.accounts, self.chain_id, self.fork, self.hardfork)
         from wake.development.utils import reset_lru_cache
+
         reset_lru_cache()
 
         return self
@@ -19,7 +20,9 @@ class ConnectContext:
         from wake.development.globals import get_exception_handler
 
         try:
-            if exc_type is not None and not isinstance(exc_value, BdbQuit):
+            if exc_type is not None and not isinstance(
+                exc_value, (BdbQuit, KeyboardInterrupt)
+            ):
                 exception_handler = get_exception_handler()
                 if exception_handler is not None:
                     exception_handler(exc_type, exc_value, traceback)

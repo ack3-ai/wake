@@ -588,7 +588,7 @@ class Chain(ABC):
 
             yield self
         except Exception as e:
-            if not isinstance(e, BdbQuit):
+            if not isinstance(e, (BdbQuit, KeyboardInterrupt)):
                 exception_handler = get_exception_handler()
                 if exception_handler is not None:
                     exception_handler(*sys.exc_info())
@@ -747,7 +747,7 @@ class Chain(ABC):
         try:
             yield
         except Exception as e:
-            if not isinstance(e, BdbQuit):
+            if not isinstance(e, (BdbQuit, KeyboardInterrupt)):
                 exception_handler = get_exception_handler()
                 if exception_handler is not None:
                     exception_handler(*sys.exc_info())
@@ -827,7 +827,7 @@ class Chain(ABC):
         try:
             yield
         except Exception as e:
-            if not isinstance(e, BdbQuit):
+            if not isinstance(e, (BdbQuit, KeyboardInterrupt)):
                 exception_handler = get_exception_handler()
                 if exception_handler is not None:
                     exception_handler(*sys.exc_info())
