@@ -286,7 +286,7 @@ def import_foundry_profile(
                     "solc": {
                         "evm_version": parsed_foundry["profile"][foundry_profile][
                             "evm_version"
-                        ]
+                        ].lower()
                     }
                 }
             },
