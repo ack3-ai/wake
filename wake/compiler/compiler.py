@@ -1130,6 +1130,12 @@ class SolidityCompiler:
                 for cu in compilation_units
                 if (cu.source_unit_names & source_units_to_compile)
                 or cu.contains_unresolved_file(deleted_files, self.__config)
+                # a CU may re-enter the current build (e.g. after a deleted import
+                # reshapes the graph) with all its files unchanged, so none of the
+                # conditions above hold, yet its hash is absent from the previous
+                # build info. Without recompiling it, its errors/warnings would be
+                # lost from this and all subsequent builds.
+                or cu.hash.hex() not in self._latest_build_info.compilation_units
             ]
 
             logger.debug(
