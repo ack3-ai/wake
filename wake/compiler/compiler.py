@@ -242,6 +242,7 @@ class CompilationFileSystemEventHandler(FileSystemEventHandler):
                 )
 
             deleted_files = self._deleted_files
+            self._files = files
         else:
             files = self._files.copy()
             files.update(self._created_files)
