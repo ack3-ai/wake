@@ -1045,6 +1045,14 @@ class SolidityCompiler:
         # build info of CUs that are part of the current build but don't need to be recompiled,
         # carried over from the previous build so that their warnings are not lost
         retained_cu_info: Dict[str, CompilationUnitBuildInfo] = {}
+        # source units that still belong to a compilation unit carried over (not
+        # recompiled) from the previous build; their compilation result is reused
+        # without re-running solc. Empty for a full recompile.
+        carried_over_source_units: Set[str] = set()
+        # the full maximized compilation-unit set in incremental builds (None for a
+        # full recompile); used to determine the carried-over source units once the
+        # final set of recompiled compilation units is known.
+        maximized_compilation_units: Optional[List[CompilationUnit]] = None
         compilation_units_per_file: Dict[Path, Set[CompilationUnit]] = {}
 
         if (
@@ -1124,10 +1132,12 @@ class SolidityCompiler:
                     if path in cu.files and subproject == cu.subproject
                 }
 
-            # select only compilation units that need to be compiled
+            # select only compilation units that need to be compiled; the remaining
+            # ones are carried over unchanged from the previous build.
+            maximized_compilation_units = compilation_units
             compilation_units = [
                 cu
-                for cu in compilation_units
+                for cu in maximized_compilation_units
                 if (cu.source_unit_names & source_units_to_compile)
                 or cu.contains_unresolved_file(deleted_files, self.__config)
                 # a CU may re-enter the current build (e.g. after a deleted import
@@ -1158,45 +1168,62 @@ class SolidityCompiler:
             )
         ) | set(files_to_compile)
 
-        target_versions, skipped_compilation_units = self.determine_solc_versions(
-            graph, compilation_units, target_versions_by_subproject
-        )
+        # Determine solc versions, drop files orphaned by skipped compilation units,
+        # and pull in any extra compilation units required to (re)build files that
+        # should be present but are missing from the carried-over build -- e.g. a
+        # file orphaned in a previous build by a cascade whose cause (a skipped CU)
+        # has since been removed, and whose own unchanged CU would therefore never
+        # be recompiled. Iterate to a fixpoint: each round only adds CUs for files
+        # that still have a candidate canonical CU *after* the skip cascade, so
+        # persistently-orphaned files are not needlessly recompiled.
+        target_versions: List[SolidityVersion] = []
+        pending = compilation_units
+        compilation_units = []
+        # every compilation unit (re)evaluated this build, whether it was compiled
+        # or skipped; used to tell apart carried-over compilation units (reused from
+        # the previous build) from ones whose result was recomputed now
+        evaluated_cus: Set[CompilationUnit] = set()
+        while pending:
+            evaluated_cus.update(pending)
+            pending_versions, skipped_compilation_units = self.determine_solc_versions(
+                graph, pending, target_versions_by_subproject
+            )
 
-        await self._install_solc(target_versions, console)
+            await self._install_solc(pending_versions, console)
 
-        for cu in skipped_compilation_units:
-            for file in cu.files:
-                try:
-                    compilation_units_per_file[file].remove(cu)
-                except KeyError:
-                    # prevent triggering the following if condition multiple times
-                    continue
+            for cu in skipped_compilation_units:
+                for file in cu.files:
+                    try:
+                        compilation_units_per_file[file].remove(cu)
+                    except KeyError:
+                        # prevent triggering the following if condition multiple times
+                        continue
 
-                if len(compilation_units_per_file[file]) == 0:
-                    # this file won't be present in the final build
-                    # however, there may be other CUs compiling this file (for different subprojects) where compilation was successful
-                    # to prevent the case where files from different subprojects depending on this file would be left orphaned,
-                    # we need to remove them from the build as well
-                    files = {
-                        source_units_to_paths[to]
-                        for (_, to) in nx.edge_bfs(
-                            graph,
-                            [
-                                source_unit_name
-                                for source_unit_name in graph.nodes
-                                if graph.nodes[source_unit_name]["path"] == file
-                            ],
-                        )
-                    }
-                    files.add(file)
-                    original_file = file
+                    if len(compilation_units_per_file[file]) == 0:
+                        # this file won't be present in the final build
+                        # however, there may be other CUs compiling this file (for different subprojects) where compilation was successful
+                        # to prevent the case where files from different subprojects depending on this file would be left orphaned,
+                        # we need to remove them from the build as well
+                        files = {
+                            source_units_to_paths[to]
+                            for (_, to) in nx.edge_bfs(
+                                graph,
+                                [
+                                    source_unit_name
+                                    for source_unit_name in graph.nodes
+                                    if graph.nodes[source_unit_name]["path"] == file
+                                ],
+                            )
+                        }
+                        files.add(file)
 
-                    for file in files:
-                        if (
-                            file in deleted_files
-                            or file in files_to_recompile
-                            or file == original_file
-                        ):
+                        # drop the orphaned file and every file that (transitively)
+                        # imports it. This must not be gated by files_to_recompile:
+                        # otherwise an incremental build would keep a carried-over
+                        # source unit that depends on a file with no canonical
+                        # SourceUnit, diverging from a full build (which always drops
+                        # the whole dependent subtree) and leaving dangling imports.
+                        for file in files:
                             # this file won't be taken from any CU, even if compiled successfully
                             compilation_units_per_file[file].clear()
 
@@ -1207,8 +1234,33 @@ class SolidityCompiler:
                                 build._source_units.pop(file)
                                 build._interval_trees.pop(file)
 
-            retained_cu_info.pop(cu.hash.hex(), None)
-            compilation_units.remove(cu)
+                retained_cu_info.pop(cu.hash.hex(), None)
+
+            skipped_set = set(skipped_compilation_units)
+            compilation_units.extend(cu for cu in pending if cu not in skipped_set)
+            target_versions.extend(pending_versions)
+
+            # files that still have a candidate canonical compilation unit (i.e. were
+            # not orphaned by the skip cascade) but are absent from the carried-over
+            # build, and whose compilation unit is not yet scheduled: their unchanged
+            # CU must be (re)compiled so they re-enter the build
+            scheduled = set(compilation_units)
+            pending = []
+            queued: Set[CompilationUnit] = set()
+            for path, cus in compilation_units_per_file.items():
+                if not cus or path in build.source_units:
+                    continue
+                for cu in cus:
+                    if cu not in scheduled and cu not in queued:
+                        pending.append(cu)
+                        queued.add(cu)
+
+        # source units kept by a compilation unit that was neither recompiled nor
+        # skipped this build are carried over unchanged from the previous build
+        if maximized_compilation_units is not None:
+            for cu in maximized_compilation_units:
+                if cu not in evaluated_cus:
+                    carried_over_source_units |= cu.source_unit_names
 
         files = set()
         for cu in compilation_units:
@@ -1324,7 +1376,6 @@ class SolidityCompiler:
 
         with ctx_manager:
             successful_compilation_units = []
-            all_errored_files: Set[Path] = set()
 
             for cu, solc_output in zip(compilation_units, ret):
                 errors_per_cu[cu.hash] = set(solc_output.errors)
@@ -1359,26 +1410,24 @@ class SolidityCompiler:
                             )
                         }
                         files.add(file)
-                        original_file = file
 
+                        # drop the orphaned file and every file that (transitively)
+                        # imports it, regardless of files_to_recompile, so that an
+                        # incremental build orphans exactly the same dependent
+                        # subtree as a full build (see the matching comment in the
+                        # skipped-compilation-unit handling above).
                         for file in files:
-                            if (
-                                file in deleted_files
-                                or file in files_to_recompile
-                                or file == original_file
-                            ):
-                                # this file won't be taken from any CU, even if compiled successfully
-                                compilation_units_per_file[file].clear()
-                                all_errored_files.add(file)
+                            # this file won't be taken from any CU, even if compiled successfully
+                            compilation_units_per_file[file].clear()
 
-                                if file in build.source_units:
-                                    build.reference_resolver.run_destroy_callbacks(file)
-                                    build.reference_resolver.clear_registered_nodes(
-                                        [file]
-                                    )
-                                    build.reference_resolver.clear_indexed_nodes([file])
-                                    build._source_units.pop(file)
-                                    build._interval_trees.pop(file)
+                            if file in build.source_units:
+                                build.reference_resolver.run_destroy_callbacks(file)
+                                build.reference_resolver.clear_registered_nodes(
+                                    [file]
+                                )
+                                build.reference_resolver.clear_indexed_nodes([file])
+                                build._source_units.pop(file)
+                                build._interval_trees.pop(file)
 
                 if not errored:
                     successful_compilation_units.append((cu, solc_output))
@@ -1395,15 +1444,30 @@ class SolidityCompiler:
             build.reference_resolver.clear_registered_nodes(files_to_recompile)
             build.reference_resolver.clear_indexed_nodes(files_to_recompile)
 
+            prev_source_units_info = (
+                self._latest_build_info.source_units_info
+                if self._latest_build_info is not None
+                else {}
+            )
+            # Source units compiled this build are added below from the successful
+            # CU outputs. Here we carry over the rest: a source unit kept by a
+            # compilation unit that was not recompiled is still compiled, provided
+            # that compilation unit produced it successfully in the previous build
+            # (i.e. the source unit is present in the previous source_units_info).
+            # This keeps compiled-but-not-canonical dependencies (e.g. a
+            # non-subproject file pulled only into subproject CUs, which has no
+            # canonical SourceUnit) while dropping files that were never compiled
+            # (e.g. an unsupported-version file whose CU is always skipped), so the
+            # result matches a full build.
             source_units_info = {
                 str(source_unit): SourceUnitInfo(
                     fs_path=graph.nodes[source_unit]["path"],
                     blake2b_hash=graph.nodes[source_unit]["hash"],
                 )
                 for source_unit in graph.nodes
-                if graph.nodes[source_unit]["path"] not in deleted_files
-                and graph.nodes[source_unit]["path"] not in all_errored_files
-                and graph.nodes[source_unit]["path"] not in files_to_recompile
+                if source_unit in carried_over_source_units
+                and source_unit in prev_source_units_info
+                and graph.nodes[source_unit]["path"] not in deleted_files
             }
 
             processed_files: Set[Path] = set()
