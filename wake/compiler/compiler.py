@@ -1042,6 +1042,9 @@ class SolidityCompiler:
                 build_settings_changed = True
 
         errors_per_cu: DefaultDict[bytes, Set[SolcOutputError]] = defaultdict(set)
+        # build info of CUs that are part of the current build but don't need to be recompiled,
+        # carried over from the previous build so that their warnings are not lost
+        retained_cu_info: Dict[str, CompilationUnitBuildInfo] = {}
         compilation_units_per_file: Dict[Path, Set[CompilationUnit]] = {}
 
         if (
@@ -1105,9 +1108,11 @@ class SolidityCompiler:
                     self.__config,
                 )
 
+            cu_hashes = {cu.hash.hex() for cu in compilation_units}
             for cu_hash, cu_data in self._latest_build_info.compilation_units.items():
-                if any(cu.hash.hex() == cu_hash for cu in compilation_units):
+                if cu_hash in cu_hashes:
                     errors_per_cu[bytes.fromhex(cu_hash)] = set(cu_data.errors)
+                    retained_cu_info[cu_hash] = cu_data
 
             for source_unit_name, path in source_units_to_paths.items():
                 subproject = graph.nodes[source_unit_name]["subproject"]
@@ -1196,6 +1201,7 @@ class SolidityCompiler:
                                 build._source_units.pop(file)
                                 build._interval_trees.pop(file)
 
+            retained_cu_info.pop(cu.hash.hex(), None)
             compilation_units.remove(cu)
 
         files = set()
@@ -1527,7 +1533,10 @@ class SolidityCompiler:
                 f"[green]Processed compilation results in [bold green]{end - start:.2f} s[/bold green][/]"
             )
 
-        cu_info = {}
+        # start from CUs carried over from the previous build; CUs recompiled in this run
+        # overwrite their carried-over entry (the hash may be unchanged, e.g. when a previously
+        # errored CU is recompiled)
+        cu_info = dict(retained_cu_info)
         for cu, target_version in zip(compilation_units, target_versions):
             cu_info[cu.hash.hex()] = CompilationUnitBuildInfo(
                 files=cu.files,
