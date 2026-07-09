@@ -624,6 +624,9 @@ class SolidityCompiler:
         ]
         settings.evm_version = solc_settings.evm_version
         settings.via_IR = solc_settings.via_IR
+        # experimental mode (unset -> None so it is omitted from the solc input)
+        settings.experimental = solc_settings.experimental.enable or None
+        settings.via_SSA_CFG = solc_settings.experimental.via_ssa_cfg or None
         settings.optimizer = SolcInputOptimizerSettings(
             enabled=solc_settings.optimizer.enabled,
             runs=solc_settings.optimizer.runs,

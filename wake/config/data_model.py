@@ -11,6 +11,7 @@ from pydantic import (
     ValidationInfo,
     field_serializer,
     field_validator,
+    model_validator,
 )
 from pydantic.dataclasses import dataclass
 from pydantic.functional_validators import BeforeValidator
@@ -106,6 +107,29 @@ class SolcMetadataConfig(WakeConfigModel):
     bytecode_hash: Optional[MetadataBytecodeHashEnum] = None
 
 
+class SolcExperimentalConfig(WakeConfigModel):
+    enable: bool = False
+    """
+    Enable solc experimental mode (maps to Standard JSON `settings.experimental`, requires solc >= 0.8.35).
+    On its own it only unlocks experimental features; it does not activate any of them. Experimental
+    features have no stability guarantees between releases and are not suited for production, and enabling
+    this marks the compiled contract metadata as experimental.
+    """
+    via_ssa_cfg: bool = False
+    """
+    Use the experimental SSA CFG-based code generator (maps to `settings.viaSSACFG`). Requires
+    `enable = true` and solc >= 0.8.35.
+    """
+
+    @model_validator(mode="after")
+    def _require_experimental_mode(self):
+        if self.via_ssa_cfg and not self.enable:
+            raise ValueError(
+                "`compiler.solc.experimental.via_ssa_cfg` requires `compiler.solc.experimental.enable = true`"
+            )
+        return self
+
+
 def convert_remapping(v):
     if isinstance(v, SolcRemapping):
         return v
@@ -177,6 +201,12 @@ class SolcConfig(WakeConfigModel):
     """
     Metadata config options.
     """
+    experimental: SolcExperimentalConfig = Field(
+        default_factory=SolcExperimentalConfig
+    )
+    """
+    Experimental (unstable) compiler features, gated behind solc's experimental mode.
+    """
 
     _normalize_paths = field_validator(
         "allow_paths", "include_paths", "exclude_paths", mode="before"
@@ -194,6 +224,9 @@ class SubprojectConfig(WakeConfigModel):
     optimizer: SolcOptimizerConfig = Field(default_factory=SolcOptimizerConfig)
     via_IR: Optional[bool] = None
     metadata: SolcMetadataConfig = Field(default_factory=SolcMetadataConfig)
+    experimental: SolcExperimentalConfig = Field(
+        default_factory=SolcExperimentalConfig
+    )
 
     _normalize_paths = field_validator("paths", mode="before")(normalize_paths)
 
