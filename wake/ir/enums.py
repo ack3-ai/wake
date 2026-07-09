@@ -38,6 +38,7 @@ class GlobalSymbol(IntEnum):
     TYPE = -27
     THIS = -28
     BLOBHASH = -29
+    ERC7201 = -30  # new in 0.8.35
 
     BLOCK_BASEFEE = -100
     BLOCK_CHAINID = -101
@@ -364,6 +365,7 @@ class FunctionTypeKind(StrEnum):
     SET_VALUE = "setvalue"
     BLOCK_HASH = "blockhash"
     BLOBHASH = "blobhash"
+    ERC7201 = "erc7201"  # new in 0.8.35
     ADD_MOD = "addmod"
     MUL_MOD = "mulmod"
     ARRAY_PUSH = "arraypush"
