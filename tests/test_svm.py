@@ -123,8 +123,9 @@ async def test_install_nonexistent_version(run_cleanup, config):
     svm = SolcVersionManager(config)
     with pytest.raises(UnsupportedVersionError):
         await svm.install("0.0.0")
+    # above the platform minimum (0.4.x amd64 / 0.5.0 arm64) but nonexistent -> ValueError
     with pytest.raises(ValueError):
-        await svm.install("0.4.100")
+        await svm.install("0.99.99")
 
 
 @pytest.mark.slow
@@ -144,8 +145,9 @@ async def test_get_path_nonexistent_version(run_cleanup, config):
     svm = SolcVersionManager(config)
     with pytest.raises(UnsupportedVersionError):
         svm.get_path("0.0.0")
+    # above the platform minimum (0.4.x amd64 / 0.5.0 arm64) but nonexistent -> ValueError
     with pytest.raises(ValueError):
-        svm.get_path("0.4.255")
+        svm.get_path("0.99.99")
 
 
 @pytest.mark.slow
