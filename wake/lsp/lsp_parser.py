@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 import weakref
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -16,8 +17,8 @@ from typing import (
     Union,
 )
 
-from tree_sitter import Parser
-from tree_sitter_solidity import get_parser
+from tree_sitter import Language, Parser
+from tree_sitter_solidity import language as solidity_language
 
 from .common_structures import (
     CreateFilesParams,
@@ -74,7 +75,12 @@ class LspParser:
         self._tree_changed = defaultdict(bool)
         self._line_indexes = {}
         self._line_endings = {}
-        self._parser = get_parser()
+        # tree-sitter-solidity 1.2.x exposes the grammar as a raw `TSLanguage *`
+        # pointer (int) rather than a PyCapsule; py-tree-sitter still accepts it
+        # but deprecates the int form. Suppress until the grammar ships a capsule.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self._parser = Parser(Language(solidity_language()))  # pyright: ignore[reportDeprecated]
 
     def __getitem__(self, item: Path) -> Any:
         if item not in self._trees:
