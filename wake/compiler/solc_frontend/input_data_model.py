@@ -230,6 +230,8 @@ class SolcInputSettings(SolcInputModel):
     optimizer: Optional[SolcInputOptimizerSettings] = None
     evm_version: Optional[EvmVersionEnum] = None
     via_IR: Optional[bool] = Field(None, alias="viaIR")
+    via_SSA_CFG: Optional[bool] = Field(None, alias="viaSSACFG")
+    experimental: Optional[bool] = None
     debug: Optional[SolcInputDebugSettings] = None
     metadata: Optional[SolcInputMetadataSettings] = None
     libraries: Optional[

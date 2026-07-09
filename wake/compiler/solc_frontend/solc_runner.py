@@ -32,6 +32,14 @@ MAX_SUPPORTED_EVM_VERSIONS = {
     SolidityVersion.fromstring("0.8.24"): EvmVersionEnum.CANCUN,
     SolidityVersion.fromstring("0.8.27"): EvmVersionEnum.PRAGUE,
     SolidityVersion.fromstring("0.8.29"): EvmVersionEnum.OSAKA,
+    # NOTE: `amsterdam` is still experimental in 0.8.36 (requires `settings.experimental`),
+    # so the max *stable* evm version for 0.8.36 remains `osaka` (capped by the 0.8.29 entry).
+}
+
+# EVM versions available only in experimental mode (`settings.experimental`), by solc version.
+# Applied on top of MAX_SUPPORTED_EVM_VERSIONS when experimental mode is enabled.
+MAX_EXPERIMENTAL_EVM_VERSIONS = {
+    SolidityVersion.fromstring("0.8.36"): EvmVersionEnum.AMSTERDAM,
 }
 
 
@@ -87,22 +95,47 @@ class SolcFrontend:
                 )
             standard_input.settings.via_IR = None
 
+        # experimental mode and its features are only available since solc 0.8.35
+        if target_version < "0.8.35":
+            if settings.experimental:
+                logger.warning(
+                    "`experimental` mode is not supported for solc versions < 0.8.35. This option will be ignored."
+                )
+            if settings.via_SSA_CFG:
+                logger.warning(
+                    "`via_SSA_CFG` is not supported for solc versions < 0.8.35. This option will be ignored."
+                )
+            standard_input.settings.experimental = None
+            standard_input.settings.via_SSA_CFG = None
+
         if settings.evm_version is not None:
-            # find nearest <= version in MAX_SUPPORTED_EVM_VERSIONS
+            # highest stable evm version this solc version supports
             nearest_version = max(
                 version
                 for version in MAX_SUPPORTED_EVM_VERSIONS.keys()
                 if version <= target_version
             )
+            max_evm_version = MAX_SUPPORTED_EVM_VERSIONS[nearest_version]
 
-            if MAX_SUPPORTED_EVM_VERSIONS[nearest_version] < settings.evm_version:
+            # in experimental mode, also allow experimental evm versions this solc knows
+            if standard_input.settings.experimental:
+                experimental_versions = [
+                    version
+                    for version in MAX_EXPERIMENTAL_EVM_VERSIONS.keys()
+                    if version <= target_version
+                ]
+                if experimental_versions:
+                    max_evm_version = max(
+                        max_evm_version,
+                        MAX_EXPERIMENTAL_EVM_VERSIONS[max(experimental_versions)],
+                    )
+
+            if max_evm_version < settings.evm_version:
                 logger.warning(
                     f"solc version `{target_version}` does not support evm version `{settings.evm_version}` set in settings. "
-                    f"Lowering evm version to `{MAX_SUPPORTED_EVM_VERSIONS[nearest_version]}`."
+                    f"Lowering evm version to `{max_evm_version}`."
                 )
-                standard_input.settings.evm_version = MAX_SUPPORTED_EVM_VERSIONS[
-                    nearest_version
-                ]
+                standard_input.settings.evm_version = max_evm_version
 
         return await self.__run_solc(target_version, standard_input)
 

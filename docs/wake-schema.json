@@ -36,7 +36,7 @@
             "evm_version": {
               "type": "string",
               "description": "Version of the EVM to compile for",
-              "enum": ["homestead", "tangerineWhistle", "spuriousDragon", "byzantium", "constantinople", "petersburg", "istanbul", "berlin", "london", "paris", "shanghai", "cancun", "prague", "osaka"]
+              "enum": ["homestead", "tangerineWhistle", "spuriousDragon", "byzantium", "constantinople", "petersburg", "istanbul", "berlin", "london", "paris", "shanghai", "cancun", "prague", "osaka", "amsterdam"]
             },
             "exclude_paths": {
               "type": "array",
@@ -113,6 +113,13 @@
                   "type": "string",
                   "enum": ["none", "ipfs", "bzzr1"]
                 }
+              }
+            },
+            "experimental": {
+              "type": "object",
+              "properties": {
+                "enable": { "type": "boolean" },
+                "via_ssa_cfg": { "type": "boolean" }
               }
             }
           }
@@ -451,7 +458,7 @@
           "evm_version": {
             "type": "string",
             "description": "Version of the EVM to compile for",
-            "enum": ["homestead", "tangerineWhistle", "spuriousDragon", "byzantium", "constantinople", "petersburg", "istanbul", "berlin", "london", "paris", "shanghai", "cancun", "prague", "osaka"]
+            "enum": ["homestead", "tangerineWhistle", "spuriousDragon", "byzantium", "constantinople", "petersburg", "istanbul", "berlin", "london", "paris", "shanghai", "cancun", "prague", "osaka", "amsterdam"]
           },
           "optimizer": {
             "type": "object",
@@ -499,6 +506,13 @@
                 "type": "string",
                 "enum": ["none", "ipfs", "bzzr1"]
               }
+            }
+          },
+          "experimental": {
+            "type": "object",
+            "properties": {
+              "enable": { "type": "boolean" },
+              "via_ssa_cfg": { "type": "boolean" }
             }
           }
         }
