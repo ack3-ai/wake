@@ -1134,18 +1134,28 @@ class SolidityCompiler:
 
             # select only compilation units that need to be compiled; the remaining
             # ones are carried over unchanged from the previous build.
+            #
+            # The hash check is the general "this unit differs from what was recorded"
+            # test: a unit's hash folds in its exact membership and every member's
+            # content, so it fires on any content edit AND on any graph reshape that
+            # re-groups files -- e.g. a deleted import re-materialising a unit that was
+            # previously absorbed into a larger one, whose own files never changed and
+            # which therefore trips neither check below. It thus *subsumes* the two
+            # content-level conditions that follow: both a changed/added source unit and
+            # an import to a deleted file necessarily alter the unit's hash. Those two
+            # are kept as explicit documentation of the concrete rebuild reasons and to
+            # cover the only cases the hash cannot see (an import already unresolved
+            # before being explicitly deleted; a hash collision). The hash check is
+            # listed first because it is the cheapest (precomputed hash + dict lookup)
+            # and, being the superset, short-circuits the costlier unresolved-file scan
+            # for every unit that genuinely changed.
             maximized_compilation_units = compilation_units
             compilation_units = [
                 cu
                 for cu in maximized_compilation_units
-                if (cu.source_unit_names & source_units_to_compile)
+                if cu.hash.hex() not in self._latest_build_info.compilation_units
+                or (cu.source_unit_names & source_units_to_compile)
                 or cu.contains_unresolved_file(deleted_files, self.__config)
-                # a CU may re-enter the current build (e.g. after a deleted import
-                # reshapes the graph) with all its files unchanged, so none of the
-                # conditions above hold, yet its hash is absent from the previous
-                # build info. Without recompiling it, its errors/warnings would be
-                # lost from this and all subsequent builds.
-                or cu.hash.hex() not in self._latest_build_info.compilation_units
             ]
 
             logger.debug(
