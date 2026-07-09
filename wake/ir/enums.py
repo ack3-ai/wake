@@ -319,6 +319,7 @@ class InlineAssemblyEvmVersion(StrEnum):
     CANCUN = "cancun"
     PRAGUE = "prague"
     OSAKA = "osaka"
+    AMSTERDAM = "amsterdam"
 
 
 class InlineAssemblySuffix(StrEnum):
