@@ -143,12 +143,12 @@ impl TransactionAbc {
 
     #[getter]
     fn gas_used(&self) -> u64 {
-        self.result.gas_used()
+        self.result.tx_gas_used()
     }
 
     #[getter]
     fn cumulative_gas_used(&self, py: Python) -> PyResult<u64> {
-        Ok(self.block(py)?.borrow(py).block_env.gas_limit - self.gas_limit_before + self.result.gas_used())
+        Ok(self.block(py)?.borrow(py).block_env.gas_limit - self.gas_limit_before + self.result.tx_gas_used())
     }
 
     #[getter]
