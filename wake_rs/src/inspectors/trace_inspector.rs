@@ -277,5 +277,6 @@ fn instruction_result_to_string(result: InstructionResult) -> String {
         InstructionResult::CreateInitCodeSizeLimit => "CreateInitCodeSizeLimit".to_string(),
         InstructionResult::FatalExternalError => "FatalExternalError".to_string(),
         InstructionResult::InvalidImmediateEncoding => "InvalidImmediateEncoding".to_string(),
+        InstructionResult::Suspend => "Suspend".to_string(),
     }
 }

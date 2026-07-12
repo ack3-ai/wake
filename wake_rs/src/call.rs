@@ -317,6 +317,6 @@ impl Call {
     #[getter]
     fn estimated_gas(slf: &Bound<Self>) -> u64 {
         // simply use the gas used from the result
-        slf.borrow().result.gas_used()
+        slf.borrow().result.tx_gas_used()
     }
 }

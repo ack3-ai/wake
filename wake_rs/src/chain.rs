@@ -1193,8 +1193,8 @@ impl Chain {
         inspector.sync_coverage(py)?;
 
         let gas_limit_before = borrowed.get_evm()?.block.gas_limit;
-        borrowed.get_evm_mut()?.block.gas_limit -= result.gas_used();
-        borrowed.pending_gas_used += result.gas_used();
+        borrowed.get_evm_mut()?.block.gas_limit -= result.tx_gas_used();
+        borrowed.pending_gas_used += result.tx_gas_used();
 
         let block = match borrowed.mine(py, false)? {
             Some(block) => BlockInfo::Mined(block),
@@ -1346,7 +1346,7 @@ impl Chain {
         };
 
         if !return_call && (!revert || matches!(res.result, ExecutionResult::Success { .. })) {
-            res.result.gas_used().into_py_any(py)
+            res.result.tx_gas_used().into_py_any(py)
         } else {
             let evm = borrowed.get_evm()?;
             let block = match block {
@@ -1481,7 +1481,7 @@ impl Chain {
         };
 
         if !return_call && (!revert || matches!(res.result, ExecutionResult::Success { .. })) {
-            (access_list_into_py(inspector.into_access_list()), res.result.gas_used()).into_py_any(py)
+            (access_list_into_py(inspector.into_access_list()), res.result.tx_gas_used()).into_py_any(py)
         } else {
             let evm = borrowed.get_evm()?;
             let block = match block {
