@@ -37,7 +37,7 @@ impl Contract {
         py: Python,
         address: AddressEnum,
         chain: Option<Py<PyAny>>,
-    ) -> PyResult<(Self, Account)> {
+    ) -> PyResult<PyClassInitializer<Self>> {
         let (final_address, final_chain) = match &address {
             AddressEnum::Account(account) => {
                 let account_borrowed = account.borrow(py);
@@ -71,7 +71,7 @@ impl Contract {
         };
 
         let account = Account::from_revm_address(py, final_address, final_chain)?;
-        Ok((Contract {}, account))
+        Ok(PyClassInitializer::from(account).add_subclass(Contract {}))
     }
 
     fn __str__<'py>(self_: PyRef<'_, Self>, py: Python<'py>) -> PyResult<Bound<'py, PyString>> {

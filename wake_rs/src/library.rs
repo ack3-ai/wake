@@ -25,7 +25,7 @@ impl Library {
         address: AddressEnum,
         chain: Option<Py<PyAny>>,
     ) -> PyResult<PyClassInitializer<Self>> {
-        Ok(PyClassInitializer::from(Contract::new(py, address, chain)?).add_subclass(Library {}))
+        Ok(Contract::new(py, address, chain)?.add_subclass(Library {}))
     }
 
     #[pyo3(signature = (request_type, arguments, return_tx, return_type, from_, value, gas_limit, libraries, chain, gas_price, max_fee_per_gas, max_priority_fee_per_gas, access_list, authorization_list, block, confirmations, revert, return_call))]
