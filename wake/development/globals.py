@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections import defaultdict
 from pathlib import Path
 from random import Random
@@ -240,6 +241,13 @@ def get_config() -> WakeConfig:
         ctx = rich_click.get_current_context(silent=True)
         if ctx is not None and isinstance(ctx.obj, dict):
             local_config_path = ctx.obj.get("local_config_path", None)
+
+        # Fall back to the WAKE_CONFIG env var (also honored by the `--config`
+        # CLI option). This is how the local config path reaches child processes
+        # under the "spawn"/"forkserver" start methods, where this config is
+        # rebuilt from scratch and the click context is not available.
+        if local_config_path is None:
+            local_config_path = os.environ.get("WAKE_CONFIG")
 
         _config = WakeConfig(local_config_path=local_config_path)
         _config.load_configs()
