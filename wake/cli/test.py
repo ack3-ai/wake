@@ -233,6 +233,16 @@ def run_test(
             raise click.BadParameter(
                 "Shrunk reproduce cannot execute with multiprocess mode."
             )
+
+        # Propagate the resolved local config path to the worker processes via the
+        # environment, which is inherited across all multiprocessing start methods.
+        # Under "spawn"/"forkserver" (macOS/Windows, and Linux on CPython 3.14+)
+        # each worker is a fresh interpreter that imports wake.testing (and thus
+        # reads the config) before any plugin hook runs, so the path cannot be
+        # handed over through the plugin object. Reuses the WAKE_CONFIG env var
+        # that the `--config` CLI option already honors.
+        os.environ["WAKE_CONFIG"] = str(config.local_config_path)
+
         sys.exit(
             pytest.main(
                 pytest_args,

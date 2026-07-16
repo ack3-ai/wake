@@ -38,8 +38,10 @@ from wake.development.globals import (
     get_sequence_initial_internal_state,
     random,
     reset_exception_handled,
+    set_config,
     set_coverage_handler,
     set_exception_handler,
+    set_verbosity,
 )
 from wake.testing.coverage import CoverageHandler
 from wake.testing.custom_pdb import CustomPdb
@@ -145,6 +147,18 @@ class PytestWakePluginMultiprocess:
             self._conn.send(("exception_handled",))
 
     def pytest_configure(self, config: pytest.Config):
+        # Re-establish process-global state that the CLI set up in the parent
+        # process. Under the "fork" start method the child inherits it for free,
+        # but under "spawn" (macOS, Windows) and "forkserver" (Linux default on
+        # CPython 3.14+) the child is a fresh interpreter and inherits nothing.
+        # Without this the fuzzing runtime would fall back to a config rebuilt
+        # from the cwd, lose the verbosity level, and be unable to import modules
+        # (e.g. pytypes) located in the project root.
+        set_config(self._config)
+        set_verbosity(config.option.verbose)
+        if str(self._config.project_root_path) not in sys.path:
+            sys.path.insert(0, str(self._config.project_root_path))
+
         self._f = open(self._log_file, "w")
         self._setup_stdio()
         logging.basicConfig(
