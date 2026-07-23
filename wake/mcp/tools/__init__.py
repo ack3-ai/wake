@@ -1,0 +1,20 @@
+# Import all tool modules to trigger @mcp_tool registration
+from . import (  # noqa: F401
+    analyze_state_variables,
+    find_external_calls_by_selector,
+    find_functions_by_regex,
+    find_functions_by_selector,
+    find_references,
+    get_c3_linearization,
+    get_contract_source,
+    get_definition_source,
+    get_expression_type,
+    get_function_source,
+    get_state_changes,
+    get_storage_layout,
+    go_to_definition,
+    is_known_contract,
+    list_contract_functions,
+    list_contracts,
+    list_modifiers,
+)
