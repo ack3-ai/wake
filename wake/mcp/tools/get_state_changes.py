@@ -1,5 +1,4 @@
 from collections import defaultdict
-from typing import Literal, TypedDict
 
 from pydantic import Field
 
@@ -7,7 +6,7 @@ import wake.ir as ir
 from wake.analysis import ModifiesStateFlag, modifies_state
 
 from ..common import McpBuild
-from .common import Location, ToolInput, mcp_tool, node_to_location, resolve_source_unit
+from .common import ToolInput, mcp_tool, node_loc, node_to_location, resolve_source_unit
 
 
 class GetStateChangesInput(ToolInput):
@@ -22,18 +21,6 @@ class GetStateChangesInput(ToolInput):
         ...,
         description="Whether to include state changes of called functions as well, or just the function and its modifiers",
     )
-
-
-class StateChange(TypedDict):
-    code: str
-    change_type: str
-    line: int
-
-
-class StateChangesByDeclaration(TypedDict):
-    declaration_type: Literal["function", "modifier"]
-    location: Location
-    state_changes: list[StateChange]
 
 
 def _collect_function_modifies_state(
@@ -69,9 +56,7 @@ def _collect_function_modifies_state(
 
 
 @mcp_tool
-def get_state_changes(
-    input: GetStateChangesInput, *, build: McpBuild, **kwargs
-) -> dict[str, StateChangesByDeclaration]:
+def get_state_changes(input: GetStateChangesInput, *, build: McpBuild, **kwargs) -> str:
     """Get the state changes of a function or modifier at a given location in Solidity code."""
     declarations: list[ir.FunctionDefinition | ir.ModifierDefinition] = []
 
@@ -125,7 +110,7 @@ def get_state_changes(
         m = modifies_state(declaration.body)
 
     if len(m) == 0:
-        return {}
+        return f"No state changes in {input.declaration_name}."
 
     grouped = defaultdict(list)
     for ir_node, modification in m:
@@ -138,26 +123,35 @@ def get_state_changes(
             assert isinstance(ir_node, ir.YulAbc)
             grouped[ir_node.inline_assembly.declaration].append((ir_node, modification))
 
-    result: dict[str, StateChangesByDeclaration] = {}
+    blocks: list[str] = []
 
     for declaration, changes in grouped.items():
         if input.include_called_functions or declaration in target_declarations:
-            result[declaration.canonical_name] = StateChangesByDeclaration(
-                declaration_type="function"
+            decl_type = (
+                "function"
                 if isinstance(declaration, ir.FunctionDefinition)
-                else "modifier",
-                location=node_to_location(declaration, build),
-                state_changes=sorted(
-                    [
-                        StateChange(
-                            code=ir_node.source,
-                            change_type=str(change),
-                            line=node_to_location(ir_node, build)["line"],
-                        )
-                        for ir_node, change in changes
-                    ],
-                    key=lambda x: x["line"],
-                ),
+                else "modifier"
             )
+            rows = sorted(
+                (
+                    (
+                        node_to_location(ir_node, build)["line"],
+                        ir_node.source,
+                        str(change),
+                    )
+                    for ir_node, change in changes
+                ),
+                key=lambda r: r[0],
+            )
+            block = [
+                f"{declaration.canonical_name} ({decl_type}) @ {node_loc(declaration, build)}:"
+            ]
+            block += [
+                f"  - line {line}: {code}  [{change_type}]"
+                for line, code, change_type in rows
+            ]
+            blocks.append("\n".join(block))
 
-    return result
+    if not blocks:
+        return f"No state changes in {input.declaration_name}."
+    return "State changes:\n" + "\n".join(blocks)

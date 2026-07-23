@@ -63,6 +63,31 @@ class Location(TypedDict):
     column: int
 
 
+# Tools return plain text (not JSON) because their only consumer is an LLM, and
+# text is ~55% cheaper in tokens. Since there are no field names, each handler's
+# output must be self-describing. Shared conventions across all tools:
+#   * A header line names the entity and count, and echoes the relevant input,
+#     e.g. "Contracts (4):" or "References to `owner` (3):".
+#   * Solidity keywords are emitted bare — they name themselves: contract kinds
+#     (interface/library/abstract contract), visibility (public/external/...),
+#     mutability (view/payable/mutable/immutable/...).
+#   * Locations use "path:line:col" after "@" (see loc_str / node_loc).
+#   * Declarations and parameters use "name: type".
+#   * A word precedes any value that would otherwise be ambiguous: "slot 0",
+#     "offset 0", "line 74", "returns (...)", "modifiers: ...", "used by:".
+#   * Empty results say so ("No references found.") rather than a bare header.
+
+
+def loc_str(location: Location) -> str:
+    """Render a location as the universal ``path:line:col`` editor/compiler form."""
+    return f"{location['file']}:{location['line']}:{location['column']}"
+
+
+def node_loc(node: ir.IrAbc, build: McpBuild) -> str:
+    """``path:line:col`` for an IR node (shortcut for ``loc_str(node_to_location(...))``)."""
+    return loc_str(node_to_location(node, build))
+
+
 def node_to_location(node: ir.IrAbc, build: McpBuild) -> Location:
     line, col = node.source_unit.get_line_col_from_byte_offset(node.byte_location[0])
     return Location(

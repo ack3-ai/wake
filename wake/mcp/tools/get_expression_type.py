@@ -1,6 +1,5 @@
 from functools import reduce
 from operator import or_
-from typing import TypedDict
 
 from pydantic import Field
 
@@ -8,10 +7,9 @@ import wake.ir as ir
 
 from ..common import McpBuild
 from .common import (
-    Location,
     ToolInput,
     mcp_tool,
-    node_to_location,
+    node_loc,
     normalize_whitespace,
     overlapping_nodes_at_line,
 )
@@ -69,15 +67,10 @@ def _get_user_defined_type_info(t: ir.types.TypeAbc) -> set[ir.DeclarationAbc]:
         return set()
 
 
-class Response(TypedDict):
-    type: str
-    referenced_types: dict[str, Location]
-
-
 @mcp_tool
 def get_expression_type(
     input: GetExpressionTypeInput, *, build: McpBuild, **kwargs
-) -> Response:
+) -> str:
     """Get the type of an expression at a given location in Solidity code."""
     nodes = overlapping_nodes_at_line(build, input.file_path, input.line)
     normalized_expression = normalize_whitespace(input.expression)
@@ -106,9 +99,9 @@ def get_expression_type(
     # be so kind and provide additional info on user-defined types used in the expression type
     referenced_types = _get_user_defined_type_info(node.type)
 
-    return Response(
-        type=node.type_string,
-        referenced_types={
-            t.canonical_name: node_to_location(t, build) for t in referenced_types
-        },
-    )
+    lines = [f"Type of `{input.expression}`: {node.type_string}"]
+    if referenced_types:
+        lines.append("Referenced user-defined types:")
+        for t in sorted(referenced_types, key=lambda t: t.canonical_name):
+            lines.append(f"- {t.canonical_name} @ {node_loc(t, build)}")
+    return "\n".join(lines)

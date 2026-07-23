@@ -1,4 +1,3 @@
-import logging
 from typing import Literal, TypedDict
 
 from pydantic import Field
@@ -10,14 +9,12 @@ from ..common import McpBuild
 from .common import (
     Location,
     ToolInput,
+    loc_str,
     mcp_tool,
     node_to_location,
     normalize_whitespace,
     overlapping_nodes_at_line,
 )
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class GoToDefinitionInput(ToolInput):
@@ -69,21 +66,14 @@ def _ir_to_location(node: ir.DeclarationAbc, build: McpBuild) -> list[Definition
     return result
 
 
-@mcp_tool
-def go_to_definition(
-    input: GoToDefinitionInput, *, build: McpBuild, **kwargs
+def _collect_definitions(
+    input: GoToDefinitionInput, build: McpBuild
 ) -> list[Definition]:
-    """Go to the definition of a specific identifier at a given location in Solidity code."""
     nodes = overlapping_nodes_at_line(build, input.file_path, input.line)
     normalized_expression = normalize_whitespace(input.expression)
 
-    logger.debug(f"Normalized expression: {normalized_expression}")
-
     node = None
     for n in nodes:
-        logger.debug(
-            f"Checking node of type {type(n)}: {normalize_whitespace(n.source)}"
-        )
         if (
             isinstance(n, (ir.ExpressionAbc, ir.IdentifierPath, ir.UserDefinedTypeName))
             and normalize_whitespace(n.source) == normalized_expression
@@ -103,7 +93,6 @@ def go_to_definition(
                 source = n.source_unit.file_source[
                     part.byte_location[0] : part.byte_location[1]
                 ].decode("utf-8")
-                logger.debug(f"Checking part: {source}")
                 if (
                     normalize_whitespace(source) == normalized_expression
                     or normalize_whitespace(part.name) == normalized_expression
@@ -155,3 +144,13 @@ def go_to_definition(
         raise ValueError(
             f"No valid expression named `{input.expression}` found at {input.file_path}:{input.line}"
         )
+
+
+@mcp_tool
+def go_to_definition(input: GoToDefinitionInput, *, build: McpBuild, **kwargs) -> str:
+    """Go to the definition of a specific identifier at a given location in Solidity code."""
+    definitions = _collect_definitions(input, build)
+    if not definitions:
+        return f"No definition found for `{input.expression}`."
+    body = "\n".join(f"- {d['kind']} @ {loc_str(d['location'])}" for d in definitions)
+    return f"Definition of `{input.expression}` ({len(definitions)}):\n{body}"

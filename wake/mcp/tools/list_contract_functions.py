@@ -1,11 +1,11 @@
-from typing import Literal, TypedDict
+from typing import Literal
 
 from pydantic import Field
 
 import wake.ir as ir
 
 from ..common import McpBuild
-from .common import Location, ToolInput, mcp_tool, node_to_location, resolve_contract
+from .common import ToolInput, mcp_tool, node_loc, resolve_contract
 
 
 class ListContractFunctionsInput(ToolInput):
@@ -30,19 +30,10 @@ class ListContractFunctionsInput(ToolInput):
     )
 
 
-class Function(TypedDict):
-    name: str
-    contract_name: str
-    location: Location
-    visibility: str
-    mutability: str
-    modifiers: list[str]
-
-
 @mcp_tool
 def list_contract_functions(
     input: ListContractFunctionsInput, *, build: McpBuild, **kwargs
-):
+) -> str:
     """List all functions in a specific Solidity contract."""
     contract = resolve_contract(build, input.contract_name, input.file_path)
 
@@ -62,7 +53,7 @@ def list_contract_functions(
     # functions not to be listed since they are overridden
     base_functions: set[ir.FunctionDefinition] = set()
 
-    functions: list[Function] = []
+    lines: list[str] = []
 
     for base_contract in contract.linearized_base_contracts:
         for function in base_contract.functions:
@@ -78,17 +69,13 @@ def list_contract_functions(
             ):
                 continue
 
-            assert isinstance(function.parent, ir.ContractDefinition)
-
-            functions.append(
-                Function(
-                    name=function.canonical_name,
-                    contract_name=function.parent.name,
-                    location=node_to_location(function, build),
-                    visibility=function.visibility.value,
-                    mutability=function.state_mutability.value,
-                    modifiers=[m.source for m in function.modifiers],
-                )
+            modifiers = [m.source for m in function.modifiers]
+            mods = f", modifiers: {', '.join(modifiers)}" if modifiers else ""
+            lines.append(
+                f"- {function.canonical_name} — {function.visibility.value} "
+                f"{function.state_mutability.value}{mods} @ {node_loc(function, build)}"
             )
 
-    return functions
+    if not lines:
+        return f"No functions in {input.contract_name}."
+    return f"Functions of {input.contract_name} ({len(lines)}):\n" + "\n".join(lines)
