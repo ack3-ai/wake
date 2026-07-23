@@ -1,16 +1,7 @@
-from typing import TypedDict
-
 from pydantic import Field
 
 from ..common import McpBuild
-from .common import (
-    Location,
-    ToolInput,
-    mcp_tool,
-    node_end_to_location,
-    node_to_location,
-    resolve_contract,
-)
+from .common import ToolInput, mcp_tool, node_loc, resolve_contract
 
 
 class GetC3LinearizationInput(ToolInput):
@@ -23,30 +14,24 @@ class GetC3LinearizationInput(ToolInput):
     )
 
 
-class ContractInfo(TypedDict):
-    name: str
-    kind: str
-    location: Location
-    end_location: Location
-
-
 @mcp_tool
 def get_c3_linearization(
     input: GetC3LinearizationInput, *, build: McpBuild, **kwargs
-) -> list[ContractInfo]:
+) -> str:
     """Get the C3 linearization of a Solidity contract."""
     contract = resolve_contract(build, input.contract_name, input.file_path)
 
-    return [
-        ContractInfo(
-            name=c.name,
-            kind=(
-                "abstract contract"
-                if c.kind == "contract" and c.abstract
-                else c.kind.value
-            ),
-            location=node_to_location(c, build),
-            end_location=node_end_to_location(c, build),
+    linearization = contract.linearized_base_contracts
+    if not linearization:
+        return f"No linearization for {input.contract_name}."
+
+    lines = []
+    for i, c in enumerate(linearization, 1):
+        kind = (
+            "abstract contract" if c.kind == "contract" and c.abstract else c.kind.value
         )
-        for c in contract.linearized_base_contracts
-    ]
+        lines.append(f"{i}. {kind} {c.name} @ {node_loc(c, build)}")
+    return (
+        f"C3 linearization of {input.contract_name}, most-derived first "
+        f"({len(lines)}):\n" + "\n".join(lines)
+    )

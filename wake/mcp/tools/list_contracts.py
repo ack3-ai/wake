@@ -1,10 +1,10 @@
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import Literal
 
 from pydantic import Field
 
 from ..common import McpBuild
-from .common import Location, ToolInput, mcp_tool, node_to_location
+from .common import ToolInput, mcp_tool, node_loc
 
 
 class ListContractsInput(ToolInput):
@@ -19,17 +19,10 @@ class ListContractsInput(ToolInput):
     )
 
 
-class ContractInfo(TypedDict):
-    name: str
-    location: Location
-    kind: Literal["contract", "library", "interface"]
-    abstract: bool
-
-
 @mcp_tool
 def list_contracts(
     input: ListContractsInput, *, build: McpBuild, compilation_root: Path, **kwargs
-) -> list[ContractInfo]:
+) -> str:
     """List all contracts in the project."""
     raw_paths = input.paths or []
     kind_filter = input.kind_filter or [
@@ -49,11 +42,7 @@ def list_contracts(
             except ValueError:
                 filter_paths.append(Path(p))
 
-    if not kind_filter:
-        kind_filter = ["contract", "abstract contract", "library", "interface"]
-
-    result: list[ContractInfo] = []
-
+    lines: list[str] = []
     for p, source_unit in build.source_units.items():
         try:
             p = p.relative_to(compilation_root)
@@ -66,13 +55,11 @@ def list_contracts(
                     continue
                 if contract.abstract and "abstract contract" not in kind_filter:
                     continue
-                result.append(
-                    ContractInfo(
-                        name=contract.name,
-                        location=node_to_location(contract, build),
-                        kind=contract.kind.value,
-                        abstract=contract.abstract,
-                    )
-                )
+                kind = contract.kind.value
+                if contract.abstract and kind == "contract":
+                    kind = "abstract contract"
+                lines.append(f"- {kind} {contract.name} @ {node_loc(contract, build)}")
 
-    return result
+    if not lines:
+        return "No contracts found."
+    return f"Contracts ({len(lines)}):\n" + "\n".join(lines)

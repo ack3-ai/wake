@@ -1,6 +1,3 @@
-import logging
-from typing import TypedDict
-
 from pydantic import Field
 
 import wake.ir as ir
@@ -8,18 +5,9 @@ import wake.ir as ir
 from ..common import McpBuild
 from .common import ToolInput, mcp_tool, source_unit_to_file
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
 
 class FindExternalCallsBySelectorInput(ToolInput):
     selector: str = Field(..., description="Function selector of the external call")
-
-
-class ExternalCall(TypedDict):
-    file_path: str
-    line: int
-    column: int
 
 
 def _extract_selectors(node: ir.ExpressionAbc) -> set[bytes]:
@@ -58,14 +46,14 @@ def _extract_selectors(node: ir.ExpressionAbc) -> set[bytes]:
 @mcp_tool
 def find_external_calls_by_selector(
     input: FindExternalCallsBySelectorInput, *, build: McpBuild, **kwargs
-) -> list[ExternalCall]:
+) -> str:
     """Find external calls by selector in a specific Solidity contract."""
     selector_str = input.selector
     if selector_str.startswith("0x"):
         selector_str = selector_str[2:]
     selector = bytes.fromhex(selector_str)
 
-    external_calls = []
+    lines: list[str] = []
     for source_unit in build.source_units.values():
         for node in source_unit:
             if (
@@ -85,12 +73,11 @@ def find_external_calls_by_selector(
                 continue
 
             line, col = source_unit.get_line_col_from_byte_offset(node.byte_location[0])
-            external_calls.append(
-                {
-                    "file_path": source_unit_to_file(build, source_unit),
-                    "line": line,
-                    "column": col,
-                }
-            )
+            lines.append(f"- {source_unit_to_file(build, source_unit)}:{line}:{col}")
 
-    return external_calls
+    if not lines:
+        return f"No external calls with selector {input.selector}."
+    return (
+        f"External calls with selector {input.selector} ({len(lines)}):\n"
+        + "\n".join(lines)
+    )

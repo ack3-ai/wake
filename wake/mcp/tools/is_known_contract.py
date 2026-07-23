@@ -15,11 +15,11 @@ class IsKnownContractInput(ToolInput):
 
 
 @mcp_tool
-def is_known_contract(
-    input: IsKnownContractInput, *, build: McpBuild, **kwargs
-) -> bool:
+def is_known_contract(input: IsKnownContractInput, *, build: McpBuild, **kwargs) -> str:
     """Check if a contract is known."""
     contract = resolve_contract(build, input.contract_name, input.file_path)
     checksum = compute_code_checksum(contract.source)
 
-    return checksum in KNOWN_CONTRACTS
+    if checksum in KNOWN_CONTRACTS:
+        return f"Yes — {input.contract_name} matches a known (published) contract."
+    return f"No — {input.contract_name} does not match any known contract."

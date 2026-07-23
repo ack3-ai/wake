@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Literal, TypedDict
 
 from pydantic import Field
 
@@ -9,6 +8,7 @@ from ..common import McpBuild
 from .common import (
     Location,
     ToolInput,
+    loc_str,
     mcp_tool,
     node_to_location,
     normalize_whitespace,
@@ -121,11 +121,6 @@ GLOBAL_SYMBOL_MAP: dict[str, ir.enums.GlobalSymbol] = {
 }
 
 
-class Definition(TypedDict):
-    location: Location
-    kind: Literal["implementation", "declaration"]
-
-
 def _ir_to_locations(
     node: ir.DeclarationAbc, where: list[Path] | None, build: McpBuild
 ) -> list[Location]:
@@ -146,11 +141,7 @@ def _global_symbol_to_locations(
     ]
 
 
-@mcp_tool
-def find_references(
-    input: FindReferencesInput, *, build: McpBuild, **kwargs
-) -> list[Location]:
-    """Find references to a specific identifier at a given location in Solidity code."""
+def _collect_references(input: FindReferencesInput, build: McpBuild) -> list[Location]:
     where = input.where or []
     if not where:
         where_paths = None
@@ -273,3 +264,13 @@ def find_references(
         raise ValueError(
             f"No valid expression named `{input.expression}` found at {input.file_path}:{input.line}"
         )
+
+
+@mcp_tool
+def find_references(input: FindReferencesInput, *, build: McpBuild, **kwargs) -> str:
+    """Find references to a specific identifier at a given location in Solidity code."""
+    locations = _collect_references(input, build)
+    if not locations:
+        return f"No references to `{input.expression}` found."
+    body = "\n".join(f"- {loc_str(l)}" for l in locations)
+    return f"References to `{input.expression}` ({len(locations)}):\n{body}"

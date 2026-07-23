@@ -1,11 +1,9 @@
-from typing import TypedDict
-
 from pydantic import Field
 
 import wake.ir as ir
 
 from ..common import McpBuild
-from .common import Location, ToolInput, mcp_tool, node_to_location
+from .common import ToolInput, loc_str, mcp_tool, node_loc, node_to_location
 
 
 class ListModifiersInput(ToolInput):
@@ -14,23 +12,10 @@ class ListModifiersInput(ToolInput):
     )
 
 
-class ModifierInvocation(TypedDict):
-    function_name: str
-    location: Location
-
-
-class ModifierUsage(TypedDict):
-    name: str
-    location: Location
-    invocations: list[ModifierInvocation]
-
-
 @mcp_tool
-def list_modifiers(
-    input: ListModifiersInput, *, build: McpBuild, **kwargs
-) -> list[ModifierUsage]:
+def list_modifiers(input: ListModifiersInput, *, build: McpBuild, **kwargs) -> str:
     """List all modifiers in all Solidity contracts and their invocations."""
-    result: list[ModifierUsage] = []
+    blocks: list[str] = []
 
     for source_unit in build.source_units.values():
         for contract in source_unit.contracts:
@@ -53,24 +38,19 @@ def list_modifiers(
 
                     invocations.add(p.parent)
 
-                result.append(
-                    ModifierUsage(
-                        name=modifier.canonical_name,
-                        location=node_to_location(modifier, build),
-                        invocations=sorted(
-                            [
-                                ModifierInvocation(
-                                    function_name=invocation.canonical_name,
-                                    location=node_to_location(invocation, build),
-                                )
-                                for invocation in invocations
-                            ],
-                            key=lambda x: (
-                                x["location"]["file"],
-                                x["location"]["line"],
-                            ),
-                        ),
-                    )
-                )
+                block = [f"- {modifier.canonical_name} @ {node_loc(modifier, build)}"]
+                if invocations:
+                    inv_locs = [
+                        (node_to_location(inv, build), inv) for inv in invocations
+                    ]
+                    inv_locs.sort(key=lambda t: (t[0]["file"], t[0]["line"]))
+                    block.append("  used by:")
+                    for loc, inv in inv_locs:
+                        block.append(f"  - {inv.canonical_name} @ {loc_str(loc)}")
+                else:
+                    block.append("  used by: (none)")
+                blocks.append("\n".join(block))
 
-    return result
+    if not blocks:
+        return "No modifiers found."
+    return f"Modifiers ({len(blocks)}):\n" + "\n".join(blocks)

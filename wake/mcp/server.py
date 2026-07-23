@@ -2,7 +2,6 @@
 
 import asyncio
 import contextlib
-import json
 import logging
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -65,12 +64,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> Sequence[TextConten
     build = await compiler.get_build()
     config = await compiler.get_config()
 
-    result = td.handler(
+    # Handlers return the final human-readable text directly.
+    text = td.handler(
         input,
         build=build,
         compilation_root=config.project_root_path,
     )
-    return [TextContent(type="text", text=json.dumps(result))]
+    return [TextContent(type="text", text=text)]
 
 
 def _init_compiler(
