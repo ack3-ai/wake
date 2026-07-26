@@ -110,6 +110,7 @@ async def run_stdio(
     """Run the MCP server over the stdio transport."""
     global compiler
     _redirect_logging_off_stdout()
+    tools.load_plugin_tools()
     compiler = _init_compiler(json_file, local_config_path)
     compile_task = asyncio.create_task(compiler.run())
 
@@ -141,6 +142,7 @@ async def run_http(
     from starlette.responses import JSONResponse
     from starlette.routing import Route
 
+    tools.load_plugin_tools()
     compiler = _init_compiler(json_file, local_config_path)
 
     session_manager = StreamableHTTPSessionManager(
