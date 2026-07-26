@@ -48,6 +48,12 @@ def mcp_tool(func: F) -> F:
 
     name = func.__name__
     description = (func.__doc__ or "").strip()
+    if name in TOOL_REGISTRY:
+        logger.warning(
+            "MCP tool %r is already registered; overwriting (name collision "
+            "between a plugin and a built-in or another plugin?)",
+            name,
+        )
     TOOL_REGISTRY[name] = ToolDef(
         name=name,
         description=description,
