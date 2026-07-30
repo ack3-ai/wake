@@ -121,6 +121,10 @@ nav:
                 - Working with IR: "static-analysis/working-with-ir.md"
                 - Command-line interface: "static-analysis/command-line-interface.md"
 
+    - MCP server:
+          - Using the MCP server: "mcp/using-mcp.md"
+          - Built-in tools: "mcp/tools.md"
+          - Writing custom tools: "mcp/writing-tools.md"
     - LSP server: "language-server.md"
     - Solc Version Manager: "solc-version-manager.md"
     - API reference:
