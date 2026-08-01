@@ -147,9 +147,25 @@ def deserialize_random_state(
     )
 
 
+def _dump_chain_rng(chain) -> Any:
+    """Capture the wake-rs native PRNG state"""
+    dump = getattr(chain, "dump_rng", None)
+    return dump() if callable(dump) else None
+
+
+def _load_chain_rng(chain, rng_state: Any) -> None:
+    """Restore the wake-rs native PRNG state"""
+    if rng_state is None:
+        return
+    load = getattr(chain, "load_rng", None)
+    if callable(load):
+        load(rng_state)
+
+
 class StateSnapShot:
     _python_state: FuzzTest | None
     chain_states: List[str]
+    chain_rng_states: List[Any]
     flow_number: int | None  # Current flow number
     random_state: Any | None
     default_chain: Chain | None
@@ -157,6 +173,7 @@ class StateSnapShot:
     def __init__(self):
         self._python_state = None
         self.chain_states = []
+        self.chain_rng_states = []
         self.flow_number = None
 
     def take_snapshot(
@@ -187,6 +204,8 @@ class StateSnapShot:
         self.flow_number = python_instance._flow_num
         self._python_state.__dict__.update(copy.deepcopy(python_instance.__dict__))
         self.chain_states = [chain.snapshot() for chain in chains]
+        # only for wake-rs chains
+        self.chain_rng_states = [_dump_chain_rng(chain) for chain in chains]
         self.default_chain = global_default_chain
         self.random_state = random_state
 
@@ -205,9 +224,14 @@ class StateSnapShot:
         python_instance.__dict__ = self._python_state.__dict__
 
         self._python_state = None
-        for temp_chain, chain in zip(self.chain_states, chains):
+        for temp_chain, saved_rng, chain in zip(
+            self.chain_states, self.chain_rng_states, chains
+        ):
             chain.revert(temp_chain)
+            # only for wake-rs chains
+            _load_chain_rng(chain, saved_rng)
         self.chain_states = []
+        self.chain_rng_states = []
         if with_random_state:
             assert self.random_state is not None, "Random state is missing"
             random.setstate(self.random_state)
@@ -383,6 +407,7 @@ def shrink_collecting_phase(
     invariant_periods: DefaultDict[Callable[[None], None], int] = defaultdict(int)
     # Snapshot all connected chains
     initial_chain_state_snapshots = [chain.snapshot() for chain in chains]
+    initial_chain_rng_states = [_dump_chain_rng(chain) for chain in chains]
     random.setstate(initial_state)
     with print_ignore():
         test_instance._flow_num = 0
@@ -466,8 +491,11 @@ def shrink_collecting_phase(
             exception_content = e
             assert test_instance._flow_num == error_flow_num, "Unexpected failing flow"
         finally:
-            for snapshot, chain in zip(initial_chain_state_snapshots, chains):
+            for snapshot, saved_rng, chain in zip(
+                initial_chain_state_snapshots, initial_chain_rng_states, chains
+            ):
                 chain.revert(snapshot)
+                _load_chain_rng(chain, saved_rng)
             initial_chain_state_snapshots = []
 
     # calculate time spent
@@ -908,6 +936,7 @@ def single_fuzz_test(
 
             # Snapshot all connected chains
             snapshots = [chain.snapshot() for chain in chains]
+            snapshot_rng_states = [_dump_chain_rng(chain) for chain in chains]
 
             state = serialize_random_state(random.getstate())
             set_sequence_initial_internal_state(state)
@@ -989,7 +1018,8 @@ def single_fuzz_test(
             test_instance.post_sequence()
 
             # Revert all chains back to their initial snapshot
-            for snapshot, chain in zip(snapshots, chains):
+            for snapshot, saved_rng, chain in zip(snapshots, snapshot_rng_states, chains):
                 chain.revert(snapshot)
+                _load_chain_rng(chain, saved_rng)
     finally:
         add_fuzz_test_stats(test_class.__name__, flow_stats)
