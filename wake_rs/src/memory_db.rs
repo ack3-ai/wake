@@ -714,7 +714,9 @@ impl<ExtDB: DatabaseRef> Database for CacheDB<ExtDB> {
     }
 
     fn block_hash(&mut self, number: u64) -> Result<B256, Self::Error> {
-        if number > self.last_block_number || number < self.last_block_number - 256 {
+        if number > self.last_block_number
+            || number < self.last_block_number.saturating_sub(256)
+        {
             return Ok(B256::ZERO);
         }
         match self.block_hashes.entry(number) {
@@ -773,7 +775,9 @@ impl<ExtDB: DatabaseRef> DatabaseRef for CacheDB<ExtDB> {
     }
 
     fn block_hash_ref(&self, number: u64) -> Result<B256, Self::Error> {
-        if number > self.last_block_number || number < self.last_block_number - 256 {
+        if number > self.last_block_number
+            || number < self.last_block_number.saturating_sub(256)
+        {
             return Ok(B256::ZERO);
         }
         match self.block_hashes.get(&number) {
