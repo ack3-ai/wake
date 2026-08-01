@@ -516,16 +516,53 @@ impl Chain {
     fn revert(slf: &Bound<Self>, py: Python, id: &str) -> PyResult<()> {
         let mut borrowed = slf.borrow_mut();
 
-        let snapshot_id = id.parse().unwrap();
-        borrowed.snapshots.truncate(snapshot_id);
-
-        let snapshot = borrowed.snapshots.pop().unwrap();
-
-        let last_block_number = TryInto::<u64>::try_into(snapshot.pending_block_env.number).unwrap() - 1;
+        // A bad snapshot id must leave the chain untouched, and must surface as a
+        // catchable Python exception — a Rust panic crosses the pyo3 boundary as
+        // `PanicException`, which subclasses `BaseException` and so slips past
+        // `except Exception`. Everything is therefore validated before the first
+        // mutation, and the fallible DB unwind runs before `snapshots` is touched.
+        let snapshot_id: usize = id.parse().map_err(|_| {
+            PyValueError::new_err(format!("invalid snapshot id: {id:?}"))
+        })?;
+        if snapshot_id < 1 {
+            return Err(PyValueError::new_err(format!(
+                "snapshot id must be >= 1, got {snapshot_id}"
+            )));
+        }
+        // `Vec::truncate` past the end is a no-op, so without this check an
+        // out-of-range id would silently revert to the newest snapshot instead.
+        if borrowed.snapshots.len() < snapshot_id {
+            return Err(PyRuntimeError::new_err(format!(
+                "stale or out-of-range snapshot id {snapshot_id}: only {} live snapshot(s)",
+                borrowed.snapshots.len()
+            )));
+        }
+        // Read the block number before unwinding anything: on a genesis snapshot
+        // the `- 1` below wraps silently to u64::MAX in a release build.
+        let last_block_number: u64 = {
+            let snapshot = &borrowed.snapshots[snapshot_id - 1];
+            let number: u64 = TryInto::try_into(snapshot.pending_block_env.number)
+                .map_err(|_| {
+                    PyRuntimeError::new_err("snapshot block number exceeds u64 range")
+                })?;
+            if number < 1 {
+                return Err(PyRuntimeError::new_err(
+                    "cannot revert: snapshot block number would underflow (genesis)",
+                ));
+            }
+            number - 1
+        };
 
         let evm = borrowed.get_evm_mut()?;
-        let journal_index = evm.db_mut().revert(snapshot_id);
+        let journal_index = evm
+            .db_mut()
+            .revert(snapshot_id)
+            .map_err(PyRuntimeError::new_err)?;
         evm.db_mut().set_last_block_number(last_block_number);
+
+        borrowed.snapshots.truncate(snapshot_id);
+        // len was >= snapshot_id >= 1, so exactly `snapshot_id` elements remain.
+        let snapshot = borrowed.snapshots.pop().unwrap();
 
         let mut blocks = borrowed.blocks.as_mut().unwrap().borrow_mut(py);
         blocks.remove_blocks(last_block_number);

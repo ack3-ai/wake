@@ -293,7 +293,20 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
         // last_block_number saved and restored from chain.rs
     }
 
-    pub fn revert_snapshot(&mut self, snapshot: usize) -> usize {
+    /// Reverts to `snapshot`, consuming it, and returns the journal index it was
+    /// taken at. The id is validated before anything is truncated, so an invalid
+    /// id leaves the DB untouched instead of panicking part-way through.
+    pub fn revert_snapshot(&mut self, snapshot: usize) -> Result<usize, String> {
+        if snapshot < 1 {
+            return Err(format!("snapshot id must be >= 1, got {snapshot}"));
+        }
+        if snapshot > self.snapshot_journal_indexes.len() {
+            return Err(format!(
+                "snapshot id {snapshot} out of range: only {} snapshot(s)",
+                self.snapshot_journal_indexes.len()
+            ));
+        }
+
         self.accounts.truncate(snapshot + 1);
         self.storage.truncate(snapshot + 1);
         assert!(self.accounts.len() >= 2);
@@ -303,7 +316,7 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
         self.snapshot_journal_indexes.truncate(snapshot - 1);
         assert!(self.accounts.len() == self.snapshot_journal_indexes.len() + 2);
 
-        journal_index
+        Ok(journal_index)
     }
 
     pub fn set_balance(&mut self, address: Address, balance: U256) -> Result<(), ExtDB::Error> {
