@@ -93,30 +93,25 @@ def compare_exceptions(e1: Exception, e2: Exception):
     tb1 = traceback.extract_tb(e1.__traceback__)
     tb2 = traceback.extract_tb(e2.__traceback__)
 
-    frame1 = None
-    for frame1 in tb1:
-        if is_relative_to(Path(frame1.filename), Path.cwd()) and not is_relative_to(
-            Path(frame1.filename), Path().cwd() / "pytypes"
-        ):
-            break
-    frame2 = None
-    for frame2 in tb2:
-        if is_relative_to(Path(frame2.filename), Path.cwd()) and not is_relative_to(
-            Path(frame2.filename), Path().cwd() / "pytypes"
-        ):
-            break
+    # Returns the first in-scope frame, or None
+    def _select_in_scope_frame(tb):
+        cwd = Path.cwd()
+        pytypes = Path.cwd() / "pytypes"
+        for frame in tb:
+            filename = Path(frame.filename)
+            if is_relative_to(filename, cwd) and not is_relative_to(filename, pytypes):
+                return frame
+        return None
+
+    frame1 = _select_in_scope_frame(tb1)
+    frame2 = _select_in_scope_frame(tb2)
 
     if frame1 is None or frame2 is None:
-        print("frame is none!!!!!!!!!!!!!!")
-        # return False
+        return False
     if (
-        frame1 is not None
-        and frame2 is not None
-        and (
-            frame1.filename != frame2.filename
-            or frame1.lineno != frame2.lineno
-            or frame1.name != frame2.name
-        )
+        frame1.filename != frame2.filename
+        or frame1.lineno != frame2.lineno
+        or frame1.name != frame2.name
     ):
         return False
 
