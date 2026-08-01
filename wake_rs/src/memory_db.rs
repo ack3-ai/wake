@@ -346,17 +346,20 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
             latest_db_account = Some(basic);
         };
 
-        let db_account = self
-            .accounts
-            .last_mut()
-            .unwrap()
-            .entry(address)
-            .or_insert(latest_db_account.unwrap());
-
-        self.journal.push(JournalEntry::AccountChange(
-            address,
-            Some(db_account.clone()),
-        ));
+        let db_account = match self.accounts.last_mut().unwrap().entry(address) {
+            Entry::Occupied(entry) => {
+                self.journal.push(JournalEntry::AccountChange(
+                    address,
+                    Some(entry.get().clone()),
+                ));
+                entry.into_mut()
+            }
+            Entry::Vacant(entry) => {
+                self.journal
+                    .push(JournalEntry::AccountChange(address, None));
+                entry.insert(latest_db_account.unwrap())
+            }
+        };
 
         db_account.info.balance = balance;
         if db_account.account_state == AccountState::NotExisting {
@@ -382,17 +385,20 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
             latest_db_account = Some(basic);
         };
 
-        let db_account = self
-            .accounts
-            .last_mut()
-            .unwrap()
-            .entry(address)
-            .or_insert(latest_db_account.unwrap());
-
-        self.journal.push(JournalEntry::AccountChange(
-            address,
-            Some(db_account.clone()),
-        ));
+        let db_account = match self.accounts.last_mut().unwrap().entry(address) {
+            Entry::Occupied(entry) => {
+                self.journal.push(JournalEntry::AccountChange(
+                    address,
+                    Some(entry.get().clone()),
+                ));
+                entry.into_mut()
+            }
+            Entry::Vacant(entry) => {
+                self.journal
+                    .push(JournalEntry::AccountChange(address, None));
+                entry.insert(latest_db_account.unwrap())
+            }
+        };
 
         db_account.info.code = Some(Bytecode::new_legacy(code.into()));
         db_account.info.code_hash = db_account.info.code.as_ref().unwrap().hash_slow();
@@ -438,17 +444,20 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
             latest_db_account = Some(basic);
         };
 
-        let db_account = self
-            .accounts
-            .last_mut()
-            .unwrap()
-            .entry(address)
-            .or_insert(latest_db_account.unwrap());
-
-        self.journal.push(JournalEntry::AccountChange(
-            address,
-            Some(db_account.clone()),
-        ));
+        let db_account = match self.accounts.last_mut().unwrap().entry(address) {
+            Entry::Occupied(entry) => {
+                self.journal.push(JournalEntry::AccountChange(
+                    address,
+                    Some(entry.get().clone()),
+                ));
+                entry.into_mut()
+            }
+            Entry::Vacant(entry) => {
+                self.journal
+                    .push(JournalEntry::AccountChange(address, None));
+                entry.insert(latest_db_account.unwrap())
+            }
+        };
 
         db_account.info.nonce = nonce;
 
