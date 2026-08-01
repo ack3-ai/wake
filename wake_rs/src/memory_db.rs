@@ -134,7 +134,7 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
             &self.forked_account_or_new(*address)?
         };
 
-        Ok(basic.info.code.as_ref().is_some_and(|code| !code.is_empty()))
+        Ok(basic.info.code_hash != KECCAK_EMPTY && basic.info.code_hash != B256::ZERO)
     }
 
     fn forked_account_or_new(&self, address: Address) -> Result<DbAccount, ExtDB::Error> {
