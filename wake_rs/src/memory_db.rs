@@ -858,3 +858,186 @@ pub enum AccountState {
     #[default]
     None,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use revm::database::EmptyDB;
+
+    fn new_db() -> CacheDB<EmptyDB> {
+        CacheDB::new(EmptyDB::default(), 0)
+    }
+
+    fn addr(byte: u8) -> Address {
+        Address::from([byte; 20])
+    }
+
+    fn touched(locally_created: bool) -> DbAccount {
+        DbAccount {
+            info: AccountInfo::default(),
+            account_state: AccountState::Touched,
+            locally_created,
+        }
+    }
+
+    #[test]
+    fn selfdestruct_clears_storage_before_recreation() {
+        let mut db = new_db();
+        let address = addr(1);
+        let slot = U256::from(1);
+
+        db.set_storage(address, slot, U256::from(11)).unwrap();
+
+        let mut destroyed = Account::default();
+        destroyed.mark_touch();
+        destroyed.mark_selfdestruct();
+        let mut changes = AddressMap::default();
+        changes.insert(address, destroyed);
+        db.commit(changes);
+
+        let mut recreated = Account::default();
+        recreated.mark_touch();
+        recreated.mark_created();
+        let mut changes = AddressMap::default();
+        changes.insert(address, recreated);
+        db.commit(changes);
+
+        assert_eq!(db.storage(address, slot).unwrap(), U256::ZERO);
+    }
+
+    #[test]
+    fn storage_replace_rollback_targets_owning_snapshot_layer() {
+        let mut db = new_db();
+        let address = addr(1);
+        let old_slot = U256::from(1);
+        let newer_slot = U256::from(2);
+
+        db.snapshot();
+        db.set_storage(address, old_slot, U256::from(11)).unwrap();
+        let journal_index = db.journal.len();
+
+        let mut destroyed = Account::default();
+        destroyed.mark_touch();
+        destroyed.mark_selfdestruct();
+        let mut changes = AddressMap::default();
+        changes.insert(address, destroyed);
+        db.commit(changes);
+
+        db.snapshot();
+        db.storage[3].insert(
+            address,
+            HashMap::from([(newer_slot, U256::from(22))]),
+        );
+
+        let rollback = db.rollback(journal_index);
+        assert_eq!(
+            db.storage[2].get(&address),
+            Some(&HashMap::from([(old_slot, U256::from(11))]))
+        );
+        assert_eq!(
+            db.storage[3].get(&address),
+            Some(&HashMap::from([(newer_slot, U256::from(22))]))
+        );
+
+        db.restore_rollback(rollback);
+        assert_eq!(db.storage[2].get(&address), Some(&HashMap::new()));
+        assert_eq!(
+            db.storage[3].get(&address),
+            Some(&HashMap::from([(newer_slot, U256::from(22))]))
+        );
+    }
+
+    #[test]
+    fn account_setters_rollback_across_snapshot_boundaries() {
+        let mut db = new_db();
+        let balance_address = addr(1);
+        let nonce_address = addr(2);
+        let code_address = addr(3);
+        let old_code = vec![0x60, 0x01, 0x00];
+        let middle_code = vec![0x60, 0x02, 0x00];
+        let new_code = vec![0x60, 0x03, 0x00];
+
+        db.set_balance(balance_address, U256::from(100)).unwrap();
+        db.set_nonce(nonce_address, 1).unwrap();
+        db.set_code(code_address, old_code.clone()).unwrap();
+        let historical = db.journal.len();
+
+        db.snapshot();
+        db.set_balance(balance_address, U256::from(200)).unwrap();
+        db.set_nonce(nonce_address, 2).unwrap();
+        db.set_code(code_address, middle_code).unwrap();
+
+        db.snapshot();
+        db.set_balance(balance_address, U256::from(300)).unwrap();
+        db.set_nonce(nonce_address, 3).unwrap();
+        db.set_code(code_address, new_code.clone()).unwrap();
+
+        let rollback = db.rollback(historical);
+        assert_eq!(db.basic(balance_address).unwrap().unwrap().balance, U256::from(100));
+        assert_eq!(db.basic(nonce_address).unwrap().unwrap().nonce, 1);
+        assert_eq!(
+            db.basic(code_address).unwrap().unwrap().code_hash,
+            Bytecode::new_legacy(old_code.into()).hash_slow()
+        );
+
+        db.restore_rollback(rollback);
+        assert_eq!(db.basic(balance_address).unwrap().unwrap().balance, U256::from(300));
+        assert_eq!(db.basic(nonce_address).unwrap().unwrap().nonce, 3);
+        assert_eq!(
+            db.basic(code_address).unwrap().unwrap().code_hash,
+            Bytecode::new_legacy(new_code.into()).hash_slow()
+        );
+    }
+
+    #[test]
+    fn block_hash_bounds_do_not_underflow_below_block_256() {
+        let mut db = CacheDB::new(EmptyDB::default(), 1);
+        let hash = B256::from([1; 32]);
+        db.block_hashes.insert(0, hash);
+
+        assert_eq!(Database::block_hash(&mut db, 0).unwrap(), hash);
+        assert_eq!(DatabaseRef::block_hash_ref(&db, 0).unwrap(), hash);
+        assert_eq!(Database::block_hash(&mut db, 2).unwrap(), B256::ZERO);
+        assert_eq!(DatabaseRef::block_hash_ref(&db, 2).unwrap(), B256::ZERO);
+    }
+
+    #[test]
+    fn restore_rollback_restores_contract_code_mapping() {
+        let mut db = new_db();
+        let journal_index = db.journal.len();
+        let code = Bytecode::new_legacy(vec![0x60, 0x01, 0x00].into());
+        let mut info = AccountInfo {
+            code: Some(code.clone()),
+            ..Default::default()
+        };
+
+        db.insert_contract(&mut info);
+        let code_hash = info.code_hash;
+        assert_eq!(db.contracts.get(&code_hash), Some(&code));
+
+        let rollback = db.rollback(journal_index);
+        assert!(!db.contracts.contains_key(&code_hash));
+
+        db.restore_rollback(rollback);
+        assert_eq!(db.contracts.get(&code_hash), Some(&code));
+        assert_eq!(Database::code_by_hash(&mut db, code_hash).unwrap(), code);
+    }
+
+    #[test]
+    fn identifies_forked_contract_from_code_hash_without_loaded_code() {
+        let mut db = new_db();
+        let address = addr(1);
+        let code_hash = B256::from([1; 32]);
+        db.accounts[0].insert(
+            address,
+            DbAccount::from(AccountInfo {
+                code_hash,
+                code: None,
+                ..Default::default()
+            }),
+        );
+
+        assert!(db.is_contract_forked(&address).unwrap());
+        assert!(!db.is_contract_forked(&addr(2)).unwrap());
+    }
+}
