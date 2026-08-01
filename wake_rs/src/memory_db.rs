@@ -160,8 +160,12 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
         journal_index: usize,
     ) -> JournalEntry {
         match entry {
-            JournalEntry::ContractChange(code_hash, _) => {
-                JournalEntry::ContractChange(code_hash, self.contracts.remove(&code_hash))
+            JournalEntry::ContractChange(code_hash, code) => {
+                let old = match code {
+                    Some(code) => self.contracts.insert(code_hash, code),
+                    None => self.contracts.remove(&code_hash),
+                };
+                JournalEntry::ContractChange(code_hash, old)
             }
             JournalEntry::AccountChange(address, account) => {
                 let pos = self
