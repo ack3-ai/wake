@@ -568,8 +568,7 @@ impl<ExtDB: DatabaseRef> DatabaseCommit for CacheDB<ExtDB> {
 
                 let prev_storage = match self.storage.last_mut().unwrap().entry(address) {
                     Entry::Occupied(mut entry) => {
-                        let prev_storage =
-                            mem::replace(&mut entry.get_mut().clone(), HashMap::new());
+                        let prev_storage = mem::take(entry.get_mut());
                         Some(prev_storage)
                     }
                     Entry::Vacant(entry) => {
