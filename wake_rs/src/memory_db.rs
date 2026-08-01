@@ -201,9 +201,15 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
                 JournalEntry::StorageChange(address, new_changes)
             }
             JournalEntry::StorageReplace(address, storage) => {
+                let pos = self
+                    .snapshot_journal_indexes
+                    .binary_search(&(journal_index + 1))
+                    .unwrap_or_else(|x| x)
+                    + 1;
+                assert!(pos >= 1);
                 let old = match storage {
-                    Some(storage) => self.storage.last_mut().unwrap().insert(address, storage),
-                    None => self.storage.last_mut().unwrap().remove(&address),
+                    Some(storage) => self.storage[pos].insert(address, storage),
+                    None => self.storage[pos].remove(&address),
                 };
                 JournalEntry::StorageReplace(address, old)
             }
