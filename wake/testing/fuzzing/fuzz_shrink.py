@@ -176,24 +176,11 @@ class StateSnapShot:
         python_instance: FuzzTest,
         new_instance,
         chains: Tuple[Chain, ...],
-        overwrite: bool,
         random_state: Any | None = None,
     ):
-        if not overwrite:
-            assert self._python_state is None, "Python state already exists"
-            assert self.chain_states == [], "Chain state already exists"
-        else:
-            assert self._python_state is not None, "Python state (snapshot) is missing"
-            assert self.chain_states != [], "Chain state is missing"
-            assert self.flow_number is not None, "Flow number is missing"
-            print(
-                "Overwriting state ",
-                self.flow_number,
-                " to ",
-                python_instance._flow_num,
-            )
-            assert self.default_chain is not None, "Default chain is missing"
-        # assert self._python_state is None, "Python state already exists"
+        assert self._python_state is None, "Python state already exists"
+        assert self.chain_states == [], "Chain state already exists"
+
         self._python_state = new_instance
 
         self.flow_number = python_instance._flow_num
@@ -552,7 +539,7 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
         test_instance._sequence_num = 0
         test_instance.pre_sequence()
         states = StateSnapShot()
-        states.take_snapshot(test_instance, test_class(), chains, overwrite=False)
+        states.take_snapshot(test_instance, test_class(), chains)
 
     print("Removing flows by flow types start")
     print(
@@ -682,9 +669,7 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
             finally:
                 # Revert to the snapshot state which has data until the "curr".
                 states.revert(test_instance, chains)
-                states.take_snapshot(
-                    test_instance, test_class(), chains, overwrite=False
-                )
+                states.take_snapshot(test_instance, test_class(), chains)
 
         clear_previous_lines(4)
         if success:
@@ -734,6 +719,8 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
         shortcut = False
         reason: str = ""
         j: int = 0
+        snapshot_active = True
+        reanchoring_snapshot = False
         with print_ignore(debug=False):
             try:
                 # Python state and chain state is same as snapshot
@@ -749,9 +736,60 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
                     # Execute untill curr flow.(curr flow is not executed yet) and take snapshot, since we still do not know if it is required or not.
                     # curr == 0 state is already taken.
                     if j == curr and curr != 0:
-                        states.take_snapshot(
-                            test_instance, test_class(), chains, overwrite=True
-                        )
+                        # Taking another snapshot here and merely forgetting the
+                        # old id leaks a backend snapshot layer. Revert to the
+                        # held state, replay [prev_curr, curr) exactly, and anchor
+                        # a fresh snapshot at curr instead. By construction this
+                        # interval contains at most one required flow.
+                        reanchoring_snapshot = True
+                        snapshot_active = False
+                        states.revert(test_instance, chains)
+                        invariant_periods = defaultdict(int)
+                        for replay_j in range(prev_curr, curr):
+                            if replay_j == -1:
+                                continue
+
+                            replay_state = flow_states[replay_j]
+                            random.setstate(replay_state.random_state)
+                            replay_flow = replay_state.flow
+                            test_instance._flow_num = replay_j
+
+                            if replay_state.required:
+                                if not hasattr(
+                                    replay_flow, "precondition"
+                                ) or getattr(replay_flow, "precondition")(
+                                    test_instance
+                                ):
+                                    test_instance.pre_flow(replay_flow)
+                                    replay_flow(
+                                        test_instance, *replay_state.flow_params
+                                    )
+                                    test_instance.post_flow(replay_flow)
+
+                            test_instance.pre_invariants()
+                            if (
+                                not ONLY_TARGET_INVARIANTS
+                                and replay_state.required
+                            ) or (
+                                ONLY_TARGET_INVARIANTS
+                                and replay_j == error_flow_num
+                            ):
+                                for inv in invariants:
+                                    if invariant_periods[inv] == 0:
+                                        test_instance.pre_invariant(inv)
+                                        inv(test_instance)
+                                        test_instance.post_invariant(inv)
+
+                                    invariant_periods[inv] += 1
+                                    if invariant_periods[inv] == getattr(
+                                        inv, "period"
+                                    ):
+                                        invariant_periods[inv] = 0
+                            test_instance.post_invariants()
+
+                        states.take_snapshot(test_instance, test_class(), chains)
+                        snapshot_active = True
+                        reanchoring_snapshot = False
 
                     print("flow: ", j, flow_states[j].flow.__name__)
 
@@ -785,10 +823,14 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
                     test_instance.post_invariants()
                 test_instance.post_sequence()
             except OverRunException:
+                if reanchoring_snapshot:
+                    raise
                 flow_states[curr].required = True
                 success = False
                 reason = "Over run (Did not reproduce error)"
             except Exception as e:
+                if reanchoring_snapshot:
+                    raise
                 reason = "at " + str(j) + " with " + str(e)
                 # Check exception type and exception lines in the test file.
                 if (
@@ -815,10 +857,9 @@ def shrink_test(test_class: type[FuzzTest], flows_count: int):
 
             finally:
                 # Revert to the snapshot state which has data until the "curr".
-                states.revert(test_instance, chains)
-                states.take_snapshot(
-                    test_instance, test_class(), chains, overwrite=False
-                )
+                if snapshot_active:
+                    states.revert(test_instance, chains)
+                    states.take_snapshot(test_instance, test_class(), chains)
 
         clear_previous_lines(4)
 
@@ -1013,7 +1054,9 @@ def single_fuzz_test(
             test_instance.post_sequence()
 
             # Revert all chains back to their initial snapshot
-            for snapshot, saved_rng, chain in zip(snapshots, snapshot_rng_states, chains):
+            for snapshot, saved_rng, chain in zip(
+                snapshots, snapshot_rng_states, chains
+            ):
                 chain.revert(snapshot)
                 _load_chain_rng(chain, saved_rng)
     finally:
