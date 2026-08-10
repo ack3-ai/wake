@@ -10,7 +10,18 @@ from collections import ChainMap, defaultdict
 from dataclasses import asdict, dataclass, field
 from itertools import chain
 from pathlib import Path
-from typing import Any, Callable, DefaultDict, Dict, List, Optional, Set, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    DefaultDict,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 from intervaltree import IntervalTree
 
@@ -53,16 +64,37 @@ from wake.ir.reference_resolver import ReferenceResolver
 
 logger = get_logger(__name__, logging.ERROR)
 
+StatementCoverage = Dict[str, Dict[Tuple[int, int], int]]
+StatementLocations = Dict[str, Set[Tuple[int, int]]]
+
 
 def export_coverage(
     build: ProjectBuild,
     total_statements: Dict[Path, int],
     source_unit_name_to_path: Dict[str, Path],
-    coverage: Dict[str, Dict[Tuple[int, int], int]],
+    coverage: StatementCoverage,
+    statement_locations: Optional[StatementLocations] = None,
 ):
+    if statement_locations is None:
+        statement_locations = prepare_statement_locations(build)
+
+    # Some callers use export_coverage to clear the output before a run and do not
+    # provide the precomputed metadata. Populate it here so that even the initial
+    # report contains every source unit and every executable statement.
+    if not total_statements or not source_unit_name_to_path:
+        (
+            _,
+            prepared_total_statements,
+            prepared_source_unit_name_to_path,
+        ) = prepare_info(build, statement_locations)
+        if not total_statements:
+            total_statements = prepared_total_statements
+        if not source_unit_name_to_path:
+            source_unit_name_to_path = prepared_source_unit_name_to_path
+
     data = {}
-    for source_unit_name, info in coverage.items():
-        path = source_unit_name_to_path[source_unit_name]
+    for source_unit_name, path in source_unit_name_to_path.items():
+        info = coverage.get(source_unit_name, {})
 
         covered = []
         for (start, end), count in info.items():
@@ -82,16 +114,37 @@ def export_coverage(
                 }
             )
 
+        uncovered = []
+        for start, end in sorted(
+            statement_locations.get(source_unit_name, set()) - set(info)
+        ):
+            start_line, start_column = build.source_units[
+                path
+            ].get_line_col_from_byte_offset(start)
+            end_line, end_column = build.source_units[
+                path
+            ].get_line_col_from_byte_offset(end)
+            uncovered.append(
+                {
+                    "startLine": start_line,
+                    "startColumn": start_column,
+                    "endLine": end_line,
+                    "endColumn": end_column,
+                    "count": 0,
+                }
+            )
+
         data[str(path)] = {
             "declarations": {},
             "statements": {
                 "total": total_statements[path],
                 "covered": covered,
+                "uncovered": uncovered,
             },
         }
 
     info = {
-        "version": "2.0",
+        "version": "2.1",
         "data": data,
     }
 
@@ -99,33 +152,82 @@ def export_coverage(
         json.dump(info, f)
 
 
-def _count_statements(
+def _get_statement_byte_location(
+    statement: Union[StatementAbc, YulStatementAbc],
+) -> Optional[Tuple[int, int]]:
+    """Return the source range represented by statement coverage."""
+    if isinstance(statement, (Block, UncheckedBlock, InlineAssembly)):
+        return None
+    if isinstance(statement, (YulBlock, YulFunctionDefinition)):
+        return None
+    if isinstance(
+        statement, (DoWhileStatement, ForStatement, IfStatement, WhileStatement)
+    ):
+        if statement.condition is None:
+            return None
+        return statement.condition.byte_location
+    if isinstance(statement, TryStatement):
+        return statement.external_call.byte_location
+    if isinstance(statement, (YulForLoop, YulIf)):
+        return statement.condition.byte_location
+    if isinstance(statement, YulSwitch):
+        return statement.expression.byte_location
+    return statement.byte_location
+
+
+def _iter_statement_byte_locations(
     declaration: Union[FunctionDefinition, ModifierDefinition]
-) -> int:
+) -> Iterator[Tuple[int, int]]:
     assert declaration.body is not None
-    count = 0
 
     for node in declaration.body:
-        if isinstance(node, StatementAbc):
-            if not isinstance(node, (Block, UncheckedBlock, InlineAssembly)):
-                count += 1
-        elif isinstance(node, YulStatementAbc):
-            if not isinstance(node, (YulBlock, YulFunctionDefinition)):
-                count += 1
+        if isinstance(node, (StatementAbc, YulStatementAbc)):
+            byte_location = _get_statement_byte_location(node)
+            if byte_location is not None:
+                yield byte_location
 
-    return count
+
+def prepare_statement_locations(build: ProjectBuild) -> StatementLocations:
+    statement_locations: StatementLocations = {
+        source_unit.source_unit_name: set()
+        for source_unit in build.source_units.values()
+    }
+
+    for source_unit in build.source_units.values():
+        locations = statement_locations[source_unit.source_unit_name]
+
+        for function in source_unit.functions:
+            if function.body is not None:
+                locations.update(_iter_statement_byte_locations(function))
+
+        for contract in source_unit.contracts:
+            for modifier in contract.modifiers:
+                if modifier.body is not None:
+                    locations.update(_iter_statement_byte_locations(modifier))
+
+            for function in contract.functions:
+                if function.body is not None:
+                    locations.update(_iter_statement_byte_locations(function))
+
+    return statement_locations
 
 
 def prepare_info(
     build: ProjectBuild,
+    statement_locations: Optional[StatementLocations] = None,
 ) -> Tuple[Dict[Path, int], Dict[Path, int], Dict[str, Path]]:
+    if statement_locations is None:
+        statement_locations = prepare_statement_locations(build)
+
     source_unit_name_to_path = {}
     total_declarations = {}
     total_statements = {}
 
     for source_unit in build.source_units.values():
         total_declarations[source_unit.file] = 0
-        total_statements[source_unit.file] = 0
+        total_statements[source_unit.file] = len(
+            statement_locations[source_unit.source_unit_name]
+        )
         source_unit_name_to_path[source_unit.source_unit_name] = source_unit.file
 
         for function in source_unit.functions:
@@ -133,7 +235,6 @@ def prepare_info(
                 continue
 
             total_declarations[source_unit.file] += 1
-            total_statements[source_unit.file] += _count_statements(function)
 
         for contract in source_unit.contracts:
             for modifier in contract.modifiers:
@@ -141,14 +242,12 @@ def prepare_info(
                     continue
 
                 total_declarations[source_unit.file] += 1
-                total_statements[source_unit.file] += _count_statements(modifier)
 
             for function in contract.functions:
                 if function.body is None:
                     continue
 
                 total_declarations[source_unit.file] += 1
-                total_statements[source_unit.file] += _count_statements(function)
 
     return total_declarations, total_statements, source_unit_name_to_path
 
@@ -541,20 +640,10 @@ class CoverageHandler:
         cov_data = {}
 
         for statement, count in self._statement_coverage.items():
-            if isinstance(
-                statement, (DoWhileStatement, ForStatement, IfStatement, WhileStatement)
-            ):
-                if statement.condition is None:
-                    continue
-                start, end = statement.condition.byte_location
-            elif isinstance(statement, TryStatement):
-                start, end = statement.external_call.byte_location
-            elif isinstance(statement, (YulForLoop, YulIf)):
-                start, end = statement.condition.byte_location
-            elif isinstance(statement, YulSwitch):
-                start, end = statement.expression.byte_location
-            else:
-                start, end = statement.byte_location
+            byte_location = _get_statement_byte_location(statement)
+            if byte_location is None:
+                continue
+            start, end = byte_location
 
             if statement.source_unit.source_unit_name not in cov_data:
                 cov_data[statement.source_unit.source_unit_name] = {}

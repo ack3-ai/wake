@@ -42,20 +42,36 @@ from wake.development.globals import (
     set_sequence_initial_internal_state,
     set_shrunk_path,
 )
-from wake.testing.coverage import CoverageHandler, export_coverage, prepare_info
+from wake.testing.coverage import (
+    CoverageHandler,
+    StatementLocations,
+    export_coverage,
+    prepare_info,
+    prepare_statement_locations,
+)
 from wake.testing.native_coverage import NativeCoverageHandler
 from wake.testing.utils import print_fuzzing_stats
 
 
-def export_thread(queue: SimpleQueue, build: ProjectBuild):
-    _, total_statements, source_unit_name_to_path = prepare_info(build)
-
+def export_thread(
+    queue: SimpleQueue,
+    build: ProjectBuild,
+    total_statements: dict[Path, int],
+    source_unit_name_to_path: dict[str, Path],
+    statement_locations: StatementLocations,
+):
     while True:
         item = queue.get()
         if item is None:
             break
 
-        export_coverage(build, total_statements, source_unit_name_to_path, item)
+        export_coverage(
+            build,
+            total_statements,
+            source_unit_name_to_path,
+            item,
+            statement_locations,
+        )
 
 
 class PytestWakePluginSingle:
@@ -307,10 +323,30 @@ class PytestWakePluginSingle:
                 handler = NativeCoverageHandler(self._config)
                 set_coverage_callback(lambda coverage: queue.put(coverage))
 
-            # clear coverage file
-            export_coverage(handler.latest_build, {}, {}, {})
+            statement_locations = prepare_statement_locations(handler.latest_build)
+            _, total_statements, source_unit_name_to_path = prepare_info(
+                handler.latest_build, statement_locations
+            )
 
-            thread = Thread(target=export_thread, args=(queue, handler.latest_build))
+            # clear coverage file
+            export_coverage(
+                handler.latest_build,
+                total_statements,
+                source_unit_name_to_path,
+                {},
+                statement_locations,
+            )
+
+            thread = Thread(
+                target=export_thread,
+                args=(
+                    queue,
+                    handler.latest_build,
+                    total_statements,
+                    source_unit_name_to_path,
+                    statement_locations,
+                ),
+            )
             thread.start()
         else:
             handler = None

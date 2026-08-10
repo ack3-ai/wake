@@ -16,7 +16,13 @@ from wake.cli.console import console
 from wake.compiler.build_data_model import ProjectBuild
 from wake.config import WakeConfig
 from wake.development.globals import add_fuzz_test_stats, get_fuzz_test_stats
-from wake.testing.coverage import CoverageHandler, export_coverage, prepare_info
+from wake.testing.coverage import (
+    CoverageHandler,
+    StatementLocations,
+    export_coverage,
+    prepare_info,
+    prepare_statement_locations,
+)
 from wake.testing.native_coverage import NativeCoverageHandler
 from wake.testing.utils import print_fuzzing_stats
 
@@ -58,6 +64,7 @@ class PytestWakePluginMultiprocessServer:
     _build: ProjectBuild
     _total_statements: Dict[Path, int]
     _source_unit_name_to_path: Dict[str, Path]
+    _statement_locations: StatementLocations
 
     def __init__(
         self,
@@ -91,13 +98,20 @@ class PytestWakePluginMultiprocessServer:
                 empty_coverage = NativeCoverageHandler(self._config)
 
             self._build = empty_coverage.latest_build
-            _, self._total_statements, self._source_unit_name_to_path = prepare_info(
-                self._build
-            )
+            self._statement_locations = prepare_statement_locations(self._build)
+            (
+                _,
+                self._total_statements,
+                self._source_unit_name_to_path,
+            ) = prepare_info(self._build, self._statement_locations)
 
             # clear coverage file
             export_coverage(
-                self._build, self._total_statements, self._source_unit_name_to_path, {}
+                self._build,
+                self._total_statements,
+                self._source_unit_name_to_path,
+                {},
+                self._statement_locations,
             )
         else:
             empty_coverage = None
@@ -161,6 +175,7 @@ class PytestWakePluginMultiprocessServer:
                 self._total_statements,
                 self._source_unit_name_to_path,
                 merge_coverages(list(self._exported_coverages.values())),
+                self._statement_locations,
             )
 
     def pytest_report_teststatus(
@@ -256,6 +271,7 @@ class PytestWakePluginMultiprocessServer:
                             self._total_statements,
                             self._source_unit_name_to_path,
                             merge_coverages(list(self._exported_coverages.values())),
+                            self._statement_locations,
                         )
                     elif msg[0] == "exception":
                         exception_info = pickle.loads(msg[2])
