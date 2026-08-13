@@ -11,6 +11,7 @@ use revm::context::result::{ExecutionResult, Output};
 use revm::primitives::{B256, TxKind};
 
 use crate::account::Account;
+use crate::memory_db::JournalPoint;
 use crate::address::Address;
 use crate::chain::{BlockInfo, Chain, access_list_into_py};
 use crate::blocks::Block;
@@ -24,7 +25,7 @@ pub struct Call {
     #[pyo3(get)]
     chain: Py<Chain>,
     block: BlockInfo,
-    journal_index: usize, // used for EVM DB journal rollbacks
+    journal_index: JournalPoint, // journal position + lineage, for replay
     tx_env: TxEnv,
     return_type: Option<Py<PyAny>>,
     result: ExecutionResult,
@@ -40,7 +41,7 @@ impl Call {
     pub fn new(
         chain: Py<Chain>,
         block: BlockInfo,
-        journal_index: usize,
+        journal_index: JournalPoint,
         tx_env: TxEnv,
         return_type: Option<Py<PyAny>>,
         result: ExecutionResult,
@@ -270,7 +271,7 @@ impl Call {
             borrowed.journal_index,
             &borrowed.tx_env,
             block_env,
-        );
+        )?;
 
         let py_objects = get_py_objects(py);
 

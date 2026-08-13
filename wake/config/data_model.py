@@ -201,9 +201,7 @@ class SolcConfig(WakeConfigModel):
     """
     Metadata config options.
     """
-    experimental: SolcExperimentalConfig = Field(
-        default_factory=SolcExperimentalConfig
-    )
+    experimental: SolcExperimentalConfig = Field(default_factory=SolcExperimentalConfig)
     """
     Experimental (unstable) compiler features, gated behind solc's experimental mode.
     """
@@ -224,9 +222,7 @@ class SubprojectConfig(WakeConfigModel):
     optimizer: SolcOptimizerConfig = Field(default_factory=SolcOptimizerConfig)
     via_IR: Optional[bool] = None
     metadata: SolcMetadataConfig = Field(default_factory=SolcMetadataConfig)
-    experimental: SolcExperimentalConfig = Field(
-        default_factory=SolcExperimentalConfig
-    )
+    experimental: SolcExperimentalConfig = Field(default_factory=SolcExperimentalConfig)
 
     _normalize_paths = field_validator("paths", mode="before")(normalize_paths)
 
@@ -434,6 +430,26 @@ class TestingConfig(WakeConfigModel):
     """
     Which development chain to use for testing. Should be one of `revm`, `anvil`, or
     `hardhat`.
+    """
+    block_history: Optional[int] = Field(default=256, ge=0)
+    """
+    Target number of blocks each chain keeps. Pruning uses a small hysteresis window,
+    temporarily retaining `ceil(target / 8)` extra blocks (at least 1 and at most
+    32) before draining back to the target. `0` is treated as `1`, so the latest
+    block remains resolvable. `null` keeps everything, at the cost of memory linear
+    in transactions executed.
+
+    Blocks are the unit of retention: a transaction is kept exactly as long as the block
+    containing it, and the EVM journal keeps only what those blocks need to re-execute.
+    Reaching further back than the window raises `HistoryPrunedError` - including
+    `chain.txs[-1]` once the newest transaction's own block has aged out, so hold the
+    transaction object if you need it beyond that. `chain.blocks["latest"]` always
+    resolves.
+
+    The bound is in blocks, and a block's journal cost is proportional to the writes it
+    contains. With automine off a block can hold any number of transactions or state
+    assignments, and an unmined block never closes, so retention is bounded only once
+    blocks are mined. `revm` only.
     """
     anvil: AnvilConfig = Field(default_factory=AnvilConfig)
     """

@@ -11,7 +11,8 @@ use crate::enums::AddressEnum;
 use crate::pytypes::extract_abi_types;
 use crate::utils::{big_int_to_i256, big_uint_to_u256, get_py_objects, PyObjects};
 
-create_exception!("wake.development.core", AbiError, PyException);
+// Module *tokens*, not a string literal — see `chain::HistoryPrunedError`.
+create_exception!(wake_rs, AbiError, PyException);
 
 #[pyclass(module = "wake.development.core")]
 pub struct Abi {}

@@ -52,6 +52,12 @@ fn wake_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(encode_eip712_data, m)?)?;
     m.add_function(wrap_pyfunction!(get_eip712_signing_hash, m)?)?;
 
+    m.add(
+        "HistoryPrunedError",
+        m.py().get_type::<chain::HistoryPrunedError>(),
+    )?;
+    m.add("AbiError", m.py().get_type::<abi_old::AbiError>())?;
+
     m.add_class::<Address>()?;
     m.add_class::<Account>()?;
     m.add_class::<Chain>()?;

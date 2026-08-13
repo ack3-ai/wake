@@ -12,7 +12,7 @@ use revm::primitives::{Address, AddressMap, B256, U256};
 use revm::state::{Account, AccountInfo, Bytecode};
 use revm::{Database, DatabaseCommit};
 
-use crate::memory_db::{CacheDB, JournalEntry};
+use crate::memory_db::{CacheDB, JournalEntry, JournalOutOfRange, JournalPoint};
 
 
 pub struct DBError(String);
@@ -61,15 +61,42 @@ impl DB {
 
     pub(crate) fn get_journal_index(&self) -> usize {
         match self {
-            DB::EmptyDB(db) => db.journal.len(),
-            DB::ForkDB(db) => db.journal.len(),
+            DB::EmptyDB(db) => db.journal_index(),
+            DB::ForkDB(db) => db.journal_index(),
         }
     }
 
-    pub(crate) fn rollback(&mut self, journal_index: usize) -> Vec<JournalEntry> {
+    pub(crate) fn compact_journal(&mut self, floor: usize) -> usize {
         match self {
-            DB::EmptyDB(db) => db.rollback(journal_index),
-            DB::ForkDB(db) => db.rollback(journal_index),
+            DB::EmptyDB(db) => db.compact_journal(floor),
+            DB::ForkDB(db) => db.compact_journal(floor),
+        }
+    }
+
+    pub(crate) fn prune_block_hashes(&mut self, anchors: &[u64]) {
+        match self {
+            DB::EmptyDB(db) => db.prune_block_hashes(anchors),
+            DB::ForkDB(db) => db.prune_block_hashes(anchors),
+        }
+    }
+
+    /// The current journal tip, tagged with the lineage it belongs to. Anything
+    /// that stores a journal position for later replay must store this, not a
+    /// bare offset — see [`JournalPoint`].
+    pub(crate) fn journal_point(&self) -> JournalPoint {
+        match self {
+            DB::EmptyDB(db) => db.journal_point(),
+            DB::ForkDB(db) => db.journal_point(),
+        }
+    }
+
+    pub(crate) fn rollback(
+        &mut self,
+        point: JournalPoint,
+    ) -> Result<Vec<JournalEntry>, JournalOutOfRange> {
+        match self {
+            DB::EmptyDB(db) => db.rollback(point),
+            DB::ForkDB(db) => db.rollback(point),
         }
     }
 

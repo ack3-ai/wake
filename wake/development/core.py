@@ -33,9 +33,11 @@ from typing_extensions import Literal, TypedDict, get_args, get_origin, get_type
 
 from wake_rs import (
     Abi,
+    AbiError,
     Account,
     Address,
     Contract,
+    HistoryPrunedError,
     Library,
     abi,
     encode_eip712_data,

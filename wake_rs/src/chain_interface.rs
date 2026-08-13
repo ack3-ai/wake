@@ -10,7 +10,7 @@ use revm::Database;
 use send_wrapper::SendWrapper;
 
 use crate::account::Account;
-use crate::chain::CustomEvm;
+use crate::chain::{CustomEvm, HistoryPrunedError};
 use crate::enums::BlockEnum;
 use crate::{chain::Chain, utils::big_uint_to_u256};
 
@@ -88,11 +88,16 @@ impl ChainInterface {
                 drop(chain);
 
                 self.with_evm(py, &self.chain, |evm| {
-                    let rollback = evm.db_mut().rollback(journal_index);
-                    let data = evm.db_mut().storage(address, big_uint_to_u256(position));
-                    evm.db_mut().restore_rollback(rollback);
-                    data
+                    match evm.db_mut().rollback(journal_index) {
+                        Ok(rollback) => {
+                            let data = evm.db_mut().storage(address, big_uint_to_u256(position));
+                            evm.db_mut().restore_rollback(rollback);
+                            Ok(data)
+                        }
+                        Err(err) => Err(err),
+                    }
                 })?
+                .map_err(|err| HistoryPrunedError::new_err(err.to_string()))?
             }
             _ => return Err(PyValueError::new_err("Invalid block identifier")),
         }?;
@@ -128,6 +133,9 @@ impl ChainInterface {
         })??;
 
         self.chain.borrow_mut(py).mine(py, false)?;
+        // Mines a block with no transaction in it, so the send path would never
+        // trim the blocks these calls accumulate.
+        Chain::maybe_prune(self.chain.bind(py), py)?;
 
         Ok(())
     }
@@ -176,7 +184,10 @@ impl ChainInterface {
                 drop(chain);
 
                 let code = self.with_evm(py, &self.chain, |evm| -> PyResult<Vec<u8>> {
-                    let rollback = evm.db_mut().rollback(journal_index);
+                    let rollback = evm
+                        .db_mut()
+                        .rollback(journal_index)
+                        .map_err(|err| HistoryPrunedError::new_err(err.to_string()))?;
                     let code = evm.db_mut().basic(address)?.map_or(vec![], |a| {
                         a.code.map_or(vec![], |c| c.original_bytes().to_vec())
                     });
