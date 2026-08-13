@@ -11,7 +11,7 @@ use revm::{
 };
 
 use crate::{
-    abi_old::{alloy_to_py, AbiError}, account::Account, address::Address, blocks::Block, chain::{BlockInfo, Chain}, inspectors::fqn_inspector::{ErrorMetadata, EventMetadata}, pytypes::{
+    abi_old::{alloy_to_py, AbiError}, memory_db::JournalPoint, account::Account, address::Address, blocks::Block, chain::{BlockInfo, Chain}, inspectors::fqn_inspector::{ErrorMetadata, EventMetadata}, pytypes::{
         collapse_if_tuple, decode_and_normalize, new_unknown_error,
         resolve_error, resolve_event,
     }, utils::get_py_objects
@@ -31,7 +31,9 @@ pub struct TransactionAbc {
     cached_error: Option<PyErr>,
     cached_return_value: Option<Py<PyAny>>,
     cached_call_trace: Option<Py<PyAny>>,
-    pub(crate) journal_index: usize, // used for EVM DB journal rollbacks; index into DB journal before this tx happened
+    /// Journal position before this tx ran, used to replay it. Carries the
+    /// lineage, so a revert cannot make it silently denote another branch.
+    pub(crate) journal_index: JournalPoint,
     pub(crate) tx_env: TxEnv,
     pub(crate) gas_limit_before: u64, // gas limit before this tx was executed
     pub(crate) tx_hash: B256,
@@ -48,7 +50,7 @@ impl TransactionAbc {
         result: ExecutionResult,
         errors_metadata: HashMap<[u8; 4], ErrorMetadata>,
         events_metadata: HashMap<Log, EventMetadata>,
-        journal_index: usize,
+        journal_index: JournalPoint,
         tx_env: TxEnv,
         gas_limit_before: u64,
         tx_hash: B256,
@@ -414,7 +416,7 @@ impl TransactionAbc {
             journal_index,
             &borrowed.tx_env,
             block_env,
-        );
+        )?;
 
         let py_objects = get_py_objects(py);
 

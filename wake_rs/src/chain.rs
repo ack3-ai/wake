@@ -53,7 +53,7 @@ use crate::pytypes::decode_and_normalize;
 use crate::tx::TransactionAbc;
 use crate::txs::Txs;
 use crate::utils::get_py_objects;
-use crate::memory_db::CacheDB;
+use crate::memory_db::{CacheDB, JournalPoint};
 use revm::{Context, Inspector};
 use url::Url;
 
@@ -236,7 +236,25 @@ pub struct Chain {
 
     #[pyo3(get, set)]
     tx_callback: Option<Py<PyAny>>,
+
+    /// How many blocks to keep, or `None` to disable pruning and retain
+    /// everything as before 5.0.
+    ///
+    /// Blocks are the unit of retention: a transaction lives exactly as long as
+    /// its block, and the journal keeps only what the retained blocks need.
+    block_history: Option<usize>,
 }
+
+// The first argument is stringified into the type's module name, so it must be
+// module *tokens*: a string literal is stringified again and the quotes end up in
+// `__module__`, which makes the class unimportable and therefore unpicklable.
+// `wake_rs` is where `lib.rs` registers it, so the name is also true.
+pyo3::create_exception!(
+    wake_rs,
+    HistoryPrunedError,
+    pyo3::exceptions::PyException,
+    "Raised when transaction or block history that has been pruned is accessed."
+);
 
 #[pymethods]
 impl Chain {
@@ -278,6 +296,7 @@ impl Chain {
                 pending_gas_used: 0,
                 fqn_overrides: Arc::new(HashMap::new()),
                 tx_callback: None,
+                block_history: None,
             },
         )?;
         chain.borrow_mut(py).chain_interface =
@@ -514,8 +533,6 @@ impl Chain {
     }
 
     fn revert(slf: &Bound<Self>, py: Python, id: &str) -> PyResult<()> {
-        let mut borrowed = slf.borrow_mut();
-
         // A bad snapshot id must leave the chain untouched, and must surface as a
         // catchable Python exception — a Rust panic crosses the pyo3 boundary as
         // `PanicException`, which subclasses `BaseException` and so slips past
@@ -529,17 +546,18 @@ impl Chain {
                 "snapshot id must be >= 1, got {snapshot_id}"
             )));
         }
-        // `Vec::truncate` past the end is a no-op, so without this check an
-        // out-of-range id would silently revert to the newest snapshot instead.
-        if borrowed.snapshots.len() < snapshot_id {
-            return Err(PyRuntimeError::new_err(format!(
-                "stale or out-of-range snapshot id {snapshot_id}: only {} live snapshot(s)",
-                borrowed.snapshots.len()
-            )));
-        }
         // Read the block number before unwinding anything: on a genesis snapshot
         // the `- 1` below wraps silently to u64::MAX in a release build.
         let last_block_number: u64 = {
+            let borrowed = slf.borrow();
+            // `Vec::truncate` past the end is a no-op, so without this check an
+            // out-of-range id would silently revert to the newest snapshot instead.
+            if borrowed.snapshots.len() < snapshot_id {
+                return Err(PyRuntimeError::new_err(format!(
+                    "stale or out-of-range snapshot id {snapshot_id}: only {} live snapshot(s)",
+                    borrowed.snapshots.len()
+                )));
+            }
             let snapshot = &borrowed.snapshots[snapshot_id - 1];
             let number: u64 = TryInto::try_into(snapshot.pending_block_env.number)
                 .map_err(|_| {
@@ -553,24 +571,58 @@ impl Chain {
             number - 1
         };
 
-        let evm = borrowed.get_evm_mut()?;
-        let journal_index = evm
-            .db_mut()
-            .revert(snapshot_id)
-            .map_err(PyRuntimeError::new_err)?;
-        evm.db_mut().set_last_block_number(last_block_number);
+        // Dropped after `borrowed` is released — see `Chain::maybe_prune`.
+        let garbage_txs;
+        let garbage_blocks;
 
-        borrowed.snapshots.truncate(snapshot_id);
-        // len was >= snapshot_id >= 1, so exactly `snapshot_id` elements remain.
-        let snapshot = borrowed.snapshots.pop().unwrap();
+        {
+            let mut borrowed = slf.borrow_mut();
+            let evm = borrowed.get_evm_mut()?;
+            // The tip is restored first so that `revert` records the block the cut
+            // lands on: a point's lineage is placed by journal offset *and* block, and
+            // the block is what distinguishes a point recorded after a run of empty
+            // blocks from genuinely shared history at the same offset.
+            evm.db_mut().set_last_block_number(last_block_number);
+            let journal_index = evm
+                .db_mut()
+                .revert(snapshot_id)
+                .map_err(PyRuntimeError::new_err)?;
 
-        let mut blocks = borrowed.blocks.as_mut().unwrap().borrow_mut(py);
-        blocks.remove_blocks(last_block_number);
-        drop(blocks);
+            borrowed.snapshots.truncate(snapshot_id);
+            // len was >= snapshot_id >= 1, so exactly `snapshot_id` elements remain.
+            let snapshot = borrowed.snapshots.pop().unwrap();
 
-        borrowed.txs.as_mut().unwrap().borrow_mut(py).remove_txs(py, journal_index);
+            let mut blocks = borrowed.blocks.as_ref().unwrap().borrow_mut(py);
+            let mut dropped_blocks = blocks.remove_blocks(last_block_number);
+            let mut txs = borrowed.txs.as_ref().unwrap().borrow_mut(py);
+            let mut dropped_txs = txs.remove_txs(journal_index);
 
-        snapshot.restore_to_chain(&mut borrowed)?;
+            if snapshot.has_history() {
+                // Pruning truncates the window from the front and the revert just
+                // truncated it from the back, which together can leave nothing to
+                // land on. Empty it and re-seed: the snapshot's window ends
+                // exactly at the block being reverted to and reaches at least as
+                // far back as whatever survived here, so a revert restores the
+                // same visible depth every time — which the shrinker depends on,
+                // since it reverts and replays.
+                dropped_blocks.append(&mut blocks.drain_front(0));
+                dropped_txs.append(&mut txs.drain_all());
+            }
+            drop(blocks);
+            drop(txs);
+            garbage_blocks = dropped_blocks;
+            garbage_txs = dropped_txs;
+
+            snapshot.restore_history(py, &borrowed)?;
+
+            // No block hashes to put back: the revert lowers `last_block_number`
+            // onto numbers this snapshot has been protecting from pruning for as
+            // long as it was live.
+            snapshot.restore_to_chain(&mut borrowed)?;
+        }
+
+        drop(garbage_txs);
+        drop(garbage_blocks);
 
         Ok(())
     }
@@ -615,9 +667,14 @@ impl Chain {
             let evm = borrowed.get_evm_mut()?;
             evm.block.timestamp = new_timestamp.try_into().unwrap();
             let _ = borrowed.mine(py, true);
+            drop(borrowed);
         } else {
             let _ = slf.borrow_mut().mine(py, true);
         }
+
+        // Bare `chain.mine()` loops produce blocks with no transactions, so the
+        // send path alone would never trim them.
+        Chain::maybe_prune(&slf, py)?;
 
         Ok(())
     }
@@ -682,6 +739,18 @@ impl Chain {
             .import("wake.testing.native_coverage")?
             .getattr("collect_coverage")?
             .extract::<bool>()?;
+
+        // Re-read retention from config on every connect, for the same reason
+        // `automine` is reset above: a value set on the chain outside a
+        // connection must not leak into the next test.
+        let testing_config = py
+            .import("wake.development.globals")?
+            .call_method0("get_config")?
+            .getattr("testing")?;
+        slf_.block_history = testing_config
+            .getattr("block_history")?
+            .extract::<Option<usize>>()?
+            .map(|keep| keep.max(1));
 
         for i in 0..accounts {
             slf_.accounts.push(Py::new(
@@ -991,7 +1060,7 @@ impl Chain {
             .add_block(
                 py,
                 block_env,
-                evm.db().get_journal_index(),
+                evm.db().journal_point(),
                 block_hash,
                 self.pending_gas_used,
             )?;
@@ -1012,6 +1081,124 @@ impl Chain {
 
     pub(crate) fn last_block_number(&self) -> PyResult<u64> {
         Ok(self.get_evm()?.db().last_block_number())
+    }
+
+    pub(crate) fn journal_index(&self) -> PyResult<usize> {
+        Ok(self.get_evm()?.db().get_journal_index())
+    }
+
+    /// Lowest journal index any live pin still needs, i.e. how far back the
+    /// journal must reach.
+    ///
+    /// O(1): every term is the front of a deque or a `Vec::first`, never a scan.
+    ///
+    /// Snapshots deliberately do not appear here. Reverting one restores state by
+    /// truncating the copy-on-write layer stack without reading a single journal
+    /// entry, so pinning the journal at a snapshot's index would buy nothing and
+    /// cost everything — for a campaign snapshot taken at the start, the whole
+    /// campaign.
+    fn journal_floor(&self, py: Python, txs: &Txs, blocks: &Blocks) -> PyResult<usize> {
+        // Seeding with the tip rather than `usize::MAX` means "no pins" compacts
+        // every journal entry and keeps the floor from exceeding the tip. A
+        // connected chain always retains at least its tip (`block_history = 0`
+        // is normalized to 1).
+        let mut floor = self.get_evm()?.db().get_journal_index();
+        if let Some(index) = txs.oldest_journal_index() {
+            floor = floor.min(index);
+        }
+        if let Some(index) = blocks.oldest_journal_index() {
+            floor = floor.min(index);
+        }
+        // Transactions in the block being built are live by any definition, and
+        // with automine off there can be more of them than the window holds, so
+        // `txs.front()` is not a lower bound on its own.
+        if let Some(tx) = self.pending_txs.first() {
+            floor = floor.min(tx.borrow(py).journal_index.index);
+        }
+        Ok(floor)
+    }
+
+    /// Trims history back to the configured window and compacts the journal to
+    /// match.
+    ///
+    /// **Blocks are the unit of retention.** Transactions are not counted
+    /// separately: they are kept exactly as long as the block containing them is.
+    /// That bounds retention in blocks, but not in bytes: a block's journal cost is
+    /// proportional to the writes it contains, and the unmined block never closes,
+    /// so with automine off retention plateaus only once blocks are mined.
+    ///
+    /// Called after sending a transaction and after mining, never during
+    /// execution. Total work is O(items dropped) and every item is dropped
+    /// exactly once, so how often this runs does not change throughput, only how
+    /// the cost is distributed — which is why the hysteresis slack is small
+    /// rather than a second full window: overshoot is paid in resident memory,
+    /// and with fat blocks a 2x window is hundreds of megabytes, while draining
+    /// eight times as often costs one extra length compare per drain.
+    pub(crate) fn maybe_prune(slf: &Bound<Self>, py: Python) -> PyResult<()> {
+        // Declared before the borrows so they are dropped after them: releasing
+        // the last reference to a transaction can run `__del__`, which can
+        // re-enter the chain, and re-entering a mutable borrow panics — crossing
+        // pyo3 as `PanicException`, which slips past `except Exception`.
+        let garbage_txs;
+        let garbage_blocks;
+
+        {
+            let mut chain = slf.borrow_mut();
+            // A configured window of 0 is normalized to 1 on connect so the tip
+            // remains resolvable through `blocks["latest"]`.
+            let Some(keep) = chain.block_history else {
+                return Ok(());
+            };
+
+            let txs_cell = chain.txs.as_ref().expect("Not connected").clone_ref(py);
+            let blocks_cell = chain.blocks.as_ref().expect("Not connected").clone_ref(py);
+            let mut txs = txs_cell.borrow_mut(py);
+            let mut blocks = blocks_cell.borrow_mut(py);
+
+            // Let the window overshoot by an eighth before draining it back, so
+            // the drain runs once per `keep / 8` blocks instead of once per block.
+            let slack = keep.div_ceil(8).clamp(1, 32);
+            if blocks.len() <= keep + slack {
+                return Ok(());
+            }
+
+            // This is the only place the snapshots' windows can be lost, so it is
+            // where they get frozen — after the hysteresis check above, so a
+            // revert/replay loop that never prunes never pays for it.
+            for snapshot in chain.snapshots.iter_mut() {
+                snapshot.capture_window(py, &txs, &blocks);
+            }
+
+            let dropped_blocks = blocks.drain_front(keep);
+            // The newest dropped block's journal index is the transaction cutoff:
+            // a block's index is recorded after it and a transaction's before it,
+            // so everything below it belonged to a dropped block. Transactions not
+            // yet in a block sit above the newest block's index and are kept.
+            garbage_txs = match dropped_blocks.last() {
+                Some(newest_dropped) => txs.drain_below(newest_dropped.journal_index),
+                None => Vec::new(),
+            };
+            garbage_blocks = dropped_blocks;
+
+            let floor = chain.journal_floor(py, &txs, &blocks)?;
+            drop(txs);
+            drop(blocks);
+
+            // Every live snapshot can be reverted to, which would make its block
+            // the tip again, so each one keeps its own `BLOCKHASH` horizon alive.
+            let anchors: Vec<u64> = chain
+                .snapshots
+                .iter()
+                .map(|snapshot| snapshot.block_number())
+                .collect();
+            let db = chain.get_evm_mut()?.db_mut();
+            db.compact_journal(floor);
+            db.prune_block_hashes(&anchors);
+        }
+
+        drop(garbage_txs);
+        drop(garbage_blocks);
+        Ok(())
     }
 
     pub(crate) fn call(
@@ -1042,7 +1229,7 @@ impl Chain {
         ));
         let collect_coverage = borrowed.collect_coverage;
         let evm = borrowed.get_evm()?;
-        let current_journal_index = evm.db().get_journal_index();
+        let current_journal_index = evm.db().journal_point();
         let block_gas_limit = evm.block.gas_limit;
         let tx_gas_limit_cap = evm.cfg.tx_gas_limit_cap();
         let tx_env = prepare_tx_env(
@@ -1099,12 +1286,17 @@ impl Chain {
                     .with_evm_with_inspector(py, &mut *inspector, |evm| {
                         let block_env_backup =
                             mem::replace(&mut evm.block, block_env);
-                        let rollback = evm.db_mut().rollback(journal_index);
-                        let res = evm.inspect_tx(tx_env);
-                        evm.db_mut().restore_rollback(rollback);
+                        let out = match evm.db_mut().rollback(journal_index) {
+                            Ok(rollback) => {
+                                let res = evm.inspect_tx(tx_env);
+                                evm.db_mut().restore_rollback(rollback);
+                                Ok(res)
+                            }
+                            Err(err) => Err(HistoryPrunedError::new_err(err.to_string())),
+                        };
                         evm.block = block_env_backup;
-                        res
-                    })
+                        out
+                    })?
                     .map_err(|e: EVMError<DBError>| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
 
                 (res, journal_index)
@@ -1221,7 +1413,7 @@ impl Chain {
         };
 
         let evm = borrowed.get_evm()?;
-        let journal_index = evm.db().get_journal_index();
+        let journal_index = evm.db().journal_point();
 
         let result = borrowed
             .with_evm_with_inspector(py, &mut *inspector, |evm| evm.inspect_tx_commit(tx_env.clone()))
@@ -1270,7 +1462,7 @@ impl Chain {
             .unwrap()
             .bind(py)
             .borrow_mut()
-            .add_tx(tx.clone_ref(py));
+            .add_tx(journal_index.index, tx.clone_ref(py));
 
         let tx_callback = borrowed
             .tx_callback
@@ -1278,6 +1470,10 @@ impl Chain {
             .map(|tx_callback| tx_callback.clone_ref(py));
 
         drop(borrowed);
+
+        // After the borrow is released: pruning drops Python objects, which can
+        // run `__del__` and re-enter the chain.
+        Chain::maybe_prune(slf, py)?;
 
         if let Some(tx_callback) = tx_callback {
             tx_callback.call1(py, (tx.clone_ref(py),))?;
@@ -1317,7 +1513,7 @@ impl Chain {
                 .clone_ref(py),
         ));
         let evm = borrowed.get_evm()?;
-        let current_journal_index = evm.db().get_journal_index();
+        let current_journal_index = evm.db().journal_point();
         let block_gas_limit = evm.block.gas_limit;
         let tx_gas_limit_cap = evm.cfg.tx_gas_limit_cap();
         let tx_env = prepare_tx_env(
@@ -1368,13 +1564,18 @@ impl Chain {
                     .with_evm_with_inspector(py, &mut inspector, |evm| {
                         let block_env_backup =
                             mem::replace(&mut evm.block, block_env);
-                        let rollback = evm.db_mut().rollback(journal_index);
-                        let res = evm.inspect_tx(tx_env);
-                        evm.db_mut().restore_rollback(rollback);
+                        let out = match evm.db_mut().rollback(journal_index) {
+                            Ok(rollback) => {
+                                let res = evm.inspect_tx(tx_env);
+                                evm.db_mut().restore_rollback(rollback);
+                                Ok(res)
+                            }
+                            Err(err) => Err(HistoryPrunedError::new_err(err.to_string())),
+                        };
                         evm.block = block_env_backup;
 
-                        res
-                    })
+                        out
+                    })?
                     .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
 
                 (res, journal_index)
@@ -1452,7 +1653,7 @@ impl Chain {
                 .clone_ref(py),
         ));
         let evm = borrowed.get_evm()?;
-        let current_journal_index = evm.db().get_journal_index();
+        let current_journal_index = evm.db().journal_point();
         let block_gas_limit = evm.block.gas_limit;
         let tx_gas_limit_cap = evm.cfg.tx_gas_limit_cap();
         let tx_env = prepare_tx_env(
@@ -1503,13 +1704,18 @@ impl Chain {
                     .with_evm_with_inspector(py, &mut inspector, |evm| {
                         let block_env_backup =
                             mem::replace(&mut evm.block, block_env);
-                        let rollback = evm.db_mut().rollback(journal_index);
-                        let res = evm.inspect_tx(tx_env);
-                        evm.db_mut().restore_rollback(rollback);
+                        let out = match evm.db_mut().rollback(journal_index) {
+                            Ok(rollback) => {
+                                let res = evm.inspect_tx(tx_env);
+                                evm.db_mut().restore_rollback(rollback);
+                                Ok(res)
+                            }
+                            Err(err) => Err(HistoryPrunedError::new_err(err.to_string())),
+                        };
                         evm.block = block_env_backup;
 
-                        res
-                    })
+                        out
+                    })?
                     .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?;
 
                 (res, journal_index)
@@ -1561,42 +1767,69 @@ impl Chain {
         }
     }
 
+    /// Re-executes a transaction under `inspector` against the state it
+    /// originally ran on.
+    ///
+    /// This is the only thing that needs the journal, which is why the retained
+    /// window exists at all: `events`, `return_value`, `error`, `status` and
+    /// `gas_used` all read the stored `ExecutionResult` and keep working however
+    /// far back the transaction is.
+    ///
+    /// Replayability is checked here, at use, and never assumed: reverting a
+    /// snapshot brings history from before the revert back into view, and those
+    /// entries are legitimately gone. Erroring is the only honest answer — a
+    /// rollback that stops short would replay against the wrong state and return
+    /// a plausible, wrong trace.
+    fn replay<I>(
+        &mut self,
+        py: Python,
+        inspector: I,
+        journal_index: JournalPoint,
+        tx_env: &TxEnv,
+        block_env: BlockEnv,
+    ) -> PyResult<()>
+    where
+        I: Send + InspectorExt<CustomContext>,
+    {
+        self.with_evm_with_inspector(py, inspector, |evm| {
+            let block_env_backup = mem::replace(&mut evm.block, block_env);
+            let out = match evm.db_mut().rollback(journal_index) {
+                Ok(rollback) => {
+                    let _ = evm.inspect_tx(tx_env.clone());
+                    evm.db_mut().restore_rollback(rollback);
+                    Ok(())
+                }
+                Err(err) => Err(HistoryPrunedError::new_err(err.to_string())),
+            };
+            evm.block = block_env_backup;
+            out
+        })
+    }
+
     pub(crate) fn get_call_trace(
         &mut self,
         py: Python,
-        journal_index: usize,
+        journal_index: JournalPoint,
         tx_env: &TxEnv,
         block_env: BlockEnv,
-    ) -> NativeTrace {
+    ) -> PyResult<NativeTrace> {
         let mut inspector = TraceInspector::new();
 
-        self.with_evm_with_inspector(py, &mut inspector, |evm| {
-            let block_env_backup = mem::replace(&mut evm.block, block_env);
-            let rollback = evm.db_mut().rollback(journal_index);
-            let _ = evm.inspect_tx(tx_env.clone());
-            evm.db_mut().restore_rollback(rollback);
-            evm.block = block_env_backup;
-        });
+        self.replay(py, &mut inspector, journal_index, tx_env, block_env)?;
 
-        inspector.into_root_trace()
+        Ok(inspector.into_root_trace())
     }
 
     pub(crate) fn get_console_logs(
         &mut self,
         py: Python,
-        journal_index: usize,
+        journal_index: JournalPoint,
         tx_env: &TxEnv,
         block_env: BlockEnv,
     ) -> PyResult<Vec<Bytes>> {
         let mut inspector = ConsoleLogInspector::new();
 
-        self.with_evm_with_inspector(py, &mut inspector, |evm| {
-            let block_env_backup = mem::replace(&mut evm.block, block_env);
-            let rollback = evm.db_mut().rollback(journal_index);
-            let _ = evm.inspect_tx(tx_env.clone());
-            evm.db_mut().restore_rollback(rollback);
-            evm.block = block_env_backup;
-        });
+        self.replay(py, &mut inspector, journal_index, tx_env, block_env)?;
 
         Ok(inspector.into_inputs())
     }
@@ -1604,19 +1837,13 @@ impl Chain {
     pub(crate) fn get_access_list(
         &mut self,
         py: Python,
-        journal_index: usize,
+        journal_index: JournalPoint,
         tx_env: &TxEnv,
         block_env: BlockEnv,
     ) -> PyResult<AccessList> {
         let mut inspector = AccessListInspector::new(vec![].into());
 
-        self.with_evm_with_inspector(py, &mut inspector, |evm| {
-            let block_env_backup = mem::replace(&mut evm.block, block_env);
-            let rollback = evm.db_mut().rollback(journal_index);
-            let _ = evm.inspect_tx(tx_env.clone());
-            evm.db_mut().restore_rollback(rollback);
-            evm.block = block_env_backup;
-        });
+        self.replay(py, &mut inspector, journal_index, tx_env, block_env)?;
 
         Ok(inspector.into_access_list())
     }

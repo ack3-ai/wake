@@ -82,6 +82,11 @@ def test_config_from_dict():
     assert config.compiler.solc.target_version == SolidityVersion.fromstring("0.8.12")
 
 
+def test_block_history_must_be_non_negative():
+    with pytest.raises(pydantic.ValidationError):
+        WakeConfig.fromdict({"testing": {"block_history": -1}})
+
+
 @pytest.mark.platform_dependent
 def test_config_global():
     os.environ["XDG_CONFIG_HOME"] = str(sources_path / "containing_global_conf")

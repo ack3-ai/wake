@@ -335,6 +335,9 @@ impl Account {
                     Ok(())
                 })??;
                 chain.borrow_mut(py).mine(py, false)?;
+                // These setters mine a block with no transaction in it, so the
+                // send path would never trim the blocks they accumulate.
+                Chain::maybe_prune(chain.bind(py), py)?;
                 Ok(())
             }
             ChainWrapper::Python(chain) => {
@@ -385,6 +388,9 @@ impl Account {
                     Ok(())
                 })??;
                 chain.borrow_mut(py).mine(py, false)?;
+                // These setters mine a block with no transaction in it, so the
+                // send path would never trim the blocks they accumulate.
+                Chain::maybe_prune(chain.bind(py), py)?;
                 Ok(())
             }
             ChainWrapper::Python(chain) => {
@@ -430,6 +436,9 @@ impl Account {
                     Ok(())
                 })??;
                 chain.borrow_mut(py).mine(py, false)?;
+                // These setters mine a block with no transaction in it, so the
+                // send path would never trim the blocks they accumulate.
+                Chain::maybe_prune(chain.bind(py), py)?;
                 Ok(())
             }
             ChainWrapper::Python(chain) => {
