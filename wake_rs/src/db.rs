@@ -66,17 +66,25 @@ impl DB {
         }
     }
 
-    pub(crate) fn compact_journal(&mut self, floor: usize) -> usize {
+    pub(crate) fn compact_journal(&mut self, floor: usize, oldest_replayable_block: u64) -> usize {
         match self {
-            DB::EmptyDB(db) => db.compact_journal(floor),
-            DB::ForkDB(db) => db.compact_journal(floor),
+            DB::EmptyDB(db) => db.compact_journal(floor, oldest_replayable_block),
+            DB::ForkDB(db) => db.compact_journal(floor, oldest_replayable_block),
         }
     }
 
-    pub(crate) fn prune_block_hashes(&mut self, anchors: &[u64]) {
+    pub(crate) fn prune_block_hashes(
+        &mut self,
+        oldest_replayable_block: u64,
+        snapshot_ranges: &[(u64, u64)],
+    ) {
         match self {
-            DB::EmptyDB(db) => db.prune_block_hashes(anchors),
-            DB::ForkDB(db) => db.prune_block_hashes(anchors),
+            DB::EmptyDB(db) => {
+                db.prune_block_hashes(oldest_replayable_block, snapshot_ranges)
+            }
+            DB::ForkDB(db) => {
+                db.prune_block_hashes(oldest_replayable_block, snapshot_ranges)
+            }
         }
     }
 

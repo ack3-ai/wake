@@ -372,12 +372,11 @@ def test_retention_plateaus_with_automine_off(chain):
 @pytest.mark.parametrize("chain", [8], indirect=True)
 def test_snapshots_preserve_the_blockhash_horizon(chain):
     # `BLOCKHASH` reaches 256 blocks back however little metadata the chain keeps,
-    # and reverting makes the snapshot's block the tip again - sliding that horizon
-    # back onto numbers the chain has long since passed. Deriving the retained
-    # hashes from the block window conflated the two: with `block_history = 8` the
-    # window is 9 blocks and the horizon is 257. It failed silently, because on a
-    # local chain a missing hash is not a miss that refetches the right value, it
-    # is one the underlying database synthesizes.
+    # and reverting restores the snapshot's whole block window. Every block in that
+    # window is a potential execution context, including empty blocks that share a
+    # journal point, so the snapshot must pin the window plus a 256-block horizon.
+    # A missing local hash fails silently: the underlying database synthesizes a
+    # plausible but unrelated value instead of refetching the right one.
     target = chain.accounts[2]
     target.code = BLOCKHASH_CODE
     while chain.blocks["latest"].number < 300:
@@ -386,6 +385,10 @@ def test_snapshots_preserve_the_blockhash_horizon(chain):
     probed = (height - 100).to_bytes(32, "big")
     baseline = target.call(data=probed)
     assert int.from_bytes(baseline, "big") != 0, "expected a real hash"
+    oldest = chain.blocks.first_number
+    oldest_probed = (oldest - 256).to_bytes(32, "big")
+    oldest_baseline = target.call(data=oldest_probed, block=oldest)
+    assert int.from_bytes(oldest_baseline, "big") != 0, "expected a real hash"
 
     snapshot = chain.snapshot()
     while chain.blocks["latest"].number < height + 500:
@@ -393,6 +396,98 @@ def test_snapshots_preserve_the_blockhash_horizon(chain):
     chain.revert(snapshot)
 
     assert chain.blocks["latest"].number == height
-    # Same block, same height, and nothing had to be put back: the snapshot kept
-    # its horizon from being pruned for as long as it was live.
+    assert chain.blocks.first_number == oldest
+    # Both the tip and the oldest restored execution context kept their horizons.
     assert target.call(data=probed) == baseline
+    assert target.call(data=oldest_probed, block=oldest) == oldest_baseline
+
+
+def test_replay_reads_blockhash_from_its_own_block_not_the_live_tip(chain):
+    # `BLOCKHASH` reaches 256 blocks back from the *executing* block. Re-running an
+    # old transaction restores its block environment, so a read at the edge of its
+    # window must still resolve once the chain has moved on. Two things used to break
+    # it: `CacheDB` re-applied the 256-block bound against the live tip, which revm
+    # already enforces correctly against the executing block; and pruning kept only
+    # the tip's horizon, deleting the very hashes an old block's replay needs.
+    target = chain.accounts[2]
+    target.code = BLOCKHASH_CODE
+    while chain.blocks["latest"].number < 300:
+        chain.mine()
+
+    edge = chain.blocks["latest"].number + 1 - 256
+    tx = target.transact(data=edge.to_bytes(32, "big"), from_=chain.accounts[0])
+    block = tx.block.number
+    stored = tx.return_value
+    assert int.from_bytes(stored, "big") != 0, "expected a real hash at the edge"
+
+    chain.mine()  # one empty block is enough to push `edge` outside the tip's window
+
+    # the historical call path, and the trace path, must both still see it
+    assert target.call(data=edge.to_bytes(32, "big"), block=block) == stored
+    assert tx.call_trace is not None
+
+
+@pytest.mark.parametrize("chain", [8], indirect=True)
+def test_block_hash_retention_covers_the_window_plus_a_horizon(chain):
+    # A retained block is a replay context, and a replay reads 256 blocks below its
+    # own block, so retention has to span `testing.block_history + 256`.
+    target = chain.accounts[2]
+    target.code = BLOCKHASH_CODE
+    while chain.blocks["latest"].number < 400:
+        chain.mine()
+
+    oldest = chain.blocks.first_number
+    probed = (oldest - 256).to_bytes(32, "big")
+    assert int.from_bytes(target.call(data=probed, block=oldest), "big") != 0
+
+
+@pytest.mark.parametrize("chain", [0], indirect=True)
+def test_lazy_call_loses_replay_when_its_block_leaves_the_window(chain):
+    # A Call is not stored in the transaction/block windows and does not commit a
+    # journal entry. Empty blocks can therefore age out its execution block while
+    # leaving its journal point exactly at the retained base. Journal rollback alone
+    # would accept it, after which a pruned BLOCKHASH miss produced a plausible wrong
+    # trace instead of an error.
+    target = chain.accounts[2]
+    target.code = BLOCKHASH_CODE
+    while chain.blocks["latest"].number < 300:
+        chain.mine()
+
+    block = chain.blocks["latest"].number
+    edge = block - 256
+    call = target.call(data=edge.to_bytes(32, "big"), block=block, return_call=True)
+    stored = call.raw_return_value
+    assert int.from_bytes(stored, "big") != 0
+
+    while chain.blocks.first_number <= block:
+        chain.mine()
+    assert chain.blocks.first_number > block
+
+    # Stored metadata remains available, just as it does for an aged-out
+    # transaction, but anything requiring re-execution fails cleanly.
+    assert call.raw_return_value == stored
+    with pytest.raises(HistoryPrunedError, match="no longer retained for replay"):
+        call.call_trace
+
+
+@pytest.mark.parametrize("chain", [1], indirect=True)
+def test_replay_keeps_the_cut_immediately_before_the_oldest_retained_block(chain):
+    # A transaction executing in block B records its journal point while B - 1 is
+    # still the tip. That boundary cut must survive when B is the oldest retained
+    # execution context; retiring through B - 1 would reject a genuinely shared
+    # state and block-hash prefix.
+    target = chain.accounts[2]
+    target.code = BLOCKHASH_CODE
+    while chain.blocks["latest"].number < 300 or block_depth(chain) != 2:
+        chain.mine()
+
+    snapshot = chain.snapshot()
+    tx = target.transact(data=(300).to_bytes(32, "big"), from_=chain.accounts[0])
+    block = tx.block.number
+    stored = tx.raw_return_value
+
+    chain.revert(snapshot)
+    chain.mine()  # replace the transaction's block with a different empty block
+
+    assert chain.blocks.first_number == block
+    assert bytes(tx.call_trace.return_value[0]) == stored

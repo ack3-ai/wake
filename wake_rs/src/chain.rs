@@ -1181,19 +1181,23 @@ impl Chain {
             garbage_blocks = dropped_blocks;
 
             let floor = chain.journal_floor(py, &txs, &blocks)?;
+            let oldest_replayable_block = blocks.start_index() as u64;
             drop(txs);
             drop(blocks);
 
-            // Every live snapshot can be reverted to, which would make its block
-            // the tip again, so each one keeps its own `BLOCKHASH` horizon alive.
-            let anchors: Vec<u64> = chain
+            // Every live snapshot can restore its captured block window. Preserve
+            // the `BLOCKHASH` horizon of that whole window, not just its tip: empty
+            // restored blocks can share a replayable journal point.
+            let snapshot_ranges: Vec<(u64, u64)> = chain
                 .snapshots
                 .iter()
-                .map(|snapshot| snapshot.block_number())
+                .map(|snapshot| snapshot.block_hash_range())
                 .collect();
             let db = chain.get_evm_mut()?.db_mut();
-            db.compact_journal(floor);
-            db.prune_block_hashes(&anchors);
+            db.compact_journal(floor, oldest_replayable_block);
+            // The oldest retained block is the oldest thing a replay can execute
+            // against, and a replay reads 256 blocks below its own block.
+            db.prune_block_hashes(oldest_replayable_block, &snapshot_ranges);
         }
 
         drop(garbage_txs);
@@ -1791,6 +1795,22 @@ impl Chain {
     where
         I: Send + InspectorExt<CustomContext>,
     {
+        let execution_block: u64 = block_env
+            .number
+            .try_into()
+            .map_err(|_| PyRuntimeError::new_err("replay block number exceeds u64 range"))?;
+        let oldest_replayable_block = self
+            .blocks
+            .as_ref()
+            .expect("Not connected")
+            .borrow(py)
+            .start_index() as u64;
+        if execution_block < oldest_replayable_block {
+            return Err(HistoryPrunedError::new_err(format!(
+                "block {execution_block} is no longer retained for replay because its block context was pruned: the retained window starts at block {oldest_replayable_block}. Raise `testing.block_history` in the configuration (or set it to null to disable pruning) to keep more."
+            )));
+        }
+
         self.with_evm_with_inspector(py, inspector, |evm| {
             let block_env_backup = mem::replace(&mut evm.block, block_env);
             let out = match evm.db_mut().rollback(journal_index) {
