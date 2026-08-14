@@ -4,7 +4,7 @@ use alloy::rlp::Buf;
 use alloy::rpc::types::AccessList;
 use num_bigint::BigUint;
 use pyo3::{IntoPyObjectExt, PyTypeInfo, intern};
-use pyo3::types::{PyBytes, PyNone};
+use pyo3::types::{PyBytes, PyNone, PyWeakrefMethods, PyWeakrefReference};
 use pyo3::{prelude::*, types::PyDict};
 use revm::context::TxEnv;
 use revm::context::result::{ExecutionResult, Output};
@@ -32,7 +32,9 @@ pub struct Call {
     abi: Option<Py<PyDict>>,
     errors_metadata: HashMap<[u8; 4], ErrorMetadata>,
     access_list: Option<HashMap<Address, Vec<BigUint>>>,
-    cached_error: Option<PyErr>,
+    /// Weak on purpose: every revert error points back to this call, and once
+    /// raised its traceback can also retain a frame whose locals contain it.
+    cached_error: Option<Py<PyWeakrefReference>>,
     cached_return_value: Option<Py<PyAny>>,
     cached_call_trace: Option<Py<PyAny>>,
 }
@@ -128,8 +130,12 @@ impl Call {
     pub fn error(slf: &Bound<Self>, py: Python) -> PyResult<Option<PyErr>> {
         let borrowed = slf.borrow();
 
-        if let Some(error) = &borrowed.cached_error {
-            return Ok(Some(error.clone_ref(py)));
+        if let Some(error) = borrowed
+            .cached_error
+            .as_ref()
+            .and_then(|error| error.bind(py).upgrade())
+        {
+            return Ok(Some(PyErr::from_value(error)));
         }
 
         let error = match &borrowed.result {
@@ -157,8 +163,13 @@ impl Call {
                 Some(PyErr::from_value(error,))
             }
         };
+        let cached_error = error.as_ref().and_then(|error| {
+            PyWeakrefReference::new(error.value(py).as_any())
+                .ok()
+                .map(|error| error.unbind())
+        });
         drop(borrowed);
-        slf.borrow_mut().cached_error = error.as_ref().map(|e| e.clone_ref(py));
+        slf.borrow_mut().cached_error = cached_error;
         Ok(error)
     }
 
