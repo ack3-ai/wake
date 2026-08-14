@@ -32,16 +32,21 @@ Asserted findings:
 import ctypes
 import gc
 import platform
+import sys
+import weakref
 from types import SimpleNamespace
 
 import pytest
 
+from wake.development.errors import UnknownRevertError
 from wake_rs import Chain, HistoryPrunedError
 
 BLOCK_HISTORY = 256
 
 # calldata word 0 -> block number; returns BLOCKHASH(n)
 BLOCKHASH_CODE = bytes.fromhex("6000354060005260206000f3")
+# revert(0, 0)
+REVERT_CODE = bytes.fromhex("60006000fd")
 
 
 @pytest.fixture
@@ -97,6 +102,71 @@ def rss():
     ctypes.CDLL("libc.so.6").malloc_trim(0)
     with open("/proc/self/statm") as f:
         return int(f.read().split()[1]) * 4096
+
+
+@pytest.mark.parametrize("kind", ["transaction", "call"])
+def test_reverted_execution_does_not_retain_raised_error(chain, kind):
+    sender, target = chain.accounts[0], chain.accounts[1]
+    target.code = REVERT_CODE
+
+    def execute():
+        try:
+            if kind == "transaction":
+                target.transact(from_=sender)
+            else:
+                target.call(from_=sender)
+        except UnknownRevertError as error:
+            owner = error.tx if kind == "transaction" else error.call
+            assert owner is not None
+            error_ref = weakref.ref(error)
+
+            # Preserve cache identity while the caller owns the exception.
+            assert owner.error is error
+            return owner, error_ref
+        else:
+            pytest.fail("execution should have reverted")
+
+    owner, error_ref = execute()
+
+    # The owner must not keep the exception, traceback, frame and its locals
+    # alive after the caller releases it. Native objects are not GC-tracked, so
+    # a strong cache here is an uncollectable cycle.
+    gc.collect()
+    assert error_ref() is None
+
+    # A dead weak cache is populated again on demand, with the same association.
+    replacement = owner.error
+    assert isinstance(replacement, UnknownRevertError)
+    assert (replacement.tx if kind == "transaction" else replacement.call) is owner
+    assert replacement.__traceback__ is None
+
+
+@pytest.mark.parametrize("chain", [1], indirect=True)
+def test_reverted_transactions_do_not_accumulate_after_pruning(chain):
+    sender, target = chain.accounts[0], chain.accounts[1]
+    target.code = REVERT_CODE
+
+    def revert():
+        try:
+            target.transact(from_=sender)
+        except UnknownRevertError:
+            pass
+
+    # With a one-block target and one block of hysteresis, even-sized batches
+    # finish at the same one-block/one-transaction window. Every live native
+    # transaction and block owns the chain, so its refcount is a deterministic
+    # proxy for objects that should have been released by pruning.
+    for _ in range(10):
+        revert()
+    gc.collect()
+    assert block_depth(chain) == tx_depth(chain) == 1
+    baseline = sys.getrefcount(chain)
+
+    for _ in range(100):
+        revert()
+    gc.collect()
+    assert block_depth(chain) == tx_depth(chain) == 1
+    assert sys.getrefcount(chain) == baseline
 
 
 def test_window_bounds_retention_without_losing_the_count(chain):

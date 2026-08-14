@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use alloy::dyn_abi::DynSolType;
 use pyo3::{
-    intern, prelude::*, types::{PyBytes, PyDict, PyList, PyNone, PyTuple}, IntoPyObjectExt, PyTypeInfo
+    intern, prelude::*, types::{PyBytes, PyDict, PyList, PyNone, PyTuple, PyWeakrefMethods, PyWeakrefReference}, IntoPyObjectExt, PyTypeInfo
 };
 use revm::{
     context::{result::{ExecutionResult, Output}, TxEnv}, primitives::{
@@ -28,7 +28,9 @@ pub struct TransactionAbc {
     pub(crate) events_metadata: HashMap<Log, EventMetadata>,
 
     cached_events: Option<Py<PyTuple>>,
-    cached_error: Option<PyErr>,
+    /// Weak on purpose: every revert error points back to this transaction, and
+    /// once raised its traceback can also retain a frame whose locals contain it.
+    cached_error: Option<Py<PyWeakrefReference>>,
     cached_return_value: Option<Py<PyAny>>,
     cached_call_trace: Option<Py<PyAny>>,
     /// Journal position before this tx ran, used to replay it. Carries the
@@ -299,8 +301,12 @@ impl TransactionAbc {
     pub fn error(slf: &Bound<Self>, py: Python) -> PyResult<Option<PyErr>> {
         let borrowed = slf.borrow();
 
-        if let Some(error) = &borrowed.cached_error {
-            return Ok(Some(error.clone_ref(py)));
+        if let Some(error) = borrowed
+            .cached_error
+            .as_ref()
+            .and_then(|error| error.bind(py).upgrade())
+        {
+            return Ok(Some(PyErr::from_value(error)));
         }
 
         let error = match &borrowed.result {
@@ -328,8 +334,13 @@ impl TransactionAbc {
                 Some(PyErr::from_value(error,))
             }
         };
+        let cached_error = error.as_ref().and_then(|error| {
+            PyWeakrefReference::new(error.value(py).as_any())
+                .ok()
+                .map(|error| error.unbind())
+        });
         drop(borrowed);
-        slf.borrow_mut().cached_error = error.as_ref().map(|e| e.clone_ref(py));
+        slf.borrow_mut().cached_error = cached_error;
         Ok(error)
     }
 
