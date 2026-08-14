@@ -200,13 +200,23 @@ impl ChainSnapshot {
         Ok(())
     }
 
-    /// Newest block number at snapshot time.
+    /// Inclusive block-hash range this snapshot keeps alive.
     ///
-    /// Reverting here makes this the tip again, so its `BLOCKHASH` horizon has to
-    /// survive pruning for as long as this snapshot is live — see
-    /// [`crate::memory_db::CacheDB::prune_block_hashes`].
-    pub fn block_number(&self) -> u64 {
-        self.position.block_number
+    /// Reverting restores the whole captured block window, not just its tip. Empty
+    /// blocks can share a journal point, so blocks from that window may still be
+    /// replayable after the revert even when their journal entries would otherwise
+    /// look metadata-only. The oldest one can read another 256 blocks back.
+    pub fn block_hash_range(&self) -> (u64, u64) {
+        let newest = self.position.block_number;
+        let oldest = self
+            .history
+            .as_ref()
+            .expect("snapshot history must be captured before pruning block hashes")
+            .blocks
+            .first()
+            .expect("captured snapshot history must contain its tip")
+            .number;
+        (oldest.saturating_sub(256), newest)
     }
 
     pub fn restore_to_chain(self, chain: &mut Chain) -> PyResult<()> {

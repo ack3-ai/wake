@@ -275,31 +275,38 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
     /// entry's position relative to `snapshot_journal_indexes`.
     ///
     /// `floor` is clamped, so callers may pass a stale value. Returns the new base.
-    pub fn compact_journal(&mut self, floor: usize) -> usize {
+    pub fn compact_journal(&mut self, floor: usize, oldest_replayable_block: u64) -> usize {
         let floor = floor.clamp(self.journal_base, self.journal_index());
         self.journal.drain(..floor - self.journal_base);
         self.journal_base = floor;
-        self.retire_cuts();
+        self.retire_cuts(oldest_replayable_block);
         floor
     }
 
-    /// Drops cut records the journal base has passed, retiring the lineages they
-    /// governed.
+    /// Drops cut records the retained journal-and-block replay floor has passed,
+    /// retiring the lineages they governed.
     ///
     /// Without this the stack grows by one per revert whenever the cuts are
     /// *increasing* — snapshot at the advancing tip, write, revert, write — which
     /// `cut_lineage`'s collapse cannot fold, since it only merges cuts that undercut
-    /// their predecessors. That is the ordinary fuzzing shape, so it grew unbounded.
+    /// their predecessors. Empty blocks need the block half of the floor in
+    /// particular: they advance cuts from `(base, B)` to `(base, B + 1)` without
+    /// advancing the journal at all.
     ///
     /// The records are retired rather than merely deleted because `revert_snapshot`
     /// can lower `journal_base` again; a deleted record would otherwise let its
     /// points look valid once more, and `shared_up_to` would index past the start of
     /// the stack looking for it.
-    fn retire_cuts(&mut self) {
-        let base = self.journal_base;
+    fn retire_cuts(&mut self, oldest_replayable_block: u64) {
+        // Transactions and pending calls record their point before executing in the
+        // next block, so block `B` can still need a cut anchored at `B - 1`. Mined
+        // historical calls use the block's post-block point and are no older. Thus a
+        // cut strictly below this pair cannot govern any execution context that the
+        // retained block window still permits.
+        let replay_floor = (self.journal_base, oldest_replayable_block.saturating_sub(1));
         let expired = self
             .journal_cuts
-            .partition_point(|(_, shared, _)| *shared < base);
+            .partition_point(|(_, shared, shared_block)| (*shared, *shared_block) < replay_floor);
         if expired == 0 {
             return;
         }
@@ -308,37 +315,56 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
             .journal_cuts
             .first()
             .map_or(self.journal_epoch, |(from, _, _)| *from);
+        // Cut coordinates are strictly increasing. From the replay floor to the
+        // current tip, each record must advance either one retained journal offset
+        // or one retained block step, so the stack is bounded by those two windows
+        // rather than by the number of reverts.
+        let retained_blocks = usize::try_from(
+            self.last_block_number
+                .saturating_sub(oldest_replayable_block)
+                .saturating_add(1),
+        )
+        .unwrap_or(usize::MAX);
         debug_assert!(
-            self.journal_cuts.len() <= self.journal.len() + 1,
-            "cut records must stay bounded by the retained journal"
+            self.journal_cuts.len()
+                <= self
+                    .journal
+                    .len()
+                    .saturating_add(retained_blocks)
+                    .saturating_add(1),
+            "cut records must stay bounded by the retained journal and block windows"
         );
     }
 
     /// Drops cached block hashes that nothing can ask for any more.
     ///
-    /// The reachable set is a `BLOCKHASH` horizon — 257 blocks, since both
-    /// `block_hash` implementations answer for `[last - 256, last]` — around every
-    /// block number that can be the tip. That is the current tip, plus one per
-    /// `anchor`: a live snapshot can be reverted to, which lowers
-    /// `last_block_number` and slides the horizon back onto numbers the chain has
-    /// long since passed.
+    /// Every retained block is a potential replay context, and a replay can read 256
+    /// blocks below *its own* block, so the reachable floor is the oldest retained
+    /// block minus the horizon — `testing.block_history + 256` hashes, about 20 KB
+    /// at the default. Using the tip's horizon alone was too tight: it deleted
+    /// exactly the hashes an old transaction's `BLOCKHASH` needed.
     ///
-    /// The horizon is the floor, never the retained *metadata* window, because the
-    /// two are unrelated: with `block_history = 8` the window is 9 blocks and the
-    /// horizon is still 257. Getting this wrong is silent rather than loud —
-    /// inside the horizon a missing entry is not a miss that refetches the right
-    /// value; on a local chain the underlying database synthesizes one, so
-    /// `BLOCKHASH` returns a plausible wrong hash instead of failing.
-    pub fn prune_block_hashes(&mut self, anchors: &[u64]) {
-        // A horizon is bounded at *both* ends, and the current tip is just another
-        // one of them. Treating the tip as a floor only left every abandoned
-        // branch's band stranded above it after a revert — unreadable, since both
-        // `block_hash` implementations answer zero above the tip, and never
-        // overwritten unless the chain climbs back through them.
-        let horizon = |tip: u64, number: u64| number <= tip && number >= tip.saturating_sub(256);
+    /// `snapshot_ranges` are inclusive hash ranges pinned by live snapshots.
+    /// Reverting restores the snapshot's whole captured block window, and empty
+    /// blocks in that window can remain replayable because they share a journal
+    /// point. Each range therefore starts 256 blocks below the oldest restored block,
+    /// not merely 256 blocks below the snapshot tip.
+    ///
+    /// Nothing above the tip is kept unless a snapshot range covers it — an abandoned
+    /// branch leaves its whole band stranded up there, unreadable and never overwritten
+    /// unless the chain climbs back through the same numbers.
+    pub fn prune_block_hashes(
+        &mut self,
+        oldest_replayable_block: u64,
+        snapshot_ranges: &[(u64, u64)],
+    ) {
         let tip = self.last_block_number;
+        let floor = oldest_replayable_block.min(tip).saturating_sub(256);
         self.block_hashes.retain(|number, _| {
-            horizon(tip, *number) || anchors.iter().any(|anchor| horizon(*anchor, *number))
+            (*number <= tip && *number >= floor)
+                || snapshot_ranges
+                    .iter()
+                    .any(|(oldest, newest)| *number >= *oldest && *number <= *newest)
         });
     }
 
@@ -1083,12 +1109,25 @@ impl<ExtDB: DatabaseRef> Database for CacheDB<ExtDB> {
         }
     }
 
+    /// No range check here, deliberately.
+    ///
+    /// revm's `BLOCKHASH` already limits requests to 256 blocks below the *executing*
+    /// block (`revm-interpreter`, `instructions/host.rs`), which is what the EVM
+    /// actually specifies, and it is the only caller. Repeating the check here against
+    /// `last_block_number` was redundant during normal execution and wrong during
+    /// replay, where the executing block is older than the tip — that is what made a
+    /// replayed `BLOCKHASH` at the edge of its window return zero.
+    ///
+    /// Fork caveat: on a forked chain a miss falls through to the provider, so a
+    /// *replay* can now block on the network, and can fail outright if the provider is
+    /// unavailable or rate-limited, where before it returned a wrong zero instantly.
+    /// That is inherent to answering correctly — any bound tight enough to avoid the
+    /// fetch would also reject requests the EVM permits, and computing the bound from
+    /// the executing block instead would allow exactly the same requests and so
+    /// trigger exactly the same fetches. Locally mined hashes never reach the
+    /// fallthrough, because retention covers `testing.block_history + 256` of them;
+    /// only pre-fork numbers do, and for those the provider is the correct source.
     fn block_hash(&mut self, number: u64) -> Result<B256, Self::Error> {
-        if number > self.last_block_number
-            || number < self.last_block_number.saturating_sub(256)
-        {
-            return Ok(B256::ZERO);
-        }
         match self.block_hashes.entry(number) {
             Entry::Occupied(entry) => Ok(*entry.get()),
             Entry::Vacant(entry) => {
@@ -1144,12 +1183,8 @@ impl<ExtDB: DatabaseRef> DatabaseRef for CacheDB<ExtDB> {
         self.db.storage_ref(address, index)
     }
 
+    /// See [`Database::block_hash`] for why there is no range check.
     fn block_hash_ref(&self, number: u64) -> Result<B256, Self::Error> {
-        if number > self.last_block_number
-            || number < self.last_block_number.saturating_sub(256)
-        {
-            return Ok(B256::ZERO);
-        }
         match self.block_hashes.get(&number) {
             Some(entry) => Ok(*entry),
             None => self.db.block_hash_ref(number),
@@ -1255,7 +1290,7 @@ mod tests {
         let historical = 4;
         assert_eq!(db.journal_index(), 6);
 
-        assert_eq!(db.compact_journal(historical), historical);
+        assert_eq!(db.compact_journal(historical, 0), historical);
         assert_eq!(db.journal_base, historical);
         assert_eq!(db.journal.len(), 2);
         // The tip is unchanged: compaction drops history, not state.
@@ -1281,7 +1316,7 @@ mod tests {
         for balance in 1..=4u64 {
             db.set_balance(address, U256::from(balance)).unwrap();
         }
-        db.compact_journal(2);
+        db.compact_journal(2, 0);
 
         // A short rollback would replay against the wrong state and hand back a
         // plausible, wrong trace, so this must be an error.
@@ -1511,7 +1546,7 @@ mod tests {
         let stale = JournalPoint { index: 1, epoch: 1, block_number: 0 };
         assert!(db.journal_cuts.len() > 100, "increasing cuts do not collapse");
 
-        db.compact_journal(db.journal_index());
+        db.compact_journal(db.journal_index(), 0);
         assert!(
             db.journal_cuts.len() <= db.journal.len() + 1,
             "cuts must be bounded by the retained journal, got {}",
@@ -1523,6 +1558,50 @@ mod tests {
             db.rollback(stale).unwrap_err(),
             JournalOutOfRange::Retired { .. } | JournalOutOfRange::Pruned { .. }
         ));
+    }
+
+    #[test]
+    fn compaction_retires_empty_block_cuts_at_the_journal_base() {
+        let mut db = new_db();
+
+        // Each revert lands at the same journal offset but a later block. These
+        // cuts are strictly increasing in the block coordinate, so lineage
+        // collapsing cannot merge them and index-only retirement cannot pass them.
+        for block in 0..200u64 {
+            db.last_block_number = block;
+            let snapshot = db.snapshot();
+            db.last_block_number = block + 1; // discarded empty block
+            db.last_block_number = block; // Chain restores the tip before reverting
+            db.revert_snapshot(snapshot).unwrap();
+            db.last_block_number = block + 1; // permanently advance with no journal entry
+        }
+
+        assert!(db.journal.is_empty());
+        assert_eq!(db.journal_cuts.len(), 200);
+        let stale = JournalPoint {
+            index: 0,
+            epoch: 0,
+            block_number: 0,
+        };
+
+        let tip = db.last_block_number;
+        db.compact_journal(db.journal_index(), tip);
+
+        // Execution in the oldest retained block can use a point from one block
+        // earlier, so the edge cut stays; every older lineage is retired.
+        assert_eq!(db.journal_cuts, vec![(199, 0, 199)]);
+        assert!(matches!(
+            db.rollback(stale).unwrap_err(),
+            JournalOutOfRange::Retired { .. }
+        ));
+        assert!(
+            db.rollback(JournalPoint {
+                index: 0,
+                epoch: 199,
+                block_number: 199,
+            })
+            .is_ok()
+        );
     }
 
     #[test]
@@ -1538,7 +1617,7 @@ mod tests {
 
         // Compact past the snapshot's index — legal, because reverting restores
         // state by truncating the layer stack and never reads an entry.
-        db.compact_journal(4);
+        db.compact_journal(4, 0);
         assert!(db.snapshot_journal_indexes[snapshot - 1] < db.journal_base);
 
         db.revert_snapshot(snapshot).unwrap();
@@ -1558,12 +1637,12 @@ mod tests {
         db.set_balance(address, U256::from(2)).unwrap();
 
         // Past the tip: keeps the tip, drops everything below it.
-        assert_eq!(db.compact_journal(99), 2);
+        assert_eq!(db.compact_journal(99, 0), 2);
         assert_eq!(db.journal_base, 2);
         assert!(db.journal.is_empty());
 
         // Below the base: a stale floor must not move the base backwards.
-        assert_eq!(db.compact_journal(0), 2);
+        assert_eq!(db.compact_journal(0, 0), 2);
         assert_eq!(db.journal_base, 2);
     }
 
@@ -1576,7 +1655,7 @@ mod tests {
 
         // The horizon is [last - 256, last] inclusive - 257 entries - and it is
         // the floor regardless of what else the chain retains.
-        db.prune_block_hashes(&[]);
+        db.prune_block_hashes(db.last_block_number, &[]);
         assert_eq!(db.block_hashes.len(), 257);
         assert!(db.block_hashes.contains_key(&44));
         assert!(!db.block_hashes.contains_key(&43));
@@ -1602,9 +1681,9 @@ mod tests {
                 db.block_hashes.insert(number, B256::from([number as u8; 32]));
             }
             db.last_block_number = peak;
-            db.prune_block_hashes(&[100]); // a snapshot at 100 is live
+            db.prune_block_hashes(db.last_block_number, &[(0, 100)]); // snapshot range
             db.last_block_number = 100; // revert to it
-            db.prune_block_hashes(&[100]);
+            db.prune_block_hashes(db.last_block_number, &[(0, 100)]);
         }
 
         assert_eq!(
@@ -1627,7 +1706,7 @@ mod tests {
 
         // While the snapshot at 50 is live it keeps its own horizon, so [0, 50]
         // survives the climb to 3000.
-        db.prune_block_hashes(&[50]);
+        db.prune_block_hashes(db.last_block_number, &[(0, 50)]);
         assert!(db.block_hashes.contains_key(&50));
         assert!(db.block_hashes.contains_key(&3000));
 
@@ -1635,7 +1714,7 @@ mod tests {
         // and a horizon floor that saturates to zero - which an early return keyed
         // on the floor treated as "nothing to do", stranding the band above.
         db.last_block_number = 50;
-        db.prune_block_hashes(&[]);
+        db.prune_block_hashes(db.last_block_number, &[]);
         assert_eq!(db.block_hashes.len(), 51);
         assert!(db.block_hashes.contains_key(&50));
         assert!(!db.block_hashes.contains_key(&51));
@@ -1643,36 +1722,39 @@ mod tests {
     }
 
     #[test]
-    fn block_hash_pruning_keeps_each_anchor_horizon() {
+    fn block_hash_pruning_keeps_each_snapshot_window_horizon() {
         let mut db = CacheDB::new(EmptyDB::default(), 900);
         for number in 0..=900u64 {
             db.block_hashes.insert(number, B256::from([number as u8; 32]));
         }
 
-        // A live snapshot at block 200 can be reverted to, which would make 200
-        // the tip again, so its own horizon has to survive even though the tip has
-        // moved far past it and the two horizons no longer overlap.
-        db.prune_block_hashes(&[200]);
-        for number in 0..=200u64 {
-            assert!(db.block_hashes.contains_key(&number), "anchor kept {number}");
+        // A snapshot at block 300 restores blocks 292..=300. The oldest restored
+        // block can still execute after a revert when empty blocks share its journal
+        // point, so the pinned hash range reaches another 256 blocks back to 36.
+        db.prune_block_hashes(db.last_block_number, &[(36, 300)]);
+        for number in 36..=300u64 {
+            assert!(
+                db.block_hashes.contains_key(&number),
+                "snapshot kept {number}"
+            );
         }
-        assert!(!db.block_hashes.contains_key(&201), "between the horizons");
+        assert!(!db.block_hashes.contains_key(&35), "below snapshot range");
+        assert!(!db.block_hashes.contains_key(&301), "between the ranges");
         assert!(!db.block_hashes.contains_key(&643), "below current horizon");
         assert!(db.block_hashes.contains_key(&644), "current horizon");
 
-        // Reverting to it makes those numbers reachable again, and the hash is
-        // simply still there - nothing has to be put back. Deriving this from the
-        // retained metadata window instead would have dropped it.
-        db.last_block_number = 200;
+        // Reverting makes the snapshot range reachable again, and the hash is simply
+        // still there - nothing has to be put back.
+        db.last_block_number = 300;
         assert_eq!(
-            Database::block_hash(&mut db, 100).unwrap(),
-            B256::from([100u8; 32])
+            Database::block_hash(&mut db, 36).unwrap(),
+            B256::from([36u8; 32])
         );
 
         // Once the snapshot is gone, so is its horizon.
         db.last_block_number = 900;
-        db.prune_block_hashes(&[]);
-        assert!(!db.block_hashes.contains_key(&100));
+        db.prune_block_hashes(db.last_block_number, &[]);
+        assert!(!db.block_hashes.contains_key(&36));
     }
 
     #[test]
@@ -1785,15 +1867,42 @@ mod tests {
     }
 
     #[test]
-    fn block_hash_bounds_do_not_underflow_below_block_256() {
+    fn block_hash_serves_whatever_is_retained_without_a_range_check() {
         let mut db = CacheDB::new(EmptyDB::default(), 1);
         let hash = B256::from([1; 32]);
         db.block_hashes.insert(0, hash);
 
+        // No range check of its own: revm's BLOCKHASH already bounds requests to 256
+        // blocks below the *executing* block, and repeating that here against the tip
+        // was what made a replayed BLOCKHASH at the edge of its window read zero.
         assert_eq!(Database::block_hash(&mut db, 0).unwrap(), hash);
         assert_eq!(DatabaseRef::block_hash_ref(&db, 0).unwrap(), hash);
-        assert_eq!(Database::block_hash(&mut db, 2).unwrap(), B256::ZERO);
-        assert_eq!(DatabaseRef::block_hash_ref(&db, 2).unwrap(), B256::ZERO);
+
+        // A retained hash is served even when the tip has moved well past it, which is
+        // exactly the replay case.
+        db.last_block_number = 5_000;
+        assert_eq!(Database::block_hash(&mut db, 0).unwrap(), hash);
+    }
+
+    #[test]
+    fn block_hash_retention_covers_the_whole_retained_window_plus_a_horizon() {
+        let mut db = CacheDB::new(EmptyDB::default(), 1_000);
+        for number in 0..=1_000u64 {
+            db.block_hashes.insert(number, B256::from([number as u8; 32]));
+        }
+
+        // A 256-block window ending at 1000 starts at 745, and a replay against block
+        // 745 can read down to 489 - so `testing.block_history + 256` hashes have
+        // to survive.
+        db.prune_block_hashes(745, &[]);
+        assert!(db.block_hashes.contains_key(&489), "horizon below the window");
+        assert!(!db.block_hashes.contains_key(&488));
+        assert_eq!(db.block_hashes.len(), 1_000 - 489 + 1);
+        assert_eq!(
+            Database::block_hash(&mut db, 489).unwrap(),
+            B256::from([489u64 as u8; 32]),
+            "the oldest retained block's own BLOCKHASH range must still resolve"
+        );
     }
 
     #[test]

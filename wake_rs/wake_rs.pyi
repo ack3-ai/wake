@@ -380,10 +380,11 @@ class HistoryPrunedError(Exception):
 
     Retention is bounded by ``testing.block_history``. Raised on three occasions:
     reaching past the retained window (``chain.txs[0]``, ``chain.blocks[0]``), and
-    re-executing a transaction or historical call whose journal entries were
-    either pruned or discarded by a snapshot revert. Metadata such as ``from_``,
-    ``status``, ``events`` and ``return_value`` never raises; only ``call_trace``,
-    ``console_logs``, ``access_list`` and block-pinned calls need to re-execute.
+    re-executing a transaction or historical call whose journal entries or block
+    context were pruned, or whose branch was discarded by a snapshot revert.
+    Metadata such as ``from_``, ``status``, ``events`` and ``return_value`` never
+    raises; only ``call_trace``, ``console_logs``, ``access_list`` and block-pinned
+    calls need to re-execute.
     """
 
 
