@@ -123,23 +123,3 @@ class RequestMethodEnum(StrEnum):
     PROGRESS = "$/progress"
     LOG_TRACE = "$/logTrace"  # Notification
     SET_TRACE = "$/setTrace"  # Notification
-
-    # Sake
-    SAKE_PING = "wake/sake/ping"
-    SAKE_LOAD_WORKSPACE_STATE = "wake/sake/loadWorkspaceState"
-    SAKE_SAVE_WORKSPACE_STATE = "wake/sake/saveWorkspaceState"
-    SAKE_CREATE_CHAIN = "wake/sake/createChain"
-    SAKE_CONNECT_CHAIN = "wake/sake/connectChain"
-    SAKE_DISCONNECT_CHAIN = "wake/sake/disconnectChain"
-    SAKE_DUMP_STATE = "wake/sake/dumpState"
-    SAKE_LOAD_STATE = "wake/sake/loadState"
-    SAKE_COMPILE = "wake/sake/compile"
-    SAKE_GET_ACCOUNTS = "wake/sake/getAccounts"
-    SAKE_DEPLOY = "wake/sake/deploy"
-    SAKE_TRANSACT = "wake/sake/transact"
-    SAKE_CALL = "wake/sake/call"
-    SAKE_SET_LABEL = "wake/sake/setLabel"
-    SAKE_GET_BALANCES = "wake/sake/getBalances"
-    SAKE_SET_BALANCES = "wake/sake/setBalances"
-    SAKE_GET_ABI = "wake/sake/getAbi"
-    SAKE_GET_ABI_WITH_PROXY = "wake/sake/getAbiWithProxy"

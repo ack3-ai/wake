@@ -128,22 +128,6 @@ from .protocol_structures import (
     ResponseMessage,
 )
 from .rpc_protocol import RpcProtocol
-from .sake import (
-    SakeCallParams,
-    SakeConnectChainParams,
-    SakeContext,
-    SakeCreateChainParams,
-    SakeDeployParams,
-    SakeGetAbiParams,
-    SakeGetAbiWithProxyParams,
-    SakeGetBalancesParams,
-    SakeLoadStateParams,
-    SakeLoadWorkspaceStateParams,
-    SakeParams,
-    SakeSetBalancesParams,
-    SakeSetLabelParams,
-    SakeTransactParams,
-)
 from .server_capabilities import (
     FileOperationFilter,
     FileOperationPattern,
@@ -193,7 +177,6 @@ class LspServer:
     __initialized_event: asyncio.Event  # signals initialized notification logic finished
     __user_config: Optional[WakeConfig]
     __main_workspace: Optional[LspContext]
-    __sake_context: Optional[SakeContext]
     __workspace_path: Optional[Path]
     __protocol: RpcProtocol
     __request_id_counter: int
@@ -220,7 +203,6 @@ class LspServer:
         self.__initialized_event = asyncio.Event()
         self.__user_config = None
         self.__main_workspace = None
-        self.__sake_context = None
         self.__workspace_path = None
         self.__protocol = RpcProtocol(reader, writer)
         self.__request_id_counter = 0
@@ -297,144 +279,6 @@ class LspServer:
             RequestMethodEnum.WORKSPACE_TEXT_DOCUMENT_CONTENT: (
                 self._workspace_text_document_content,
                 TextDocumentContentParams,
-            ),
-            RequestMethodEnum.SAKE_CREATE_CHAIN: (
-                lambda params: (
-                    self.__sake_context.create_chain(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeCreateChainParams,
-            ),
-            RequestMethodEnum.SAKE_PING: (
-                lambda params: (
-                    self.__sake_context.ping()  # pyright: ignore reportAttributeAccessIssue
-                ),
-                None,
-            ),
-            RequestMethodEnum.SAKE_LOAD_WORKSPACE_STATE: (
-                lambda params: (
-                    self.__sake_context.load_workspace_state(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeLoadWorkspaceStateParams,
-            ),
-            RequestMethodEnum.SAKE_SAVE_WORKSPACE_STATE: (
-                lambda params: (
-                    self.__sake_context.save_workspace_state()  # pyright: ignore reportAttributeAccessIssue
-                ),
-                None,
-            ),
-            RequestMethodEnum.SAKE_CONNECT_CHAIN: (
-                lambda params: (
-                    self.__sake_context.connect_chain(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeConnectChainParams,
-            ),
-            RequestMethodEnum.SAKE_DISCONNECT_CHAIN: (
-                lambda params: (
-                    self.__sake_context.disconnect_chain(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeParams,
-            ),
-            RequestMethodEnum.SAKE_DUMP_STATE: (
-                lambda params: (
-                    self.__sake_context.dump_state(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeParams,
-            ),
-            RequestMethodEnum.SAKE_LOAD_STATE: (
-                lambda params: (
-                    self.__sake_context.load_state(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeLoadStateParams,
-            ),
-            RequestMethodEnum.SAKE_COMPILE: (
-                lambda params: (
-                    self.__sake_context.compile()  # pyright: ignore reportAttributeAccessIssue
-                ),
-                None,
-            ),
-            RequestMethodEnum.SAKE_GET_ACCOUNTS: (
-                lambda params: (
-                    self.__sake_context.get_accounts(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeParams,
-            ),
-            RequestMethodEnum.SAKE_DEPLOY: (
-                lambda params: (
-                    self.__sake_context.deploy(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeDeployParams,
-            ),
-            RequestMethodEnum.SAKE_TRANSACT: (
-                lambda params: (
-                    self.__sake_context.transact(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeTransactParams,
-            ),
-            RequestMethodEnum.SAKE_CALL: (
-                lambda params: (
-                    self.__sake_context.call(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeCallParams,
-            ),
-            RequestMethodEnum.SAKE_SET_LABEL: (
-                lambda params: (
-                    self.__sake_context.set_label(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeSetLabelParams,
-            ),
-            RequestMethodEnum.SAKE_GET_BALANCES: (
-                lambda params: (
-                    self.__sake_context.get_balances(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeGetBalancesParams,
-            ),
-            RequestMethodEnum.SAKE_SET_BALANCES: (
-                lambda params: (
-                    self.__sake_context.set_balances(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeSetBalancesParams,
-            ),
-            RequestMethodEnum.SAKE_GET_ABI: (
-                lambda params: (
-                    self.__sake_context.get_abi(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeGetAbiParams,
-            ),
-            RequestMethodEnum.SAKE_GET_ABI_WITH_PROXY: (
-                lambda params: (
-                    self.__sake_context.get_abi_with_proxy(  # pyright: ignore reportAttributeAccessIssue
-                        params,
-                    )
-                ),
-                SakeGetAbiWithProxyParams,
             ),
         }
 
@@ -547,37 +391,6 @@ class LspServer:
         for workspace in self.__workspaces.values():
             try:
                 await workspace.compiler.stop()
-            except Exception:
-                pass
-
-        if self.__sake_context is not None:
-            for session_id, (_, chain_handle) in self.__sake_context.chains.items():
-                try:
-                    dump = await self.__sake_context.dump_state(
-                        SakeParams(session_id=session_id)
-                    )
-                    await self.send_notification(
-                        RequestMethodEnum.SAKE_DUMP_STATE,
-                        {
-                            "session_id": session_id,
-                            "metadata": dump.metadata,
-                            "chain_dump": dump.chain_dump,
-                        },
-                    )
-                except Exception:
-                    pass
-
-                try:
-                    chain_handle.__exit__(None, None, None)
-                except Exception:
-                    pass
-
-            try:
-                workspace_dump = await self.__sake_context.save_workspace_state()
-                await self.send_notification(
-                    RequestMethodEnum.SAKE_SAVE_WORKSPACE_STATE,
-                    {"state": workspace_dump.state},
-                )
             except Exception:
                 pass
 
@@ -1252,7 +1065,6 @@ class LspServer:
                 self.__workspace_path
             )
             self.__main_workspace = LspContext(self, config, True)
-            self.__sake_context = SakeContext(self.__main_workspace)
             self.__main_workspace.use_toml = use_toml
             self.__main_workspace.toml_path = toml_path
             self.__workspaces[self.__workspace_path] = self.__main_workspace
