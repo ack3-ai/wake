@@ -741,7 +741,14 @@ impl Account {
                 chain.call_method1(
                     py,
                     intern!(py, "_estimate"),
-                    (PyNone::get(py), args, params, block, return_call),
+                    (
+                        PyNone::get(py),
+                        args,
+                        params,
+                        PyBytes::type_object(py),
+                        block,
+                        return_call,
+                    ),
                 )
             }
         }
@@ -807,7 +814,14 @@ impl Account {
                 chain.call_method1(
                     py,
                     intern!(py, "_access_list"),
-                    (PyNone::get(py), args, params, block, return_call),
+                    (
+                        PyNone::get(py),
+                        args,
+                        params,
+                        PyBytes::type_object(py),
+                        block,
+                        return_call,
+                    ),
                 )
             }
         }

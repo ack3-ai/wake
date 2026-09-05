@@ -1386,6 +1386,8 @@ class Chain(ABC):
         block: int | Literal["latest", "pending", "earliest", "safe", "finalized"],
         return_call: bool,
     ) -> int | Call:
+        from .call import Call
+
         if isinstance(block, int) and block < 0:
             block = self._chain_interface.get_block_number() + 1 + block
 
@@ -1427,6 +1429,8 @@ class Chain(ABC):
         block: int | Literal["latest", "pending", "earliest", "safe", "finalized"],
         return_call: bool,
     ) -> tuple[dict[Address, list[int]], int] | Call:
+        from .call import Call
+
         if isinstance(block, int) and block < 0:
             block = self._chain_interface.get_block_number() + 1 + block
 
@@ -1455,7 +1459,7 @@ class Chain(ABC):
             return_type=return_type,
             raw_return_value=None,
             raw_error=raw_error,
-            estimated_gas=None,
+            estimated_gas=gas_used,
             access_list=access_list,
         )
         if call.error is not None:
@@ -1463,7 +1467,7 @@ class Chain(ABC):
 
         if return_call:
             return call
-        return call.return_value
+        return call.access_list, gas_used
 
     @check_connected
     def _transact(
