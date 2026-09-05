@@ -499,7 +499,8 @@ class TransactionAbc(ABC, Generic[T]):
         elif isinstance(chain_interface, HardhatChainInterface):
             self._fetch_debug_trace_transaction()
             assert self._debug_trace_transaction is not None
-            revert_data = bytes.fromhex(self._debug_trace_transaction["returnValue"])  # type: ignore
+            rv = self._debug_trace_transaction["returnValue"]  # type: ignore
+            revert_data = bytes.fromhex(rv[2:] if rv.startswith("0x") else rv)
         elif isinstance(chain_interface, GethLikeChainInterfaceAbc):
             try:
                 self._fetch_trace_transaction()
@@ -513,7 +514,8 @@ class TransactionAbc(ABC, Generic[T]):
                 try:
                     self._fetch_debug_trace_transaction()
                     assert self._debug_trace_transaction is not None
-                    revert_data = bytes.fromhex(self._debug_trace_transaction["returnValue"])  # type: ignore
+                    rv = self._debug_trace_transaction["returnValue"]  # type: ignore
+                    revert_data = bytes.fromhex(rv[2:] if rv.startswith("0x") else rv)
                 except (JsonRpcError, HTTPError):
                     # TODO make assertions about error.code?
                     raise RuntimeError(
@@ -586,7 +588,8 @@ class TransactionAbc(ABC, Generic[T]):
         elif isinstance(chain_interface, HardhatChainInterface):
             self._fetch_debug_trace_transaction()
             assert self._debug_trace_transaction is not None
-            output = bytes.fromhex(self._debug_trace_transaction["returnValue"])  # type: ignore
+            rv = self._debug_trace_transaction["returnValue"]  # type: ignore
+            output = bytes.fromhex(rv[2:] if rv.startswith("0x") else rv)
         elif isinstance(chain_interface, GethLikeChainInterfaceAbc):
             try:
                 self._fetch_trace_transaction()
@@ -600,7 +603,8 @@ class TransactionAbc(ABC, Generic[T]):
                 try:
                     self._fetch_debug_trace_transaction()
                     assert self._debug_trace_transaction is not None
-                    output = bytes.fromhex(self._debug_trace_transaction["returnValue"])  # type: ignore
+                    rv = self._debug_trace_transaction["returnValue"]  # type: ignore
+                    output = bytes.fromhex(rv[2:] if rv.startswith("0x") else rv)
                 except (JsonRpcError, HTTPError):
                     # TODO make assertions about error.code?
                     raise RuntimeError(
