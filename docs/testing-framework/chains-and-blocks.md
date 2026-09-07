@@ -11,7 +11,7 @@ The `Chain` object has the following properties:
 
 | Property                                   | Description                                                                                                |
 |--------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| `accounts`                                 | list of `Account` objects owned by the client (private keys are known to the client)                       |
+| `accounts`                                 | list of `Account` objects owned by the client (private keys are known to the client); each starts with 10000 ETH |
 | `automine`                                 | whether to automatically mine blocks                                                                       |
 | `blocks`                                   | property to access the chain blocks                                                                        |
 | `block_gas_limit`                          | gas limit of the pending block                                                                             |
