@@ -723,11 +723,17 @@ impl Chain {
         Ok(automine_context.into())
     }
 
-    #[pyo3(name = "mine", signature = (callback=None))]
-    fn mine_py(slf: Bound<Self>, py: Python, callback: Option<Bound<PyAny>>) -> PyResult<()> {
-        if let Some(callback) = callback {
+    // Parameter name matches `wake.development.core.Chain.mine`, so the keyword form
+    // works identically on either engine.
+    #[pyo3(name = "mine", signature = (timestamp_change=None))]
+    fn mine_py(
+        slf: Bound<Self>,
+        py: Python,
+        timestamp_change: Option<Bound<PyAny>>,
+    ) -> PyResult<()> {
+        if let Some(timestamp_change) = timestamp_change {
             let latest_timestamp = slf.borrow().latest_block_env.as_ref().unwrap().timestamp;
-            let new_timestamp = callback
+            let new_timestamp = timestamp_change
                 .call1::<(u64,)>((latest_timestamp.try_into().unwrap(),))?
                 .extract::<u64>()?;
             let mut borrowed = slf.borrow_mut();
