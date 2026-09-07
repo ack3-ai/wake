@@ -198,11 +198,22 @@ impl Account {
 
     pub fn __richcmp__(&self, py: Python, other: &Self, op: CompareOp) -> PyResult<bool> {
         match op {
-            CompareOp::Eq | CompareOp::Ne => Ok(self
-                .address
-                .borrow(py)
-                .__richcmp__(&other.address.borrow(py), op)
-                && self.chain.inner().is(other.chain.inner())),
+            // Equality is "same address AND same chain"; inequality is its negation.
+            // Forwarding `op` into the address comparison and then ANDing the chain
+            // check onto the result is only correct for `Eq`: for `Ne` it yielded
+            // `address_ne && same_chain`, so two accounts on different chains compared
+            // both unequal-false and equal-false.
+            CompareOp::Eq | CompareOp::Ne => {
+                let equal = self
+                    .address
+                    .borrow(py)
+                    .__richcmp__(&other.address.borrow(py), CompareOp::Eq)
+                    && self.chain.inner().is(other.chain.inner());
+                Ok(match op {
+                    CompareOp::Ne => !equal,
+                    _ => equal,
+                })
+            }
             _ => {
                 if !self.chain.inner().is(other.chain.inner()) {
                     return Err(PyValueError::new_err(
