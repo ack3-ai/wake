@@ -57,6 +57,12 @@ use crate::memory_db::{CacheDB, JournalPoint};
 use revm::{Context, Inspector};
 use url::Url;
 
+/// Balance assigned to every development account when a chain connects, in wei.
+///
+/// Anvil pre-funds its development accounts with 10000 ETH; matching that value keeps
+/// a test suite behaving the same whichever engine `testing.cmd` selects.
+const DEFAULT_ACCOUNT_BALANCE_WEI: u128 = 10_000 * 1_000_000_000_000_000_000;
+
 use crate::inspectors::trace_inspector::{NativeTrace, TraceInspector};
 
 use tokio;
@@ -887,11 +893,25 @@ impl Chain {
         }
 
         let block_gas_limit = slf_.block_gas_limit;
+        // Collected before `get_evm_mut`, which borrows `slf_` mutably.
+        let account_addresses: Vec<RevmAddress> = slf_
+            .accounts
+            .iter()
+            .map(|account| account.borrow(py).address.borrow(py).0)
+            .collect();
         let evm = slf_.get_evm_mut()?;
         evm.cfg.limit_contract_code_size = Some(usize::max_value());
         evm.cfg.disable_nonce_check = true;
         evm.cfg.disable_eip3607 = true;
         evm.block.gas_limit = block_gas_limit;
+        // Pre-fund the development accounts, on both the empty and the forked db.
+        // Written straight to the db rather than through `Account::set_balance`,
+        // which mines a block and prunes history - that would add one block per
+        // account before the chain is even usable.
+        for address in account_addresses {
+            evm.db_mut()
+                .set_balance(address, U256::from(DEFAULT_ACCOUNT_BALANCE_WEI))?;
+        }
         slf_.chain_id = evm.cfg.chain_id;
 
         slf_.blocks = Some(Py::new(py, Blocks::new(slf.clone_ref(py), slf_.forked_block))?);
