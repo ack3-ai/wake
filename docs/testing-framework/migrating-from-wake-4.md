@@ -115,12 +115,6 @@ All of these are still present when `cmd = "anvil"` (or `cmd = "hardhat"`) is se
 cmd = "anvil"
 ```
 
-Under `revm`, `chain.mine` also renamed its argument from `timestamp_change` to `callback`; the semantics are unchanged, it still takes a callable receiving the latest timestamp and returning the new one. Passing it positionally works on both engines. Passing it by keyword raises `TypeError: Chain.mine() got an unexpected keyword argument 'timestamp_change'` under `revm`; `anvil` and `hardhat` keep the `timestamp_change` name.
-
-```python
-chain.mine(lambda t: t + 10)  # works on both engines
-```
-
 #### `Chain` members removed on every engine
 
 | Wake 4 `Chain` member             | Replacement                        |
