@@ -79,27 +79,7 @@ Raise the window, or set `block_history = null` to restore Wake 4 behaviour at t
 block_history = null
 ```
 
-The option applies to `revm` only and has no effect on `anvil` and `hardhat`. See [configuration](../configuration.md#testing-namespace) for the full description.
-
-#### Hardfork names are case-sensitive
-
-`chain.connect(hardfork=...)` passes the string to revm, which accepts only its own exact spec names. The lowercase names Anvil took now raise:
-
-```text
-ValueError: Invalid hardfork
-```
-
-```python
-with chain.connect(hardfork="cancun"):  # Wake 4
-```
-
-```python
-with chain.connect(hardfork="Cancun"):  # Wake 5
-```
-
-The accepted values are `Frontier`, `Homestead`, `Tangerine`, `Spurious`, `Byzantium`, `Petersburg`, `Istanbul`, `Berlin`, `London`, `Merge`, `Shanghai`, `Cancun`, `Prague`, `Osaka` and `Amsterdam`. Note the abbreviated spellings: `Merge` and not `Paris`, `Tangerine` and not `TangerineWhistle`, `Spurious` and not `SpuriousDragon`. `Latest` is rejected as well.
-
-With `cmd = "anvil"` the value is still forwarded to `anvil --hardfork` unchanged, so keep the spelling Anvil expects there.
+The option applies to `revm` only. See [configuration](../configuration.md#testing-namespace) for the full description.
 
 #### Dropped development chain support
 

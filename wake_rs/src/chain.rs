@@ -26,7 +26,6 @@ use revm::primitives::{Address as RevmAddress, Bytes, Log, B256, U256};
 use std::collections::HashMap;
 use std::mem;
 use std::ops::AddAssign;
-use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use pyo3::{intern, prelude::*, IntoPyObjectExt, PyTypeInfo};
@@ -62,6 +61,68 @@ use url::Url;
 /// Anvil pre-funds its development accounts with 10000 ETH; matching that value keeps
 /// a test suite behaving the same whichever engine `testing.cmd` selects.
 const DEFAULT_ACCOUNT_BALANCE_WEI: u128 = 10_000 * 1_000_000_000_000_000_000;
+
+/// Accepted hardfork spellings, in fork order. Used for the error message only.
+const HARDFORK_NAMES: [&str; 15] = [
+    "Frontier",
+    "Homestead",
+    "Tangerine",
+    "Spurious",
+    "Byzantium",
+    "Petersburg",
+    "Istanbul",
+    "Berlin",
+    "London",
+    "Merge",
+    "Shanghai",
+    "Cancun",
+    "Prague",
+    "Osaka",
+    "Amsterdam",
+];
+
+/// Resolve a hardfork name to a revm [`SpecId`].
+///
+/// revm's own `FromStr` accepts exactly one spelling per fork, so `"cancun"` and
+/// `"SpuriousDragon"` are both rejected by it. Accept any capitalization, ignore `-`
+/// and `_` separators, and allow the widely used name for the three forks revm
+/// spells differently (`Paris`, `SpuriousDragon`, `TangerineWhistle`).
+///
+/// Matching on the enum variants rather than on `HARDFORK_NAMES` keeps this
+/// compile-checked: a fork renamed or removed upstream breaks the build here
+/// instead of silently failing to parse at runtime.
+fn parse_hardfork(hardfork: &str) -> PyResult<SpecId> {
+    let key: String = hardfork
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .map(|c| c.to_ascii_lowercase())
+        .collect();
+
+    Ok(match key.as_str() {
+        "frontier" => SpecId::FRONTIER,
+        "homestead" => SpecId::HOMESTEAD,
+        "tangerine" | "tangerinewhistle" => SpecId::TANGERINE,
+        "spurious" | "spuriousdragon" => SpecId::SPURIOUS_DRAGON,
+        "byzantium" => SpecId::BYZANTIUM,
+        "petersburg" => SpecId::PETERSBURG,
+        "istanbul" => SpecId::ISTANBUL,
+        "berlin" => SpecId::BERLIN,
+        "london" => SpecId::LONDON,
+        "merge" | "paris" => SpecId::MERGE,
+        "shanghai" => SpecId::SHANGHAI,
+        "cancun" => SpecId::CANCUN,
+        "prague" => SpecId::PRAGUE,
+        "osaka" => SpecId::OSAKA,
+        "amsterdam" => SpecId::AMSTERDAM,
+        _ => {
+            return Err(PyValueError::new_err(format!(
+                "Invalid hardfork `{}`; expected one of: {}",
+                hardfork,
+                HARDFORK_NAMES.join(", ")
+            )));
+        }
+    })
+}
 
 use crate::inspectors::trace_inspector::{NativeTrace, TraceInspector};
 
@@ -789,8 +850,7 @@ impl Chain {
         // TODO handler config
 
         let spec = match hardfork {
-            Some(hardfork) => SpecId::from_str(hardfork)
-                .map_err(|_| PyValueError::new_err("Invalid hardfork"))?,
+            Some(hardfork) => parse_hardfork(hardfork)?,
             None => SpecId::default(),
         };
 
