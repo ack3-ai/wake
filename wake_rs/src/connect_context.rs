@@ -41,11 +41,8 @@ impl ConnectContext {
             self.accounts_count,
             self.chain_id,
             self.fork_url.as_ref().map(|u| u.as_str()),
-            self.hardfork.as_ref().map(|h| {
-                // capitalize first letter
-                let mut chars = h.chars();
-                chars.next().unwrap().to_uppercase().collect::<String>() + &chars.as_str()
-            }).as_deref(),
+            // Spelling is normalized by `Chain::_connect`.
+            self.hardfork.as_deref(),
         );
         Ok(())
     }
