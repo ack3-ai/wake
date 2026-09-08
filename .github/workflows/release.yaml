@@ -35,7 +35,6 @@ jobs:
           CIBW_BUILD: "*-${{ matrix.abi }}_*"
           CIBW_SKIP: pp*
           CIBW_ARCHS_LINUX: aarch64
-          CIBW_ENABLE: cpython-freethreading
           CIBW_BEFORE_ALL_LINUX: |
             yum install -y openssl-devel libatomic || apt install -y pkg-config libssl-dev libatomic1 || apk add --no-cache openssl-dev
             curl -sSf https://sh.rustup.rs | sh -s -- --default-toolchain=stable --profile=minimal -y
@@ -80,7 +79,6 @@ jobs:
           CIBW_BUILD: "*-${{ matrix.abi }}_*"
           CIBW_SKIP: pp*
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
-          CIBW_ENABLE: cpython-freethreading
           CIBW_BEFORE_ALL_LINUX: |
             yum install -y openssl-devel libatomic || apt install -y pkg-config libssl-dev libatomic1 || apk add --no-cache openssl-dev
             curl -sSf https://sh.rustup.rs | sh -s -- --default-toolchain=stable --profile=minimal -y
@@ -128,7 +126,6 @@ jobs:
         env:
           CIBW_SKIP: pp*
           CIBW_ARCHS_MACOS: ${{ matrix.arch }}
-          CIBW_ENABLE: cpython-freethreading
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: |
             if [ "$(uname -m)" = "x86_64" ]; then
                 export MACOSX_DEPLOYMENT_TARGET=10.12
@@ -172,7 +169,6 @@ jobs:
         env:
           CIBW_SKIP: pp*
           CIBW_ARCHS_WINDOWS: ARM64
-          CIBW_ENABLE: cpython-freethreading
           CIBW_BUILD_VERBOSITY: 3
 
       - name: Upload wheels
@@ -205,7 +201,6 @@ jobs:
         env:
           CIBW_SKIP: pp*
           CIBW_ARCHS_WINDOWS: AMD64
-          CIBW_ENABLE: cpython-freethreading
 
       - name: Upload wheels
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
