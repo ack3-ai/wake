@@ -2,6 +2,8 @@
 
 # Wake
 
+This repository is the fork of Wake maintained by [ack3](https://ack3.ai); development continues here under the ISC license.
+
 The fuzzing and testing framework for Solidity, written in Python. Wake helps you write safer smart contracts, faster.
 
 Built by [Ackee Blockchain Security](https://ackee.xyz) — trusted auditors of Lido, Safe, and Axelar.
