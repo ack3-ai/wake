@@ -2,6 +2,8 @@
 
 # Wake
 
+This repository is the ack3 fork of [Wake](https://github.com/Ackee-Blockchain/wake), the open-source Solidity development and testing framework created by Ackee Blockchain a.s. and released under the ISC license. The fork is maintained by [ack3](https://ack3.ai), stays open source under the same license, and is the tooling ack3 uses in its security reviews; development continues in this repository. Original copyright notices are preserved.
+
 The fuzzing and testing framework for Solidity, written in Python. Wake helps you write safer smart contracts, faster.
 
 Built by [Ackee Blockchain Security](https://ackee.xyz) — trusted auditors of Lido, Safe, and Axelar.
