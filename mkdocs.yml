@@ -1,7 +1,7 @@
 site_name: Wake
-site_url: https://ackee.xyz/wake/docs
-repo_url: https://github.com/Ackee-Blockchain/wake
-repo_name: Ackee-Blockchain/wake
+site_url: https://ack3.ai/wake/docs
+repo_url: https://github.com/ack3-ai/wake
+repo_name: ack3-ai/wake
 edit_uri: edit/main/docs
 site_description: Wake is a Python-based Solidity development and testing framework with built-in vulnerability detectors.
 site_author: Ackee Blockchain
@@ -267,16 +267,13 @@ extra:
     generator: false
     social:
         - icon: fontawesome/brands/github
-          link: https://github.com/Ackee-Blockchain/wake
+          link: https://github.com/ack3-ai/wake
         - icon: fontawesome/brands/twitter
           link: https://twitter.com/WakeFramework
-        - icon: fontawesome/brands/discord
-          link: https://discord.gg/YE9hntHvAe
+        - icon: fontawesome/brands/x-twitter
+          link: https://x.com/ack3ai
     version:
         provider: mike
-    analytics:
-        provider: google
-        property: G-73VRX8Q3DK
 
 watch:
     - wake
