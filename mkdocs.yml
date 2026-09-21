@@ -4,7 +4,7 @@ repo_url: https://github.com/ack3-ai/wake
 repo_name: ack3-ai/wake
 edit_uri: edit/main/docs
 site_description: Wake is a Python-based Solidity development and testing framework with built-in vulnerability detectors.
-site_author: Ackee Blockchain
+site_author: ack3
 
 theme:
     name: "material"

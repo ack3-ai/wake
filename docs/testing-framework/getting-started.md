@@ -60,7 +60,7 @@ When a compilation error occurs, Wake generates `pytypes` for the contracts that
 ## Writing the first test
 
 !!! tip
-    Solidity source code for all examples in this guide is available in the [Wake repository](https://github.com/Ackee-Blockchain/wake/tree/main/examples/counter).
+    Solidity source code for all examples in this guide is available in the [Wake repository](https://github.com/ack3-ai/wake/tree/main/examples/counter).
 
 To collect and execute tests, Wake uses the [pytest](https://docs.pytest.org/en/stable/) framework under the hood.
 The test files should start with `test_` or end with `_test.py` to be collected. It is possible to use all the features of the pytest framework like [fixtures](https://docs.pytest.org/en/stable/explanation/fixtures.html).

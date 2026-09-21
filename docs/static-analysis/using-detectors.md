@@ -1,6 +1,6 @@
 # Using detectors
 
-Wake comes with the built-in [wake_detectors](https://github.com/Ackee-Blockchain/wake/tree/main/wake_detectors) module, which provides a set of detectors for common vulnerabilities and code quality issues in Solidity smart contracts.
+Wake comes with the built-in [wake_detectors](https://github.com/ack3-ai/wake/tree/main/wake_detectors) module, which provides a set of detectors for common vulnerabilities and code quality issues in Solidity smart contracts.
 
 <div id="detect-asciinema" style="z-index: 1; position: relative;"></div>
 <script>

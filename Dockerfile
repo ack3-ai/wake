@@ -2,7 +2,7 @@ FROM python:3.11-slim-bullseye
 
 LABEL maintainer=Ackee-Blockchain
 LABEL desc="Python-based development and testing framework for Solidity"
-LABEL src="https://github.com/Ackee-Blockchain/wake"
+LABEL src="https://github.com/ack3-ai/wake"
 
 SHELL ["/bin/bash", "-c"]
 RUN apt update -y
