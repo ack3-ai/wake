@@ -5,17 +5,27 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to deploy instead of dev (e.g. 5.0.0rc3)"
+        default: ""
+      latest:
+        description: "Also move the latest alias to this version"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
-          ssh-key: ${{ secrets.DOCUMENTATION_DEPLOY_KEY }}
       - name: Set up Python 3.10
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
       - name: Install python dependencies
@@ -26,13 +36,12 @@ jobs:
         run: git fetch origin documentation:documentation --depth=1
       - name: Build documentation
         run: |
-          git config --global user.email "wake@ackeeblockchain.com"
-          git config --global user.name "Wake bot"
-          mike deploy -b documentation dev
-      - name: Checkout documentation branch
-        run: git checkout -f documentation
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          if [ -n "${{ inputs.version }}" ]; then
+            mike deploy -b documentation --update-aliases "${{ inputs.version }}" ${{ inputs.latest && 'latest' || '' }}
+          else
+            mike deploy -b documentation dev
+          fi
       - name: Push documentation
-        uses: ad-m/github-push-action@master
-        with:
-          ssh: true
-          branch: documentation
+        run: git push origin documentation
