@@ -1,7 +1,7 @@
 # Using printers
 
 Printers are Python scripts used to extract useful information from Solidity smart contracts.
-Wake is installed together with the [wake_printers](https://github.com/Ackee-Blockchain/wake/tree/main/wake_printers) module, which provides a set of printers for common use cases.
+Wake is installed together with the [wake_printers](https://github.com/ack3-ai/wake/tree/main/wake_printers) module, which provides a set of printers for common use cases.
 
 <div id="print-asciinema" style="z-index: 1; position: relative;"></div>
 <script>

@@ -5,7 +5,7 @@ Implementing a custom detector or printer is a very efficient way to extend Wake
 Both detectors and printers may be implemented as project-specific or global.
 
 !!! tip
-    Built-in [detectors](https://github.com/Ackee-Blockchain/wake/tree/main/wake_detectors) and [printers](https://github.com/Ackee-Blockchain/wake/tree/main/wake_printers) may serve as a good starting point for implementing custom detectors and printers.
+    Built-in [detectors](https://github.com/ack3-ai/wake/tree/main/wake_detectors) and [printers](https://github.com/ack3-ai/wake/tree/main/wake_printers) may serve as a good starting point for implementing custom detectors and printers.
 
 ## Using a template
 

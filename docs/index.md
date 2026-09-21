@@ -1,6 +1,6 @@
 # Wake
 
-[Wake](https://getwake.io) is a Python-based Solidity development and testing framework with built-in vulnerability detectors.
+[Wake](https://github.com/ack3-ai/wake) is a Python-based Solidity development and testing framework with built-in vulnerability detectors.
 
 ## Features
 - testing framework based on [pytest](https://docs.pytest.org/en)
@@ -17,7 +17,7 @@
 ## Resources
 
 - [Awesome Wake tests](https://github.com/Ackee-Blockchain/awesome-wake-tests) - collection of fuzz tests and unit tests written in Wake
-- built-in [detectors](https://github.com/Ackee-Blockchain/wake/tree/main/wake_detectors) and [printers](https://github.com/Ackee-Blockchain/wake/tree/main/wake_printers)
+- built-in [detectors](https://github.com/ack3-ai/wake/tree/main/wake_detectors) and [printers](https://github.com/ack3-ai/wake/tree/main/wake_printers)
 
 ## Discovered vulnerabilities
 

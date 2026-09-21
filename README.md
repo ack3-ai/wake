@@ -1,12 +1,26 @@
-![Wake cover](https://github.com/Ackee-Blockchain/wake/blob/main/images/wake_cover.png?raw=true)
+![Wake cover](https://github.com/ack3-ai/wake/blob/main/images/wake_cover.png?raw=true)
 
 # Wake
 
-This repository is the fork of Wake maintained by [ack3](https://ack3.ai); development continues here under the ISC license.
-
 The fuzzing and testing framework for Solidity, written in Python. Wake helps you write safer smart contracts, faster.
 
-Built by [Ackee Blockchain Security](https://ackee.xyz) — trusted auditors of Lido, Safe, and Axelar.
+Wake was created by [Ackee Blockchain Security](https://ackee.xyz) and is now developed by [ack3](https://ack3.ai) in this repository, under the original ISC license.
+
+---
+
+## Wake 5 release candidate
+
+Wake 5 is in release candidate. The current one is `5.0.0rc3`; the stable 5.0.0 follows soon. It requires Python 3.10 or higher.
+
+```shell
+pip3 install --pre eth-wake
+```
+
+- [Wake 5 documentation](https://ack3.ai/wake/docs/5.0.0rc3/)
+- [Changelog](https://ack3.ai/wake/docs/5.0.0rc3/changelog/)
+- [Migrating from Wake 4](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/migrating-from-wake-4/)
+
+Wake 4 (`4.22.1`) stays available with `pip3 install eth-wake` and its documentation at [latest](https://ack3.ai/wake/docs/latest/).
 
 ---
 
@@ -146,7 +160,7 @@ Run a specific detector:
 wake detect <detector-name>
 ```
 
-See the [documentation](https://ackee.xyz/wake/docs/latest/static-analysis/using-detectors/) for a full list of detectors.
+See the [documentation](https://ack3.ai/wake/docs/latest/static-analysis/using-detectors/) for a full list of detectors.
 
 Run a printer:
 
@@ -154,9 +168,9 @@ Run a printer:
 wake print <printer-name>
 ```
 
-See the [documentation](https://ackee.xyz/wake/docs/latest/static-analysis/using-printers/) for a full list of printers.
+See the [documentation](https://ack3.ai/wake/docs/latest/static-analysis/using-printers/) for a full list of printers.
 
-For custom detectors & printers, check the [getting started guide](https://ackee.xyz/wake/docs/latest/static-analysis/getting-started/) and repos for [wake_detectors](https://github.com/Ackee-Blockchain/wake/tree/main/wake_detectors) and [wake_printers](https://github.com/Ackee-Blockchain/wake/tree/main/wake_printers).
+For custom detectors & printers, check the [getting started guide](https://ack3.ai/wake/docs/latest/static-analysis/getting-started/) and repos for [wake_detectors](https://github.com/ack3-ai/wake/tree/main/wake_detectors) and [wake_printers](https://github.com/ack3-ai/wake/tree/main/wake_printers).
 
 ---
 
@@ -175,14 +189,14 @@ Or specify a port (default 65432):
 wake lsp --port 1234
 ```
 
-See all features in the [documentation](https://ackee.xyz/wake/docs/latest/language-server/).
+See all features in the [documentation](https://ack3.ai/wake/docs/latest/language-server/).
 
 ---
 
 ## Documentation, contribution and community
 
-- [Wake documentation](https://ackee.xyz/wake/docs/latest)
-- [Contributing guide](https://ackee.xyz/wake/docs/latest/contributing/)
+- [Wake documentation](https://ack3.ai/wake/docs/latest)
+- [Contributing guide](https://ack3.ai/wake/docs/latest/contributing/)
 - [Follow X/Twitter](https://x.com/WakeFramework) for updates and tips
 
 
@@ -194,12 +208,4 @@ The project is listed on Giveth: https://giveth.io/project/wake:-solidity-static
 
 ## License
 
-This project is licensed under the [ISC license](https://github.com/Ackee-Blockchain/wake/blob/main/LICENSE).
-
----
-
-## Partners
-
-RockawayX             |  Coinbase
-:-------------------------:|:-------------------------:
-[![](https://github.com/Ackee-Blockchain/wake/blob/main/images/rockawayx.jpg?raw=true)](https://rockawayx.com/)  |  [![](https://github.com/Ackee-Blockchain/wake/blob/main/images/coinbase.png?raw=true)](https://www.coinbase.com/)
+This project is licensed under the [ISC license](https://github.com/ack3-ai/wake/blob/main/LICENSE).
