@@ -9,6 +9,9 @@ on:
       version:
         description: "Version to deploy instead of dev (e.g. 5.0.0rc3)"
         default: ""
+      ref:
+        description: "Tag or commit to build the docs from (default: the current branch)"
+        default: ""
       latest:
         description: "Also move the latest alias to this version"
         type: boolean
@@ -24,6 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+          ref: ${{ inputs.ref }}
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
