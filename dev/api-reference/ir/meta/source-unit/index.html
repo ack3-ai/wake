@@ -12,7 +12,7 @@
         <meta name="author" content="Ackee Blockchain">
       
       
-        <link rel="canonical" href="https://ackee.xyz/wake/docs/latest/api-reference/ir/meta/source-unit/">
+        <link rel="canonical" href="https://ack3.ai/wake/docs/latest/api-reference/ir/meta/source-unit/">
       
       
         <link rel="prev" href="../pragma-directive/">
@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../../../images/wake-favicon.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -33,7 +33,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -64,16 +64,6 @@
     <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
-  
-
-
-  
-  
-
-<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-73VRX8Q3DK"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-73VRX8Q3DK",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-73VRX8Q3DK",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
-  
-    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
-  
 
     
     
@@ -81,15 +71,15 @@
 <meta property="og:type" content="website" />
 <meta property="og:title" content="source_unit - Wake" />
 <meta property="og:description" content="Wake is a Python-based Solidity development and testing framework with built-in vulnerability detectors." />
-<meta property="og:image" content="https://ackee.xyz/wake/docs/latest/assets/images/social/api-reference/ir/meta/source-unit.png" />
+<meta property="og:image" content="https://ack3.ai/wake/docs/latest/assets/images/social/api-reference/ir/meta/source-unit.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:url" content="https://ackee.xyz/wake/docs/latest/api-reference/ir/meta/source-unit/" />
+<meta property="og:url" content="https://ack3.ai/wake/docs/latest/api-reference/ir/meta/source-unit/" />
 <meta property="twitter:card" content="summary_large_image" />
 <meta property="twitter:title" content="source_unit - Wake" />
 <meta property="twitter:description" content="Wake is a Python-based Solidity development and testing framework with built-in vulnerability detectors." />
-<meta property="twitter:image" content="https://ackee.xyz/wake/docs/latest/assets/images/social/api-reference/ir/meta/source-unit.png" />
+<meta property="twitter:image" content="https://ack3.ai/wake/docs/latest/assets/images/social/api-reference/ir/meta/source-unit.png" />
 </head>
   
   
@@ -242,13 +232,13 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/Ackee-Blockchain/wake" title="Go to repository" class="md-source" data-md-component="source">
+        <a href="https://github.com/ack3-ai/wake" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
-    Ackee-Blockchain/wake
+    ack3-ai/wake
   </div>
 </a>
       </div>
@@ -460,13 +450,13 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/Ackee-Blockchain/wake" title="Go to repository" class="md-source" data-md-component="source">
+      <a href="https://github.com/ack3-ai/wake" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
-    Ackee-Blockchain/wake
+    ack3-ai/wake
   </div>
 </a>
     </div>
@@ -9051,13 +9041,13 @@ Also trailing newlines are not covered by the source unit.</p>
 <span class="normal"><a href="#__codelineno-0-414">414</a></span>
 <span class="normal"><a href="#__codelineno-0-415">415</a></span>
 <span class="normal"><a href="#__codelineno-0-416">416</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="k">class</span><span class="w"> </span><span class="nc">SourceUnit</span><span class="p">(</span><span class="n">SolidityAbc</span><span class="p">):</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="w">    </span><span class="sd">"""</span>
 <a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="sd">    Source unit is the root node.</span>
 <a id="__codelineno-0-46" name="__codelineno-0-46"></a>
 <a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">    !!! warning</span>
 <a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="sd">        Source unit [byte_location][wake.ir.abc.IrAbc.byte_location] does not cover the whole file.</span>
 <a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="sd">        Only lines 3-7 are covered by the source unit in the following example:</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="sd">        ```solidity linenums=&quot;1&quot;</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="sd">        ```solidity linenums="1"</span>
 <a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">        // SPDX-License-Identifier: MIT</span>
 <a id="__codelineno-0-52" name="__codelineno-0-52"></a>
 <a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="sd">        pragma solidity ^0.8;</span>
@@ -9067,7 +9057,7 @@ Also trailing newlines are not covered by the source unit.</p>
 <a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">        }</span>
 <a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">        ```</span>
 <a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">        Also trailing newlines are not covered by the source unit.</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">    """</span>
 <a id="__codelineno-0-61" name="__codelineno-0-61"></a>
 <a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="n">_ast_node</span><span class="p">:</span> <span class="n">SolcSourceUnit</span>
 <a id="__codelineno-0-63" name="__codelineno-0-63"></a>
@@ -9144,7 +9134,7 @@ Also trailing newlines are not covered by the source unit.</p>
 <a id="__codelineno-0-134" name="__codelineno-0-134"></a>            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">SolcEventDefinition</span><span class="p">):</span>
 <a id="__codelineno-0-135" name="__codelineno-0-135"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EventDefinition</span><span class="p">(</span><span class="n">init</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span>
 <a id="__codelineno-0-136" name="__codelineno-0-136"></a>            <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-137" name="__codelineno-0-137"></a>                <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Unknown node type: </span><span class="si">{</span><span class="n">node</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-137" name="__codelineno-0-137"></a>                <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"Unknown node type: </span><span class="si">{</span><span class="n">node</span><span class="si">}</span><span class="s2">"</span>
 <a id="__codelineno-0-138" name="__codelineno-0-138"></a>
 <a id="__codelineno-0-139" name="__codelineno-0-139"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">IrAbc</span><span class="p">]:</span>
 <a id="__codelineno-0-140" name="__codelineno-0-140"></a>        <span class="k">yield</span> <span class="bp">self</span>
@@ -9173,10 +9163,10 @@ Also trailing newlines are not covered by the source unit.</p>
 <a id="__codelineno-0-163" name="__codelineno-0-163"></a>
 <a id="__codelineno-0-164" name="__codelineno-0-164"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-165" name="__codelineno-0-165"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">parent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-168" name="__codelineno-0-168"></a><span class="sd">            Does not have a parent.</span>
-<a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">        """</span>
 <a id="__codelineno-0-170" name="__codelineno-0-170"></a>        <span class="k">return</span> <span class="kc">None</span>
 <a id="__codelineno-0-171" name="__codelineno-0-171"></a>
 <a id="__codelineno-0-172" name="__codelineno-0-172"></a>    <span class="nd">@property</span>
@@ -9197,10 +9187,10 @@ Also trailing newlines are not covered by the source unit.</p>
 <a id="__codelineno-0-187" name="__codelineno-0-187"></a>            <span class="n">EventDefinition</span><span class="p">,</span>
 <a id="__codelineno-0-188" name="__codelineno-0-188"></a>        <span class="p">]</span>
 <a id="__codelineno-0-189" name="__codelineno-0-189"></a>    <span class="p">]:</span>
-<a id="__codelineno-0-190" name="__codelineno-0-190"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-190" name="__codelineno-0-190"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-191" name="__codelineno-0-191"></a><span class="sd">        Yields:</span>
 <a id="__codelineno-0-192" name="__codelineno-0-192"></a><span class="sd">            Direct children of this node.</span>
-<a id="__codelineno-0-193" name="__codelineno-0-193"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-193" name="__codelineno-0-193"></a><span class="sd">        """</span>
 <a id="__codelineno-0-194" name="__codelineno-0-194"></a>        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pragmas</span>
 <a id="__codelineno-0-195" name="__codelineno-0-195"></a>        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_imports</span>
 <a id="__codelineno-0-196" name="__codelineno-0-196"></a>        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_declared_variables</span>
@@ -9215,17 +9205,17 @@ Also trailing newlines are not covered by the source unit.</p>
 <a id="__codelineno-0-205" name="__codelineno-0-205"></a>
 <a id="__codelineno-0-206" name="__codelineno-0-206"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-207" name="__codelineno-0-207"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">file_source</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
-<a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="sd">        As opposed to [source][wake.ir.abc.IrAbc.source], this property returns the whole file source.</span>
 <a id="__codelineno-0-210" name="__codelineno-0-210"></a>
 <a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">            Source code of the file including trailing newlines and license string.</span>
-<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">        """</span>
 <a id="__codelineno-0-214" name="__codelineno-0-214"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file_source</span>
 <a id="__codelineno-0-215" name="__codelineno-0-215"></a>
 <a id="__codelineno-0-216" name="__codelineno-0-216"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-217" name="__codelineno-0-217"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">license</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">        !!! example</span>
 <a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">            Returns `MIT` for the following license comment:</span>
 <a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">            ```solidity</span>
@@ -9234,157 +9224,157 @@ Also trailing newlines are not covered by the source unit.</p>
 <a id="__codelineno-0-224" name="__codelineno-0-224"></a>
 <a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">            License string of the file, if any.</span>
-<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">        """</span>
 <a id="__codelineno-0-228" name="__codelineno-0-228"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_license</span>
 <a id="__codelineno-0-229" name="__codelineno-0-229"></a>
 <a id="__codelineno-0-230" name="__codelineno-0-230"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-231" name="__codelineno-0-231"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">source_unit_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">            Canonical source unit name of the file.</span>
-<a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="sd">        """</span>
 <a id="__codelineno-0-236" name="__codelineno-0-236"></a>        <span class="c1"># always return shortest name</span>
 <a id="__codelineno-0-237" name="__codelineno-0-237"></a>        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_source_unit_names</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">name</span><span class="p">:</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">name</span><span class="p">))</span>
 <a id="__codelineno-0-238" name="__codelineno-0-238"></a>
 <a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-240" name="__codelineno-0-240"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">source_unit_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FrozenSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<a id="__codelineno-0-241" name="__codelineno-0-241"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-242" name="__codelineno-0-242"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="sd">            All source unit names of the file.</span>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="sd">        """</span>
 <a id="__codelineno-0-245" name="__codelineno-0-245"></a>        <span class="k">return</span> <span class="nb">frozenset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_source_unit_names</span><span class="p">)</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a>
 <a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-248" name="__codelineno-0-248"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">pragmas</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">PragmaDirective</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-250" name="__codelineno-0-250"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">            Pragma directives present in the file.</span>
-<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">        """</span>
 <a id="__codelineno-0-253" name="__codelineno-0-253"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pragmas</span><span class="p">)</span>
 <a id="__codelineno-0-254" name="__codelineno-0-254"></a>
 <a id="__codelineno-0-255" name="__codelineno-0-255"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-256" name="__codelineno-0-256"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">imports</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ImportDirective</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">            Import directives present in the file.</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">        """</span>
 <a id="__codelineno-0-261" name="__codelineno-0-261"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_imports</span><span class="p">)</span>
 <a id="__codelineno-0-262" name="__codelineno-0-262"></a>
 <a id="__codelineno-0-263" name="__codelineno-0-263"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-264" name="__codelineno-0-264"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">declared_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">VariableDeclaration</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">        Should only return constants.</span>
 <a id="__codelineno-0-267" name="__codelineno-0-267"></a>
 <a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">            Top-level variable declarations present in the file.</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">        """</span>
 <a id="__codelineno-0-271" name="__codelineno-0-271"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_declared_variables</span><span class="p">)</span>
 <a id="__codelineno-0-272" name="__codelineno-0-272"></a>
 <a id="__codelineno-0-273" name="__codelineno-0-273"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-274" name="__codelineno-0-274"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">enums</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">EnumDefinition</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">            Top-level enum definitions present in the file.</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">        """</span>
 <a id="__codelineno-0-279" name="__codelineno-0-279"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_enums</span><span class="p">)</span>
 <a id="__codelineno-0-280" name="__codelineno-0-280"></a>
 <a id="__codelineno-0-281" name="__codelineno-0-281"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-282" name="__codelineno-0-282"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">functions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">FunctionDefinition</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">        Should only return [FunctionDefinitions][wake.ir.declarations.function_definition.FunctionDefinition] of the [FunctionKind.FREE_FUNCTION][wake.ir.enums.FunctionKind.FREE_FUNCTION] kind.</span>
 <a id="__codelineno-0-285" name="__codelineno-0-285"></a>
 <a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">            Top-level function definitions present in the file.</span>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">        """</span>
 <a id="__codelineno-0-289" name="__codelineno-0-289"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_functions</span><span class="p">)</span>
 <a id="__codelineno-0-290" name="__codelineno-0-290"></a>
 <a id="__codelineno-0-291" name="__codelineno-0-291"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-292" name="__codelineno-0-292"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">structs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">StructDefinition</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">            Top-level struct definitions present in the file.</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">        """</span>
 <a id="__codelineno-0-297" name="__codelineno-0-297"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_structs</span><span class="p">)</span>
 <a id="__codelineno-0-298" name="__codelineno-0-298"></a>
 <a id="__codelineno-0-299" name="__codelineno-0-299"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-300" name="__codelineno-0-300"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">errors</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ErrorDefinition</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">            Top-level error definitions present in the file.</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">        """</span>
 <a id="__codelineno-0-305" name="__codelineno-0-305"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_errors</span><span class="p">)</span>
 <a id="__codelineno-0-306" name="__codelineno-0-306"></a>
 <a id="__codelineno-0-307" name="__codelineno-0-307"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-308" name="__codelineno-0-308"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">user_defined_value_types</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">UserDefinedValueTypeDefinition</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">            Top-level user-defined value type definitions present in the file.</span>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">        """</span>
 <a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_user_defined_value_types</span><span class="p">)</span>
 <a id="__codelineno-0-314" name="__codelineno-0-314"></a>
 <a id="__codelineno-0-315" name="__codelineno-0-315"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-316" name="__codelineno-0-316"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">contracts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ContractDefinition</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">            Contract definitions present in the file.</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">        """</span>
 <a id="__codelineno-0-321" name="__codelineno-0-321"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_contracts</span><span class="p">)</span>
 <a id="__codelineno-0-322" name="__codelineno-0-322"></a>
 <a id="__codelineno-0-323" name="__codelineno-0-323"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-324" name="__codelineno-0-324"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">using_for_directives</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">UsingForDirective</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">            Top-level using for directives present in the file.</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">        """</span>
 <a id="__codelineno-0-329" name="__codelineno-0-329"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_using_for_directives</span><span class="p">)</span>
 <a id="__codelineno-0-330" name="__codelineno-0-330"></a>
 <a id="__codelineno-0-331" name="__codelineno-0-331"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-332" name="__codelineno-0-332"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">events</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">EventDefinition</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">            Top-level event definitions present in the file.</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">        """</span>
 <a id="__codelineno-0-337" name="__codelineno-0-337"></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_events</span><span class="p">)</span>
 <a id="__codelineno-0-338" name="__codelineno-0-338"></a>
 <a id="__codelineno-0-339" name="__codelineno-0-339"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-340" name="__codelineno-0-340"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">version_ranges</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SolidityVersionRanges</span><span class="p">:</span>
-<a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-342" name="__codelineno-0-342"></a><span class="sd">        !!! example</span>
 <a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-344" name="__codelineno-0-344"></a><span class="sd">            if &quot;0.8.0&quot; in node.version_ranges:</span>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">                print(&quot;The given file can be compiled with solc 0.8.0&quot;)</span>
+<a id="__codelineno-0-344" name="__codelineno-0-344"></a><span class="sd">            if "0.8.0" in node.version_ranges:</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">                print("The given file can be compiled with solc 0.8.0")</span>
 <a id="__codelineno-0-346" name="__codelineno-0-346"></a><span class="sd">            ```</span>
 <a id="__codelineno-0-347" name="__codelineno-0-347"></a>
 <a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-349" name="__codelineno-0-349"></a><span class="sd">            Object listing all `solc` versions that can be used to compile the file containing this node.</span>
-<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">        """</span>
 <a id="__codelineno-0-351" name="__codelineno-0-351"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_version_ranges</span>
 <a id="__codelineno-0-352" name="__codelineno-0-352"></a>
 <a id="__codelineno-0-353" name="__codelineno-0-353"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-354" name="__codelineno-0-354"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">cu_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
-<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="sd">        Refer to [ReferenceResolver][wake.ir.reference_resolver.ReferenceResolver] for more information about compilation units.</span>
 <a id="__codelineno-0-357" name="__codelineno-0-357"></a>
 <a id="__codelineno-0-358" name="__codelineno-0-358"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-359" name="__codelineno-0-359"></a><span class="sd">            Hash of the compilation unit that produced this source unit.</span>
-<a id="__codelineno-0-360" name="__codelineno-0-360"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-360" name="__codelineno-0-360"></a><span class="sd">        """</span>
 <a id="__codelineno-0-361" name="__codelineno-0-361"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cu_hash</span>
 <a id="__codelineno-0-362" name="__codelineno-0-362"></a>
 <a id="__codelineno-0-363" name="__codelineno-0-363"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-364" name="__codelineno-0-364"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">file</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<a id="__codelineno-0-365" name="__codelineno-0-365"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-365" name="__codelineno-0-365"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-366" name="__codelineno-0-366"></a><span class="sd">        The absolute path to the source file that is represented by this node.</span>
 <a id="__codelineno-0-367" name="__codelineno-0-367"></a>
 <a id="__codelineno-0-368" name="__codelineno-0-368"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-369" name="__codelineno-0-369"></a><span class="sd">            Absolute path to the file containing this node.</span>
-<a id="__codelineno-0-370" name="__codelineno-0-370"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-370" name="__codelineno-0-370"></a><span class="sd">        """</span>
 <a id="__codelineno-0-371" name="__codelineno-0-371"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file</span>
 <a id="__codelineno-0-372" name="__codelineno-0-372"></a>
 <a id="__codelineno-0-373" name="__codelineno-0-373"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">declarations_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">DeclarationAbc</span><span class="p">]:</span>
-<a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="w">        </span><span class="sd">"""</span>
 <a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="sd">        Yields:</span>
 <a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="sd">            All declarations present in the file (recursively).</span>
-<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">        """</span>
 <a id="__codelineno-0-378" name="__codelineno-0-378"></a>        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">declared_variables</span>
 <a id="__codelineno-0-379" name="__codelineno-0-379"></a>        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">enums</span>
 <a id="__codelineno-0-380" name="__codelineno-0-380"></a>        <span class="k">for</span> <span class="n">enum</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">enums</span><span class="p">:</span>
@@ -9415,8 +9405,8 @@ Also trailing newlines are not covered by the source unit.</p>
 <a id="__codelineno-0-405" name="__codelineno-0-405"></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_lines_index</span><span class="p">[</span><span class="n">line</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span>
 <a id="__codelineno-0-406" name="__codelineno-0-406"></a>                    <span class="p">:</span> <span class="n">byte_offset</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lines_index</span><span class="p">[</span><span class="n">line</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
 <a id="__codelineno-0-407" name="__codelineno-0-407"></a>                <span class="p">]</span>
-<a id="__codelineno-0-408" name="__codelineno-0-408"></a>                <span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-409" name="__codelineno-0-409"></a>                <span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-16-le&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-408" name="__codelineno-0-408"></a>                <span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)</span>
+<a id="__codelineno-0-409" name="__codelineno-0-409"></a>                <span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-16-le"</span><span class="p">)</span>
 <a id="__codelineno-0-410" name="__codelineno-0-410"></a>            <span class="p">)</span>
 <a id="__codelineno-0-411" name="__codelineno-0-411"></a>            <span class="o">//</span> <span class="mi">2</span>
 <a id="__codelineno-0-412" name="__codelineno-0-412"></a>            <span class="o">+</span> <span class="mi">1</span>
@@ -9553,7 +9543,7 @@ Also trailing newlines are not covered by the source unit.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#bytes">bytes</a></code>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#bytes">bytes</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -9814,7 +9804,7 @@ Also trailing newlines are not covered by the source unit.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#bytes">bytes</a></code>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#bytes">bytes</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -9950,7 +9940,7 @@ Also trailing newlines are not covered by the source unit.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+                  <code><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10079,7 +10069,7 @@ Also trailing newlines are not covered by the source unit.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10122,7 +10112,7 @@ Also trailing newlines are not covered by the source unit.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-external" title="typing.FrozenSet" href="https://docs.python.org/3/library/typing.html#typing.FrozenSet">FrozenSet</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+                  <code><a class="autorefs autorefs-external" title="typing.FrozenSet" href="https://docs.python.org/3/library/typing.html#typing.FrozenSet">FrozenSet</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -10283,8 +10273,8 @@ Also trailing newlines are not covered by the source unit.</p>
 
         <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">if</span> <span class="s2">&quot;0.8.0&quot;</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">version_ranges</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The given file can be compiled with solc 0.8.0&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">if</span> <span class="s2">"0.8.0"</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">version_ranges</span><span class="p">:</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"The given file can be compiled with solc 0.8.0"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 
@@ -10370,10 +10360,10 @@ Also trailing newlines are not covered by the source unit.</p>
 <span class="normal"><a href="#__codelineno-0-387">387</a></span>
 <span class="normal"><a href="#__codelineno-0-388">388</a></span>
 <span class="normal"><a href="#__codelineno-0-389">389</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-373" name="__codelineno-0-373"></a><span class="k">def</span><span class="w"> </span><span class="nf">declarations_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">DeclarationAbc</span><span class="p">]:</span>
-<a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="w">    </span><span class="sd">"""</span>
 <a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="sd">    Yields:</span>
 <a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="sd">        All declarations present in the file (recursively).</span>
-<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">    """</span>
 <a id="__codelineno-0-378" name="__codelineno-0-378"></a>    <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">declared_variables</span>
 <a id="__codelineno-0-379" name="__codelineno-0-379"></a>    <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">enums</span>
 <a id="__codelineno-0-380" name="__codelineno-0-380"></a>    <span class="k">for</span> <span class="n">enum</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">enums</span><span class="p">:</span>
@@ -10417,8 +10407,6 @@ Also trailing newlines are not covered by the source unit.</p>
 
 
 
-  
-
 
 
 
@@ -10445,7 +10433,7 @@ Also trailing newlines are not covered by the source unit.</p>
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
       <div class="md-copyright">
-    <span><a href="https://getwake.io">Wake</a> is developed by <a href="https://ackee.xyz" target="_blank">Ackee</a></span>
+    <span><a href="https://github.com/ack3-ai/wake">Wake</a> is developed by <a href="https://ack3.ai" target="_blank">ack3</a></span>
 </div>
       
         
@@ -10458,7 +10446,7 @@ Also trailing newlines are not covered by the source unit.</p>
       
       
     
-    <a href="https://github.com/Ackee-Blockchain/wake" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+    <a href="https://github.com/ack3-ai/wake" target="_blank" rel="noopener" title="github.com" class="md-social__link">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
     </a>
   
@@ -10480,8 +10468,8 @@ Also trailing newlines are not covered by the source unit.</p>
       
       
     
-    <a href="https://discord.gg/YE9hntHvAe" target="_blank" rel="noopener" title="discord.gg" class="md-social__link">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M492.5 69.8c-.2-.3-.4-.6-.8-.7-38.1-17.5-78.4-30-119.7-37.1-.4-.1-.8 0-1.1.1s-.6.4-.8.8c-5.5 9.9-10.5 20.2-14.9 30.6-44.6-6.8-89.9-6.8-134.4 0-4.5-10.5-9.5-20.7-15.1-30.6-.2-.3-.5-.6-.8-.8s-.7-.2-1.1-.2C162.5 39 122.2 51.5 84.1 69c-.3.1-.6.4-.8.7C7.1 183.5-13.8 294.6-3.6 404.2c0 .3.1.5.2.8s.3.4.5.6c44.4 32.9 94 58 146.8 74.2.4.1.8.1 1.1 0s.7-.4.9-.7c11.3-15.4 21.4-31.8 30-48.8.1-.2.2-.5.2-.8s0-.5-.1-.8-.2-.5-.4-.6-.4-.3-.7-.4c-15.8-6.1-31.2-13.4-45.9-21.9-.3-.2-.5-.4-.7-.6s-.3-.6-.3-.9 0-.6.2-.9.3-.5.6-.7c3.1-2.3 6.2-4.7 9.1-7.1.3-.2.6-.4.9-.4s.7 0 1 .1c96.2 43.9 200.4 43.9 295.5 0 .3-.1.7-.2 1-.2s.7.2.9.4c2.9 2.4 6 4.9 9.1 7.2.2.2.4.4.6.7s.2.6.2.9-.1.6-.3.9-.4.5-.6.6c-14.7 8.6-30 15.9-45.9 21.8-.2.1-.5.2-.7.4s-.3.4-.4.7-.1.5-.1.8.1.5.2.8c8.8 17 18.8 33.3 30 48.8.2.3.6.6.9.7s.8.1 1.1 0c52.9-16.2 102.6-41.3 147.1-74.2.2-.2.4-.4.5-.6s.2-.5.2-.8c12.3-126.8-20.5-236.9-86.9-334.5zm-302 267.7c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.4 59.2-52.8 59.2m195.4 0c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.2 59.2-52.8 59.2"/></svg>
+    <a href="https://x.com/ack3ai" target="_blank" rel="noopener" title="x.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M357.2 48h70.6L273.6 224.2 455 464H313L201.7 318.6 74.5 464H3.8l164.9-188.5L-5.2 48h145.6l100.5 132.9zm-24.8 373.8h39.1L119.1 88h-42z"/></svg>
     </a>
   
 </div>
@@ -10502,7 +10490,7 @@ Also trailing newlines are not covered by the source unit.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "content.tabs.link", "navigation.tracking", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.tabs"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../../../../js/mathjax.js"></script>
       
