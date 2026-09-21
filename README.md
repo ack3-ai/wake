@@ -4,7 +4,7 @@
 
 The fuzzing and testing framework for Solidity, written in Python. Wake helps you write safer smart contracts, faster.
 
-Wake was created by [Ackee Blockchain Security](https://ackee.xyz) and is now developed by [ack3](https://ack3.ai) in this repository, under the original ISC license.
+Developed by [ack3](https://ack3.ai). Open source under the [ISC license](https://github.com/ack3-ai/wake/blob/main/LICENSE).
 
 ---
 
