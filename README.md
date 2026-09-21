@@ -1,12 +1,10 @@
-![Wake cover](https://github.com/ack3-ai/wake/blob/main/images/wake_cover.png?raw=true)
+![Wake: the fuzzing and testing framework for Solidity, written in Python](https://github.com/ack3-ai/wake/blob/main/images/wake_cover.png?raw=true)
 
 # Wake
 
 The fuzzing and testing framework for Solidity, written in Python. Wake helps you write safer smart contracts, faster.
 
 Developed by [ack3](https://ack3.ai). Open source under the [ISC license](https://github.com/ack3-ai/wake/blob/main/LICENSE).
-
----
 
 ## Wake 5 release candidate
 
