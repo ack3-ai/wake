@@ -36,7 +36,7 @@
             "evm_version": {
               "type": "string",
               "description": "Version of the EVM to compile for",
-              "enum": ["homestead", "tangerineWhistle", "spuriousDragon", "byzantium", "constantinople", "petersburg", "istanbul", "berlin", "london", "paris", "shanghai", "cancun", "prague", "osaka"]
+              "enum": ["homestead", "tangerineWhistle", "spuriousDragon", "byzantium", "constantinople", "petersburg", "istanbul", "berlin", "london", "paris", "shanghai", "cancun", "prague", "osaka", "amsterdam"]
             },
             "exclude_paths": {
               "type": "array",
@@ -113,6 +113,13 @@
                   "type": "string",
                   "enum": ["none", "ipfs", "bzzr1"]
                 }
+              }
+            },
+            "experimental": {
+              "type": "object",
+              "properties": {
+                "enable": { "type": "boolean" },
+                "via_ssa_cfg": { "type": "boolean" }
               }
             }
           }
@@ -195,7 +202,7 @@
       "properties": {
         "cmd": {
           "type": "string",
-          "enum": ["anvil", "ganache", "hardhat"],
+          "enum": ["revm", "anvil", "hardhat"],
           "default": "anvil",
           "description": "Which development chain to use for testing"
         },
@@ -206,16 +213,6 @@
               "type": "string",
               "default": "--prune-history 100 --transaction-block-keeper 10 --steps-tracing --silent",
               "description": "Arguments for the Anvil command"
-            }
-          }
-        },
-        "ganache": {
-          "type": "object",
-          "properties": {
-            "cmd_args": {
-              "type": "string",
-              "default": "-k istanbul -q",
-              "description": "Arguments for the Ganache command"
             }
           }
         },
@@ -461,7 +458,7 @@
           "evm_version": {
             "type": "string",
             "description": "Version of the EVM to compile for",
-            "enum": ["homestead", "tangerineWhistle", "spuriousDragon", "byzantium", "constantinople", "petersburg", "istanbul", "berlin", "london", "paris", "shanghai", "cancun", "prague", "osaka"]
+            "enum": ["homestead", "tangerineWhistle", "spuriousDragon", "byzantium", "constantinople", "petersburg", "istanbul", "berlin", "london", "paris", "shanghai", "cancun", "prague", "osaka", "amsterdam"]
           },
           "optimizer": {
             "type": "object",
@@ -509,6 +506,13 @@
                 "type": "string",
                 "enum": ["none", "ipfs", "bzzr1"]
               }
+            }
+          },
+          "experimental": {
+            "type": "object",
+            "properties": {
+              "enable": { "type": "boolean" },
+              "via_ssa_cfg": { "type": "boolean" }
             }
           }
         }
