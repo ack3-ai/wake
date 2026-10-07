@@ -72,6 +72,7 @@ GLOBAL_SYMBOL_MAP: dict[str, ir.enums.GlobalSymbol] = {
     "block.timestamp": ir.enums.GlobalSymbol.BLOCK_TIMESTAMP,
     "block.prevrandao": ir.enums.GlobalSymbol.BLOCK_PREVRANDAO,
     "block.blobbasefee": ir.enums.GlobalSymbol.BLOCK_BLOBBASEFEE,
+    "block.slotnum": ir.enums.GlobalSymbol.BLOCK_SLOTNUM,
     # Msg member access
     "msg.data": ir.enums.GlobalSymbol.MSG_DATA,
     "msg.sender": ir.enums.GlobalSymbol.MSG_SENDER,

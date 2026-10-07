@@ -49,6 +49,7 @@ class GlobalSymbol(IntEnum):
     BLOCK_TIMESTAMP = -106
     BLOCK_PREVRANDAO = -107
     BLOCK_BLOBBASEFEE = -108
+    BLOCK_SLOTNUM = -109
 
     MSG_DATA = -200
     MSG_SENDER = -201

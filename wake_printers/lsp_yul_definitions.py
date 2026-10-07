@@ -89,6 +89,7 @@ yul_definitions = {
     "coinbase": "// current block's miner address\ncoinbase()",
     "timestamp": "// timestamp of the current block in seconds since the epoch\ntimestamp()",
     "number": "// current block number\nnumber()",
+    "slotnum": "// current block's beacon chain slot number\nslotnum()",
     "difficulty": "// current block's difficulty\ndifficulty()",
     "gaslimit": "// current block's gas limit\ngaslimit()",
     "prevrandao": "// previous block's RANDAO value\nprevrandao()",
