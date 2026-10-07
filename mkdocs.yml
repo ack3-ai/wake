@@ -81,6 +81,7 @@ nav:
                       - Complex struct getter: "static-analysis/detectors/complex-struct-getter.md"
                       - Empty byte array copy bug: "static-analysis/detectors/empty-byte-array-copy-bug.md"
                       - Incorrect interface: "static-analysis/detectors/incorrect-interface.md"
+                      - Inheritance order reversal on storage end warning bug: "static-analysis/detectors/inheritance-order-reversal-on-storage-end-warning-bug.md"
                       - Invalid memory-safe assembly: "static-analysis/detectors/invalid-memory-safe-assembly.md"
                       - Memory byte array element delete bug: "static-analysis/detectors/memory-byte-array-element-delete-bug.md"
                       - Missing return: "static-analysis/detectors/missing-return.md"

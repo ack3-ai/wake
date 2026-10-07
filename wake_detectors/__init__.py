@@ -10,6 +10,9 @@ from .chainlink_deprecated_function import ChainlinkDeprecatedFunctionDetector
 from .complex_struct_getter import ComplexStructGetterDetector
 from .empty_byte_array_copy_bug import EmptyByteArrayCopyBugDetector
 from .incorrect_interface import IncorrectInterfaceDetector
+from .inheritance_order_reversal_on_storage_end_warning_bug import (
+    InheritanceOrderReversalOnStorageEndWarningBugDetector,
+)
 from .invalid_memory_safe_assembly import InvalidMemorySafeAssemblyDetector
 from .memory_byte_array_element_delete_bug import (
     MemoryByteArrayElementDeleteBugDetector,
