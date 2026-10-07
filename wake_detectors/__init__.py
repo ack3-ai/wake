@@ -17,6 +17,9 @@ from .memory_byte_array_element_delete_bug import (
 from .missing_return import MissingReturnDetector
 from .msg_value_nonpayable_function import MsgValueNonpayableFunctionDetector
 from .reentrancy import ReentrancyDetector
+from .require_custom_error_named_arguments_bug import (
+    RequireCustomErrorNamedArgumentsBugDetector,
+)
 from .struct_mapping_deletion import StructMappingDeletionDetector
 from .tx_origin import TxOriginDetector
 from .unchecked_return_value import UncheckedReturnValueDetector
