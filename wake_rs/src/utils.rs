@@ -612,7 +612,7 @@ pub(crate) fn header_to_block_env(header: &Header, chain_id: u64) -> BlockEnv {
         difficulty: header.difficulty,
         prevrandao,
         blob_excess_gas_and_price: blob_info,
-        slot_num: 0,  // TODO: should be set once available
+        slot_num: header.slot_number.unwrap_or(0),
     }
 }
 

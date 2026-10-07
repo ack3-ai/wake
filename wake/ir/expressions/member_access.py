@@ -212,6 +212,10 @@ class MemberAccess(ExpressionAbc):
                         self._referenced_declaration_id = AstNodeId(
                             GlobalSymbol.BLOCK_BLOBBASEFEE
                         )
+                    elif self.member_name == "slotnum":
+                        self._referenced_declaration_id = AstNodeId(
+                            GlobalSymbol.BLOCK_SLOTNUM
+                        )
                     else:
                         assert False, f"Unknown block member {self.member_name}"
                 elif expr_type.kind == MagicTypeKind.MESSAGE:
