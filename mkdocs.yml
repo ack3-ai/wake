@@ -82,6 +82,7 @@ nav:
                       - Empty byte array copy bug: "static-analysis/detectors/empty-byte-array-copy-bug.md"
                       - Incorrect interface: "static-analysis/detectors/incorrect-interface.md"
                       - Invalid memory-safe assembly: "static-analysis/detectors/invalid-memory-safe-assembly.md"
+                      - Memory byte array element delete bug: "static-analysis/detectors/memory-byte-array-element-delete-bug.md"
                       - Missing return: "static-analysis/detectors/missing-return.md"
                       - msg.value non-payable function: "static-analysis/detectors/msg-value-nonpayable-function.md"
                       - Reentrancy: "static-analysis/detectors/reentrancy.md"
