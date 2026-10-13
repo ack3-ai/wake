@@ -148,8 +148,14 @@ def export_coverage(
         "data": data,
     }
 
-    with open("wake-coverage.cov", "w") as f:
-        json.dump(info, f)
+    path = Path("wake-coverage.cov")
+    tmp_path = path.with_suffix(".cov.tmp")
+    try:
+        with tmp_path.open("w") as f:
+            json.dump(info, f)
+        tmp_path.replace(path)
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
 
 def _get_statement_byte_location(
