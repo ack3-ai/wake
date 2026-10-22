@@ -39,7 +39,7 @@ dependencies = [
     "sarif-om>=1.0.4,<2",
     "jschema-to-python>=1.2.3,<2",
     "tomli-w>=1.0.0,<2",
-    "certifi>=2024.2.2; platform_system=='Darwin'",
+    "certifi==2026.10.19; platform_system=='Darwin'",
     "mcp>=1.0,<2",
     "uvicorn>=0.30,<1",
     "starlette>=0.37,<2",
