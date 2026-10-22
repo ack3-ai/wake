@@ -6,6 +6,23 @@ small.label {
 }
 </style>
 
+## 4.22.2 <small>(Oct 22, 2026)</small> { id="4.22.2" }
+
+Security:
+
+- pinned `certifi` to `2026.10.19` on macOS to mitigate TLS interception risks from compromised emSign intermediate CA private keys <small class="label">[core]</small>
+
+Fixes & improvements:
+
+- fixed virtual compilation source deduplication, ambiguous import paths, and symlink handling in JSON build export and import <small class="label">[core]</small>
+- fixed `wake compile --import-json` not passing imported source contents to the compiler <small class="label">[cli]</small>
+- fixed compilation semaphore errors when reusing the compiler across asyncio event loops <small class="label">[core]</small>
+- fixed an infinite loop in reentrancy analysis and assertions when resolving certain function-call expressions <small class="label">[static analysis]</small>
+- stopped reporting unused events and errors in interfaces that have no inheriting contracts <small class="label">[static analysis]</small>
+- fixed call traces and transaction output decoding for `0x`-prefixed debug trace data <small class="label">[testing & deployment framework]</small>
+- fixed importing uppercase EVM version names from Foundry configuration <small class="label">[cli]</small>
+- fixed the compilation watcher losing newly included files after configuration changes <small class="label">[core]</small>
+
 ## 4.22.1 <small>(Mar 2, 2026)</small> { id="4.22.1" }
 
 Fixes & improvements:
