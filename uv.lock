@@ -774,7 +774,7 @@ wheels = [
 
 [[package]]
 name = "eth-wake"
-version = "5.0.0rc3"
+version = "5.0.0rc4"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
