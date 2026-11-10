@@ -142,7 +142,7 @@ What agents get right and wrong when they write fuzz tests is written up in the 
 
 ## Research
 
-- **Wake 5: A Python Framework for Solidity Testing, Fuzzing, and Static Analysis** (Gattermayer, Převrátil, 2026). arXiv preprint: [arXiv:TODO-ARXIV-ID](https://arxiv.org/abs/TODO-ARXIV-ID). The framework design, a three-fuzzer benchmark over 75 eight-hour campaigns, the generator-prior analysis, five agent-written harness campaigns, and a static-analysis ablation in an agentic review. Benchmark fork and campaign data: [daedaluzz-benchmark](https://github.com/ack3-ai/daedaluzz-benchmark).
+- **Wake 5: A Python Framework for Solidity Testing, Fuzzing, and Static Analysis** (Gattermayer, Převrátil, 2026). arXiv preprint: [arXiv:2611.09307](https://arxiv.org/abs/2611.09307). The framework design, a three-fuzzer benchmark over 75 eight-hour campaigns, the generator-prior analysis, five agent-written harness campaigns, and a static-analysis ablation in an agentic review. Benchmark fork and campaign data: [daedaluzz-benchmark](https://github.com/ack3-ai/daedaluzz-benchmark).
 - [Benchmarking EVM fuzzers against an agent-written harness](https://ack3.ai/research/benchmarking-evm-fuzzers-against-an-agent-written-harness/) and [Static analysis MCP tools in an AI audit benchmark](https://ack3.ai/research/ablating-static-analysis-from-an-ai-security-benchmark/), the two research notes the preprint grew from.
 - [Introducing manually guided fuzzing](https://ack3.ai/research/introducing-manually-guided-fuzzing-a-new-approach-in-smart-contract-testing/), the method behind Wake's harness model, and the [research journal's Wake articles](https://ack3.ai/research/tags/wake/).
 
@@ -153,10 +153,10 @@ Citing Wake:
   title         = {Wake 5: A Python Framework for Solidity Testing, Fuzzing, and Static Analysis},
   author        = {Gattermayer, Josef and P{\v{r}}evr{\'a}til, Michal},
   year          = {2026},
-  eprint        = {TODO-ARXIV-ID},
+  eprint        = {2611.09307},
   archivePrefix = {arXiv},
   primaryClass  = {cs.SE},
-  url           = {https://arxiv.org/abs/TODO-ARXIV-ID}
+  url           = {https://arxiv.org/abs/2611.09307}
 }
 ```
 

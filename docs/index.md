@@ -16,7 +16,7 @@
 
 ## Resources
 
-- [Wake 5 paper](https://arxiv.org/abs/TODO-ARXIV-ID) - arXiv preprint: framework design, fuzzer benchmark, agent-written harnesses, static-analysis ablation
+- [Wake 5 paper](https://arxiv.org/abs/2611.09307) - arXiv preprint: framework design, fuzzer benchmark, agent-written harnesses, static-analysis ablation
 - [Awesome Wake tests](https://github.com/Ackee-Blockchain/awesome-wake-tests) - collection of fuzz tests and unit tests written in Wake
 - built-in [detectors](https://github.com/ack3-ai/wake/tree/main/wake_detectors) and [printers](https://github.com/ack3-ai/wake/tree/main/wake_printers)
 
