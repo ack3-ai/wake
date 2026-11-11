@@ -13,11 +13,13 @@ Developed by [ack3](https://ack3.ai). Created at Ackee Blockchain in 2022. Open 
 
 ## Install
 
-Wake 5 is a release candidate (`5.0.0rc4`). Python 3.10 or newer; prebuilt wheels for Linux (x86_64, aarch64, i686; glibc and musl), macOS 14+ (Apple Silicon and Intel) and Windows (x64 and ARM64), CPython 3.10 to 3.15.
+Python 3.10 or newer; prebuilt wheels for Linux (x86_64, aarch64, i686; glibc and musl), macOS 14+ (Apple Silicon and Intel) and Windows (x64 and ARM64), CPython 3.10 to 3.15.
 
 ```shell
 pip3 install --pre eth-wake
 ```
+
+The final 5.0.0 is coming soon; until then `--pre` selects the current Wake 5 build.
 
 With [uv](https://docs.astral.sh/uv/): `uv tool install --prerelease allow eth-wake`.
 
