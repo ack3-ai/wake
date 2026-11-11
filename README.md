@@ -2,7 +2,7 @@
 
 # Wake
 
-Wake is a Python framework for Solidity testing, fuzzing and static analysis. Tests, fuzz harnesses and detectors are ordinary Python; Wake 5 executes them against an EVM embedded in the Python process.
+Before a smart contract ships, someone tries to break it. Wake is the Python framework ack3's auditors break them with: tests, fuzz harnesses and static analysis in ordinary Python, executed by an EVM embedded in the Python process. Wake 5 changes who writes the harness: an agent drafts it, a person checks it, Wake runs it at native speed.
 
 [![PyPI](https://img.shields.io/pypi/v/eth-wake?include_prereleases&label=pypi)](https://pypi.org/project/eth-wake/)
 [![Python](https://img.shields.io/pypi/pyversions/eth-wake)](https://pypi.org/project/eth-wake/)
@@ -13,34 +13,30 @@ Developed by [ack3](https://ack3.ai). Created at Ackee Blockchain in 2022. Open 
 
 ## Install
 
-Wake 5 is a release candidate (`5.0.0rc4`). It needs Python 3.10 or newer and ships prebuilt wheels for Linux (x86_64, aarch64, i686; glibc and musl), macOS 14+ (Apple Silicon and Intel) and Windows (x64 and ARM64), for CPython 3.10 to 3.15.
+Wake 5 is a release candidate (`5.0.0rc4`). Python 3.10 or newer; prebuilt wheels for Linux (x86_64, aarch64, i686; glibc and musl), macOS 14+ (Apple Silicon and Intel) and Windows (x64 and ARM64), CPython 3.10 to 3.15.
 
 ```shell
 pip3 install --pre eth-wake
 ```
 
-With [uv](https://docs.astral.sh/uv/):
+With [uv](https://docs.astral.sh/uv/): `uv tool install --prerelease allow eth-wake`.
 
-```shell
-uv tool install --prerelease allow eth-wake
-```
-
-Wake downloads the Solidity compiler versions a project needs on first use. On Apple Silicon, `solc` runs through Rosetta 2 (`softwareupdate --install-rosetta`). No node software is required: the in-process EVM is the default engine. Anvil or Hardhat are needed only if you opt back into a JSON-RPC chain.
+Wake downloads the Solidity compiler versions a project needs on first use (on Apple Silicon, `solc` runs through Rosetta 2: `softwareupdate --install-rosetta`). No node software is required: the in-process EVM is the default engine. Anvil or Hardhat are needed only to opt back into a JSON-RPC chain.
 
 Wake 4 (`4.22.2`) remains available with `pip3 install eth-wake`; its documentation is at [latest](https://ack3.ai/wake/docs/latest/).
 
-## Quick start
+## Start fuzzing
 
 ```shell
-wake up --example counter   # example project in an empty directory, or `wake up` in your own
-wake test                   # run the tests (pytest underneath)
-wake detect all             # run every vulnerability and code-quality detector
-wake mcp                    # expose the static analysis to an AI agent
+wake up --example counter          # example project in an empty directory, or `wake up` in an existing one
+wake test                          # run the tests (pytest underneath)
+wake test --cov 1 tests/test_x.py  # the same, writing statement coverage to wake-coverage.cov
+wake test tests/test_x.py --seed <hex>   # reproduce a failing sequence
 ```
 
-`wake up` writes `wake.toml`, compiles the project and generates `pytypes`, Python types for every contract, so tests get autocompletion and type checking against your Solidity code.
+`wake up` writes `wake.toml`, compiles the project and generates `pytypes`: Python types for every contract, so tests get autocompletion and type checking against the Solidity code. The engine is `[testing] cmd = "revm"`; projects created with older versions may still pin `anvil` there.
 
-A manually guided fuzz test from the [example project](examples/counter/tests/test_counter_fuzz.py): the auditor writes the flows and the invariant, the engine chooses the sequence.
+A fuzz test in Wake is **manually guided**: the auditor writes the moves (`@flow`, one transaction each) and the rule that must hold (`@invariant`), and keeps a Python model of what the contract state should be. Wake chooses the order and the values, checks the invariants after every flow, and when a sequence fails, shrinks it to the transactions that matter.
 
 ```python
 from wake.testing import *
@@ -52,7 +48,7 @@ class CounterTest(FuzzTest):
     def pre_sequence(self) -> None:
         self.owner = random_account()
         self.counter = Counter.deploy(from_=self.owner)
-        self.count = 0
+        self.count = 0                      # the model
 
     @flow()
     def flow_increment(self) -> None:
@@ -64,9 +60,9 @@ class CounterTest(FuzzTest):
         with may_revert(Panic(PanicCodeEnum.UNDERFLOW_OVERFLOW)) as e:
             self.counter.decrement(from_=random_account())
         if e.value is not None:
-            assert self.count == 0
-        else:
-            self.count -= 1
+            assert self.count == 0          # the revert was expected
+            return "underflow"              # revert paths get their own line in the summary
+        self.count -= 1
 
     @invariant(period=10)
     def invariant_count(self) -> None:
@@ -78,75 +74,51 @@ def test_counter_fuzz():
     CounterTest().run(sequences_count=10, flows_count=100)
 ```
 
-The [getting started guide](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/getting-started/) walks through the same project step by step.
+The [getting started guide](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/getting-started/) walks through the example project step by step; the [fuzzing docs](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/fuzzing/) cover flows, invariants, preconditions, weights and the shrinker.
 
-## What Wake does
+## Fuzz with an agent
 
-- **Testing framework** on top of [pytest](https://docs.pytest.org), with generated `pytypes`, call traces, console logs, coverage and a debugger. [Docs](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/overview/)
-- **Manually guided fuzzing**: flows and invariants written in Python, random sequencing by the engine, a two-phase shrinker that reduces a failing sequence to the transactions that matter. [Docs](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/fuzzing/)
-- **In-process EVM** ([revm](https://github.com/bluealloy/revm)): no development node to install or launch, forking of live chains through `chain.connect(fork=...)`, cross-chain tests with several chains in one process. [Migration from Wake 4](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/migrating-from-wake-4/)
-- **Vulnerability and code-quality detectors** (`wake detect`) with SARIF export, and **printers** (`wake print`) that extract control-flow graphs, inheritance, storage layouts, selectors and more. Both are plugin APIs for your own project-specific rules. [Detectors](https://ack3.ai/wake/docs/5.0.0rc3/static-analysis/using-detectors/) · [Printers](https://ack3.ai/wake/docs/5.0.0rc3/static-analysis/using-printers/) · [Writing your own](https://ack3.ai/wake/docs/5.0.0rc3/static-analysis/getting-started/)
-- **MCP server** (`wake mcp`): the same static facts, served to language-model agents. [Docs](https://ack3.ai/wake/docs/5.0.0rc3/mcp/using-mcp/)
-- **Language server** (`wake lsp`) and the [Solidity (Wake)](https://marketplace.visualstudio.com/items?itemName=AckeeBlockchain.tools-for-solidity) VS Code extension: diagnostics, references, graphs and detections in the editor. [Docs](https://ack3.ai/wake/docs/5.0.0rc3/language-server/)
-- **Deployment scripts and mainnet interaction** with the same `pytypes` the tests use. [Docs](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/deployment/)
-- **Solc version manager** (`wake svm`), Solidity support through 0.8.38, and GitHub Actions for [setting up Wake](https://github.com/marketplace/actions/wake-setup) and [running detectors](https://github.com/marketplace/actions/wake-detect) in CI.
+Harnesses are plain Python an agent can read, run and revise, and every revision executes in-process at native speed. The person stays on the three things that decide whether a harness is any good: what it asserts, which values it asserts against, and which branches actually ran ([Vibe Fuzzing Guide](https://ack3.ai/research/vibe-fuzzing-guide-for-wakes-manually-guided-fuzzing/)).
 
-## What changed in Wake 5
+Paste this into Claude Code, Codex or Cursor in a project where `wake up` has run, with the contract path filled in. It was tested cold on the example project with Wake `5.0.0rc4`.
 
-- The default execution engine is the in-process EVM. On the Daedaluzz maze benchmark Wake 5 executes 29,931 transactions per second, on par with Foundry (30,186) and 11.5× Echidna (2,600); the same measurement shows that on constant-guarded code the input generator, not the engine, bounds what any random fuzzer finds in eight hours. Both results are in the [Wake 5 preprint](#research).
-- Chain history is bounded to the newest 256 blocks by default, which keeps multi-hour campaigns memory-stable; keep references to transaction objects you need later, or raise `testing.block_history`.
-- `wake mcp` is new: the static analysis as MCP tools for agents.
-- `pytypes` generated by Wake 4 must be regenerated. The [migration guide](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/migrating-from-wake-4/) lists every breaking change.
+```text
+Fuzz the contract at <path/Name.sol> with Wake. Run `wake up`; make sure wake.toml has `[testing] cmd = "revm"`. Write tests/test_<name>_fuzz.py with `from wake.testing import *`, `from wake.testing.fuzzing import *`, `from pytypes.<path>.<Name> import <Name>` and `logger = logging.getLogger(__name__)`. Define a FuzzTest subclass that deploys the contract in pre_sequence and keeps a Python model of its state. Write one @flow per state-changing function, each sending exactly one transaction, with the expected result computed from the model before the transaction. Wrap the call in `with may_revert() as e:`, assert that e.value equals the exact error (`<Name>.SomeError(args)`, `Error("message")` or `Panic(PanicCodeEnum.X)`), and return a short string on every revert path. Assert every field of every event in `list(tx.events)`. Add @invariant methods that compare the model to the contract's view functions, including one that is not the contract's own arithmetic restated. Run `wake test --cov 1 tests/test_<name>_fuzz.py` and report the flow counts from the summary and the uncovered statements from wake-coverage.cov. Do not change any Solidity source.
+```
 
-## Wake with AI agents
-
-Wake is built so that an agent can write the harness and the engine can run it at native speed: harnesses are plain Python the agent can read, run and revise, and `wake mcp` answers structural questions about the code (contracts, functions, definitions and references, inheritance order, storage layout, state changes, selectors, external calls) from the compiled project. The server returns compact text, not JSON, because the consumer is a language model.
-
-Register the server with your client. Claude Code:
+`wake mcp` gives the agent the same static facts the language server has (contracts, functions, definitions and references, inheritance order, storage layout, state changes, selectors, external calls), as compact text. Register it once:
 
 ```shell
 claude mcp add wake -- wake mcp
 ```
 
-Any client that reads an MCP configuration file:
-
 ```json
-{
-  "mcpServers": {
-    "wake": { "command": "wake", "args": ["mcp"], "cwd": "/path/to/your/project" }
-  }
-}
+{ "mcpServers": { "wake": { "command": "wake", "args": ["mcp"], "cwd": "/path/to/project" } } }
 ```
 
-Three prompts to paste into an agent. Each keeps the agent on the structural work and leaves the security judgement to a person; the reasons are in the [research](#research) below.
+## What Wake does
 
-**Set up Wake in a repository**
+- **Testing framework** on top of [pytest](https://docs.pytest.org), with generated `pytypes`, call traces, console logs, coverage and a debugger. [Docs](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/overview/)
+- **Manually guided fuzzing**: flows and invariants in Python, random sequencing by the engine, a two-phase shrinker. [Docs](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/fuzzing/)
+- **In-process EVM** ([revm](https://github.com/bluealloy/revm)): no development node, forking of live chains through `chain.connect(fork=...)`, several chains in one process for cross-chain tests. [Migration from Wake 4](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/migrating-from-wake-4/)
+- **Detectors** (`wake detect`, SARIF export) and **printers** (`wake print`: control-flow graphs, inheritance, storage layouts, selectors). Both are plugin APIs for project-specific rules. [Detectors](https://ack3.ai/wake/docs/5.0.0rc3/static-analysis/using-detectors/) · [Printers](https://ack3.ai/wake/docs/5.0.0rc3/static-analysis/using-printers/) · [Writing new ones](https://ack3.ai/wake/docs/5.0.0rc3/static-analysis/getting-started/)
+- **MCP server** (`wake mcp`) for agents. [Docs](https://ack3.ai/wake/docs/5.0.0rc3/mcp/using-mcp/)
+- **Language server** (`wake lsp`) and the [Solidity (Wake)](https://marketplace.visualstudio.com/items?itemName=AckeeBlockchain.tools-for-solidity) VS Code extension: diagnostics, references, graphs and detections in the editor. [Docs](https://ack3.ai/wake/docs/5.0.0rc3/language-server/)
+- **Deployment scripts and mainnet interaction** with the same `pytypes` the tests use. [Docs](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/deployment/)
+- **Solc version manager** (`wake svm`), Solidity through 0.8.38, GitHub Actions for [setting up Wake](https://github.com/marketplace/actions/wake-setup) and [running detectors](https://github.com/marketplace/actions/wake-detect).
 
-```text
-Set up Wake in this repository. Install it with `pip3 install --pre eth-wake`, run `wake up` to create wake.toml and generate pytypes, and fix any compilation configuration until `wake up` succeeds (remappings, solc version, include paths live in wake.toml). Then run `wake detect all` and `wake test`. Report: the solc versions used, the contracts compiled, every detector finding with its file and line, and the test results. Do not change any Solidity source.
-```
+## What changed in Wake 5
 
-**Write a manually guided fuzz test**
-
-```text
-Write a manually guided fuzz test in Wake for <contract> at <path>. Use `from wake.testing import *` and `from wake.testing.fuzzing import *`, a FuzzTest subclass with one @flow per state-changing entry point and @invariant checks, and run it with `wake test`. Keep a Python model of the expected state and compute expected values from the model BEFORE each transaction, never from the contract after it. For every revert path use may_revert/must_revert and assert the exact error and its parameters. Assert every event's parameters, not only that it was emitted. Add at least one invariant that does not restate the contract's own arithmetic (for example, credited balances never exceed assets held). After the run, open the coverage report and list the branches the flows did not reach. Report the flows, the invariants, the uncovered branches, and anything in the contract you were unsure how to model; do not silently copy contract logic into the model.
-```
-
-**Review a contract through the MCP server**
-
-```text
-Use the Wake MCP tools to map <contract>: list_contracts, list_contract_functions, get_c3_linearization, get_storage_layout, and get_state_changes for every external or public function, plus find_external_calls_by_selector for every external call. Produce a table of entry points with the state they write and the external calls they make, in call order, with path:line references from the tools. State facts the tools returned; mark anything you infer as an inference. Do not report vulnerabilities in this step.
-```
-
-What agents get right and wrong when they write fuzz tests is written up in the [Vibe Fuzzing Guide](https://ack3.ai/research/vibe-fuzzing-guide-for-wakes-manually-guided-fuzzing/): structure can be generated, three things must be verified by a person every time: what the test asserts, which values it asserts against, and which branches actually ran.
+- The default engine is the in-process EVM. On the Daedaluzz maze benchmark Wake 5 executes 29,931 transactions per second, on par with Foundry (30,186) and 11.5× Echidna (2,600). The same measurement shows that on constant-guarded code the input generator, not the engine, bounds what random fuzzing finds in eight hours: 75 of 153 assertions, where an agent-written harness reached all 153 in 33 to 79 minutes. Both results are in the [preprint](#research).
+- Chain history is bounded to the newest 256 blocks by default, which keeps multi-hour campaigns memory-stable; keep references to transaction objects needed later, or raise `testing.block_history`.
+- `wake mcp` is new.
+- `pytypes` generated by Wake 4 must be regenerated. The [migration guide](https://ack3.ai/wake/docs/5.0.0rc3/testing-framework/migrating-from-wake-4/) lists every breaking change.
 
 ## Research
 
-- **Wake 5: A Python Framework for Solidity Testing, Fuzzing, and Static Analysis** (Gattermayer, Převrátil, 2026). arXiv preprint: [arXiv:2611.09307](https://arxiv.org/abs/2611.09307). The framework design, a three-fuzzer benchmark over 75 eight-hour campaigns, the generator-prior analysis, five agent-written harness campaigns, and a static-analysis ablation in an agentic review. Benchmark fork and campaign data: [daedaluzz-benchmark](https://github.com/ack3-ai/daedaluzz-benchmark).
-- [Benchmarking EVM fuzzers against an agent-written harness](https://ack3.ai/research/benchmarking-evm-fuzzers-against-an-agent-written-harness/) and [Static analysis MCP tools in an AI audit benchmark](https://ack3.ai/research/ablating-static-analysis-from-an-ai-security-benchmark/), the two research notes the preprint grew from.
-- [Introducing manually guided fuzzing](https://ack3.ai/research/introducing-manually-guided-fuzzing-a-new-approach-in-smart-contract-testing/), the method behind Wake's harness model, and the [research journal's Wake articles](https://ack3.ai/research/tags/wake/).
-
-Citing Wake:
+- **Wake 5: A Python Framework for Solidity Testing, Fuzzing, and Static Analysis** (Gattermayer, Převrátil, 2026). arXiv preprint: [arXiv:2611.09307](https://arxiv.org/abs/2611.09307). Framework design, a three-fuzzer benchmark over 75 eight-hour campaigns, the generator-prior analysis, five agent-written harness campaigns, and a static-analysis ablation in an agentic review. Benchmark fork and campaign data: [daedaluzz-benchmark](https://github.com/ack3-ai/daedaluzz-benchmark).
+- [Benchmarking EVM fuzzers against an agent-written harness](https://ack3.ai/research/benchmarking-evm-fuzzers-against-an-agent-written-harness/) and [Static analysis MCP tools in an AI audit benchmark](https://ack3.ai/research/ablating-static-analysis-from-an-ai-security-benchmark/), the research notes the preprint grew from.
+- [Introducing manually guided fuzzing](https://ack3.ai/research/introducing-manually-guided-fuzzing-a-new-approach-in-smart-contract-testing/) and the [research journal's Wake articles](https://ack3.ai/research/tags/wake/).
 
 ```bibtex
 @misc{gattermayer2026wake5,
