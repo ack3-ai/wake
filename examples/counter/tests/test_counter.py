@@ -58,24 +58,24 @@ def test_counter():
     with chain.change_automine(False):
         # for each transaction, gas_limit can be specified with "max" as the default value
         # "max" uses chain.block_gas_limit as the gas limit
-        # "auto" uses the estimated gas limit returned by the node
+        # "auto" uses the estimated gas limit returned by a JSON-RPC node (not available on revm)
         # it is also possible to specify a custom gas limit in wei
 
         # applies to Hardhat only:
         #   gas_limit="auto" is needed in this case, otherwise tx1 would consume whole block gas limit
 
-        # calling these functions without return_tx=True will cause a timeout error
-        tx1 = c.increment(gas_limit="auto", confirmations=0)
-        tx2 = c.decrement(gas_limit="auto", confirmations=0)
+        # confirmations=0 returns immediately instead of waiting for the transaction to be mined
+        tx1 = c.increment(confirmations=0)
+        tx2 = c.decrement(confirmations=0)
 
     # hardhat does not mine blocks automatically after automine re-enables
     chain.mine()
-    tx1.wait()
-    tx2.wait()
 
+    # on revm transactions execute synchronously, on a JSON-RPC node accessing
+    # tx.status performs an implicit tx.wait()
     assert tx1.status == tx2.status == 1
-    assert tx1.block == tx2.block
-    assert len(tx1.block.txs) == 2
+    assert tx1.block_number == tx2.block_number
+    assert len([tx for tx in chain.txs if tx.block_number == tx1.block_number]) == 2
 
     # it is possible to execute any function as a transaction (even pure and view functions)
     c.count(request_type="tx")

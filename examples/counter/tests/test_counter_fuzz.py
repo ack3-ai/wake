@@ -19,7 +19,13 @@ class CounterTest(FuzzTest):
 
     @flow()
     def flow_increment(self):
-        self._counter.increment(from_=random_account())
+        # flow_set_count can set the count to 2**256 - 1, so the next increment overflows
+        with may_revert(Panic(PanicCodeEnum.UNDERFLOW_OVERFLOW)) as e:
+            self._counter.increment(from_=random_account())
+
+        if e.value is not None:
+            assert self._count == 2**256 - 1
+            return "overflow"
         self._count += 1
 
     @flow()

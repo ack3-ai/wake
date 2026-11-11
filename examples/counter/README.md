@@ -5,11 +5,11 @@ npm install
 
 Run
 ```bash
-wake init pytypes
+wake up
 ```
 to generate pytypes or
 ```bash
-wake init pytypes -w
+wake up pytypes -w
 ```
 to generate pytypes and keep watching for filesystem changes and re-generate pytypes when needed.
 
