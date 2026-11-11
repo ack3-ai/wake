@@ -1,2 +1,3 @@
 [testing]
-cmd = "anvil"
+# in-process EVM (default in Wake 5); set "anvil" or "hardhat" to run on a JSON-RPC node
+cmd = "revm"

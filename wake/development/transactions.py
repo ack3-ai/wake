@@ -151,7 +151,10 @@ class ChainTransactions:
                     for t in return_types
                     if get_origin(t) is TransactionAbc
                 )
-            except (KeyError, StopIteration):
+            except (KeyError, StopIteration, NameError, TypeError):
+                # NameError/TypeError: generated pytypes annotate the overloads with
+                # Call[...], which is neither imported there nor evaluable at runtime,
+                # so get_type_hints() cannot resolve the return annotation
                 abi = None
                 return_type = bytes
         else:

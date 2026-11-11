@@ -37,7 +37,12 @@ class CrosschainTest(FuzzTest):
     @flow()
     def flow_increment(self):
         c = self.c1 if self.first_chain else self.c2
-        c.increment(from_=random_account(chain=c.chain))
+        # flow_set_count can set the count to 2**256 - 1, so the next increment overflows
+        with may_revert(Panic(PanicCodeEnum.UNDERFLOW_OVERFLOW)) as e:
+            c.increment(from_=random_account(chain=c.chain))
+
+        if e.value is not None:
+            assert c.count() == 2**256 - 1
 
     @flow()
     def flow_decrement(self):
