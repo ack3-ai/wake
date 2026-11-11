@@ -141,7 +141,7 @@ claude mcp add wake -- wake mcp
 
 ## Support the project
 
-Wake is listed on Giveth as a verified, GIVbacks-eligible project: [Wake: Solidity static analysis and fuzzing framework](https://giveth.io/project/wake:-solidity-static-analysis-and-fuzzing-framework). Every donation goes to the project.
+Wake is on [Giveth](https://giveth.io/project/wake:-solidity-static-analysis-and-fuzzing-framework).
 
 ## License
 
