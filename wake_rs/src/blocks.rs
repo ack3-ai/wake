@@ -23,7 +23,7 @@ pub(crate) struct BlockSlot {
 
 #[pyclass]
 pub(crate) struct Blocks {
-    chain: Py<Chain>,
+    chain: Option<Py<Chain>>,
     /// Retained window, oldest first.
     pub(crate) blocks: VecDeque<BlockSlot>,
     /// Block number of `blocks.front()`.
@@ -45,7 +45,9 @@ impl Blocks {
         let block = Py::new(
             py,
             Block {
-                chain: self.chain.clone_ref(py),
+                chain: self.chain.as_ref().ok_or_else(|| {
+                    HistoryPrunedError::new_err("block history was discarded on disconnect")
+                })?.clone_ref(py),
                 block_hash,
                 block_env,
                 journal_index: Some(journal_index),
@@ -90,6 +92,22 @@ impl Blocks {
         let drop_count = self.blocks.len().saturating_sub(keep);
         self.blocks_start_index += drop_count;
         self.blocks.drain(..drop_count).collect()
+    }
+
+    /// Detach a disconnected history, including references held by callers that
+    /// saved the collection itself. Drop the returned objects outside the chain borrow.
+    pub(crate) fn retire(&mut self) -> (
+        VecDeque<BlockSlot>,
+        HashMap<u64, Py<Block>>,
+        Option<Py<Chain>>,
+    ) {
+        self.blocks_start_index += self.blocks.len();
+        self.forked_block = None;
+        (
+            std::mem::take(&mut self.blocks),
+            std::mem::take(&mut self.forked_blocks),
+            self.chain.take(),
+        )
     }
 
     /// Drops blocks above `latest_block_number` (used when reverting).
@@ -140,6 +158,9 @@ impl Blocks {
         provider: Option<ProviderWrapper>,
         forked_chain_id: Option<u64>,
     ) -> Result<Py<Block>, PyErr> {
+        let chain = self.chain.as_ref().ok_or_else(|| {
+            HistoryPrunedError::new_err("block history was discarded on disconnect")
+        })?;
         let number = match block {
             BlockEnum::Int(block_number) => {
                 if block_number < 0 {
@@ -152,7 +173,7 @@ impl Blocks {
             }
             BlockEnum::Latest | BlockEnum::Safe | BlockEnum::Finalized => last_block_number,
             BlockEnum::Pending => {
-                let borrowed_chain = self.chain.borrow(py);
+                let borrowed_chain = chain.borrow(py);
                 let mut block_env = borrowed_chain.get_evm()?.block.clone();
                 // add pending gas used to the block gas limit
                 block_env.gas_limit += borrowed_chain.pending_gas_used;
@@ -160,7 +181,7 @@ impl Blocks {
                 return Py::new(
                     py,
                     Block {
-                        chain: self.chain.clone_ref(py),
+                        chain: chain.clone_ref(py),
                         block_hash: B256::ZERO,
                         block_env,
                         journal_index: None,
@@ -195,7 +216,7 @@ impl Blocks {
                                         let block = Py::new(
                                             py,
                                             Block {
-                                                chain: self.chain.clone_ref(py),
+                                                chain: chain.clone_ref(py),
                                                 block_hash: block.header.hash,
                                                 block_env: header_to_block_env(&block.header, forked_chain_id.unwrap()),
                                                 journal_index: None,
@@ -228,7 +249,7 @@ impl Blocks {
         forked_block: Option<u64>,
     ) -> Self {
         Self {
-            chain,
+            chain: Some(chain),
             blocks: VecDeque::new(),
             blocks_start_index: forked_block.map_or(0, |b| b + 1) as usize,
             forked_blocks: HashMap::new(),
@@ -245,7 +266,9 @@ impl Blocks {
     }
 
     fn __getitem__(&mut self, py: Python, block: BlockEnum) -> PyResult<Py<Block>> {
-        let chain = self.chain.borrow(py);
+        let chain = self.chain.as_ref().ok_or_else(|| {
+            HistoryPrunedError::new_err("block history was discarded on disconnect")
+        })?.borrow(py);
         let last_block_number = chain.last_block_number()?;
         let provider = chain.provider.clone();
         let forked_chain_id = chain.forked_chain_id;

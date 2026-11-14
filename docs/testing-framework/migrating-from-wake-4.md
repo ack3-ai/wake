@@ -81,6 +81,8 @@ block_history = null
 
 The option applies to `revm` only. See [configuration](../configuration.md#testing-namespace) for the full description.
 
+Disconnecting discards the connection's history. Transaction and call objects keep their stored results (`status`, `events`, `return_value`, and a `call_trace` read before disconnecting), but re-executing them raises `HistoryPrunedError`. Objects from a previous connection never resolve against a later connection of the same `Chain`. On a fork, events and errors of forked contracts that were not decoded before disconnecting come back as `UnknownEvent` and `UnknownRevertError`.
+
 #### Dropped development chain support
 
 [Ganache](https://archive.trufflesuite.com/ganache/) is no longer supported. The `testing.ganache` configuration namespace was removed and should be deleted from wake.toml, as options left in it are reported as unsupported and ignored.
