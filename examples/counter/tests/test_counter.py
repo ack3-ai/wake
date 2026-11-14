@@ -74,8 +74,8 @@ def test_counter():
     # on revm transactions execute synchronously, on a JSON-RPC node accessing
     # tx.status performs an implicit tx.wait()
     assert tx1.status == tx2.status == 1
-    assert tx1.block_number == tx2.block_number
-    assert len([tx for tx in chain.txs if tx.block_number == tx1.block_number]) == 2
+    assert tx1.block == tx2.block
+    assert len(tx1.block.txs) == 2
 
     # it is possible to execute any function as a transaction (even pure and view functions)
     c.count(request_type="tx")
