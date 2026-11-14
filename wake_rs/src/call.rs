@@ -129,6 +129,7 @@ impl Call {
                     &borrowed.chain,
                     None,
                     Some(slf),
+                    borrowed.journal_index,
                     &borrowed.errors_metadata,
                     get_py_objects(py),
                 )?

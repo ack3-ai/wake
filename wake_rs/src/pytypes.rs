@@ -8,7 +8,7 @@ use pyo3::{
 use revm::{context::ContextTr, primitives::Log};
 
 use crate::{
-    abi_old::{AbiError, alloy_to_py}, account::Account, address::Address, call::Call, chain::Chain, contract::Contract, inspectors::fqn_inspector::{CallErrorMetadata, CallEventMetadata, ErrorMetadata, EventMetadata}, tx::TransactionAbc, utils::{PyObjects, get_fqn_from_creation_code}
+    abi_old::{AbiError, alloy_to_py}, account::Account, address::Address, call::Call, chain::Chain, contract::Contract, inspectors::fqn_inspector::{CallErrorMetadata, CallEventMetadata, ErrorMetadata, EventMetadata}, memory_db::JournalPoint, tx::TransactionAbc, utils::{PyObjects, get_fqn_from_creation_code}
 };
 
 pub(crate) fn decode_and_normalize(
@@ -37,10 +37,19 @@ pub(crate) fn decode_and_normalize(
     normalize_output(py, &decoded, pytype, chain.as_any(), py_objects)
 }
 
-/// Whether `address` runs code fetched from the fork. That is only known while
-/// connected: the state is discarded on disconnect, so an external error or event
-/// first decoded afterwards resolves as unknown instead of failing.
-fn is_forked_contract(chain: &Chain, address: &revm::primitives::Address) -> PyResult<bool> {
+/// Whether `address` runs code fetched from the fork that the transaction or call
+/// recorded at `origin` ran on. Only its own connection knows: the state is
+/// discarded on disconnect and a later connection may fork another chain, so an
+/// external error or event first decoded outside it resolves as unknown instead
+/// of failing or being looked up against the wrong fork.
+fn is_forked_contract(
+    chain: &Chain,
+    origin: JournalPoint,
+    address: &revm::primitives::Address,
+) -> PyResult<bool> {
+    if !chain.is_current_connection(origin) {
+        return Ok(false);
+    }
     match chain.evm.as_ref() {
         Some(evm) => evm
             .db()
@@ -56,11 +65,12 @@ fn external_or_unknown_error(
     chain: &Py<Chain>,
     tx: Option<&Bound<TransactionAbc>>,
     call: Option<&Bound<Call>>,
+    origin: JournalPoint,
     metadata: &CallErrorMetadata,
     py_objects: &mut PyObjects,
 ) -> PyResult<Py<PyAny>> {
     let chain = chain.bind(py).borrow();
-    if is_forked_contract(&chain, &metadata.bytecode_address)? {
+    if is_forked_contract(&chain, origin, &metadata.bytecode_address)? {
         let name_abi = py_objects.wake_get_name_abi.bind(py).call1((
             metadata.bytecode_address.to_string(),
             chain.forked_chain_id.unwrap(),
@@ -155,6 +165,7 @@ pub(crate) fn resolve_error(
     chain: &Py<Chain>,
     tx: Option<&Bound<TransactionAbc>>,
     call: Option<&Bound<Call>>,
+    origin: JournalPoint,
     errors_metadata: &HashMap<[u8; 4], ErrorMetadata>,
     py_objects: &mut PyObjects,
 ) -> PyResult<Py<PyAny>> {
@@ -196,7 +207,7 @@ pub(crate) fn resolve_error(
                     {
                         fqn
                     } else {
-                        return external_or_unknown_error(py, data, chain, tx, call, call_metadata, py_objects);
+                        return external_or_unknown_error(py, data, chain, tx, call, origin, call_metadata, py_objects);
                     }
                 }
             }
@@ -212,7 +223,7 @@ pub(crate) fn resolve_error(
                 // https://github.com/ethereum/solidity/issues/13149
                 match metadata {
                     Some(ErrorMetadata::Call(call_metadata)) => {
-                        return external_or_unknown_error(py, data, chain, tx, call, call_metadata, py_objects);
+                        return external_or_unknown_error(py, data, chain, tx, call, origin, call_metadata, py_objects);
                     }
                     _ => {
                         return new_unknown_error(py, data, tx, call, py_objects);
@@ -258,7 +269,7 @@ pub(crate) fn resolve_error(
                     return new_unknown_error(py, data, tx, call, py_objects);
                 }
                 ErrorMetadata::Call(call_metadata) => {
-                    return external_or_unknown_error(py, data, chain, tx, call, call_metadata, py_objects);
+                    return external_or_unknown_error(py, data, chain, tx, call, origin, call_metadata, py_objects);
                 }
             }
         } else {
@@ -317,11 +328,12 @@ pub(crate) fn external_or_unknown_event(
     py: Python,
     log: &Log,
     chain: &Py<Chain>,
+    origin: JournalPoint,
     metadata: &CallEventMetadata,
     py_objects: &mut PyObjects,
 ) -> PyResult<Py<PyAny>> {
     let borrowed_chain = chain.bind(py).borrow();
-    if is_forked_contract(&borrowed_chain, &metadata.bytecode_address)? {
+    if is_forked_contract(&borrowed_chain, origin, &metadata.bytecode_address)? {
         let name_abi = py_objects
             .wake_get_name_abi
             .bind(py)
@@ -465,6 +477,7 @@ pub(crate) fn resolve_event(
     py: Python,
     log: &Log,
     chain: &Py<Chain>,
+    origin: JournalPoint,
     metadata: Option<&EventMetadata>,
     py_objects: &mut PyObjects,
 ) -> PyResult<Py<PyAny>> {
@@ -499,7 +512,7 @@ pub(crate) fn resolve_event(
                 {
                     fqn
                 } else {
-                    return external_or_unknown_event(py, log, chain, call_metadata, py_objects);
+                    return external_or_unknown_event(py, log, chain, origin, call_metadata, py_objects);
                 }
             }
             None => {
@@ -516,7 +529,7 @@ pub(crate) fn resolve_event(
                     }
                     Some(EventMetadata::Call(call_metadata)) => {
                         // see https://github.com/ethereum/solidity/issues/15752
-                        return external_or_unknown_event(py, log, chain, call_metadata, py_objects);
+                        return external_or_unknown_event(py, log, chain, origin, call_metadata, py_objects);
                     }
                 }
             }
@@ -556,7 +569,7 @@ pub(crate) fn resolve_event(
                 new_unknown_event(py, log, chain, py_objects)
             }
             Some(EventMetadata::Call(call_metadata)) => {
-                external_or_unknown_event(py, log, chain, call_metadata, py_objects)
+                external_or_unknown_event(py, log, chain, origin, call_metadata, py_objects)
             }
         }
     }

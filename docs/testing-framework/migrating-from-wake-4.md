@@ -81,7 +81,7 @@ block_history = null
 
 The option applies to `revm` only. See [configuration](../configuration.md#testing-namespace) for the full description.
 
-Disconnecting discards the connection's history. Transaction and call objects keep their stored results (`status`, `events`, `return_value`, and a `call_trace` read before disconnecting), but re-executing them and reading `block.txs` raise `HistoryPrunedError`. Objects from a previous connection never resolve against a later connection of the same `Chain`. On a fork, events and errors of forked contracts that were not decoded before disconnecting come back as `UnknownEvent` and `UnknownRevertError`.
+Disconnecting discards the connection's history. Transaction and call objects keep their stored results (`status`, `events`, `return_value`, and a `call_trace` read before disconnecting), but re-executing them and reading `block.txs` raise `HistoryPrunedError`. Objects from a previous connection never resolve against a later connection of the same `Chain`: on a fork, events and errors of forked contracts that were not decoded before disconnecting come back as `UnknownEvent` and `UnknownRevertError`, even after reconnecting to the same fork. Pytypes resolvers set with `Account.pytypes_resolver` belong to the `Chain` rather than to a connection, and apply to events and errors when they are first read.
 
 #### Dropped development chain support
 
