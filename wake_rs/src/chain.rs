@@ -686,6 +686,7 @@ impl Chain {
         // Dropped after `borrowed` is released — see `Chain::maybe_prune`.
         let garbage_txs;
         let garbage_blocks;
+        let garbage_pending_blocks;
 
         {
             let mut borrowed = slf.borrow_mut();
@@ -730,11 +731,12 @@ impl Chain {
             // No block hashes to put back: the revert lowers `last_block_number`
             // onto numbers this snapshot has been protecting from pruning for as
             // long as it was live.
-            snapshot.restore_to_chain(&mut borrowed)?;
+            garbage_pending_blocks = snapshot.restore_to_chain(py, &mut borrowed)?;
         }
 
         drop(garbage_txs);
         drop(garbage_blocks);
+        drop(garbage_pending_blocks);
 
         Ok(())
     }

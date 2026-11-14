@@ -152,6 +152,22 @@ def test_pending_transaction_survives_revert_to_shared_history(chain):
         assert pending.txs == [tx]
 
 
+def test_revert_returns_mined_transaction_to_its_pending_block(chain):
+    with chain.change_automine(False):
+        tx = send(chain)
+        snapshot = chain.snapshot()
+        chain.mine()
+        assert tx.block.txs == [tx]
+        chain.revert(snapshot)
+
+        # The revert discarded the block it was mined into; it is pending again.
+        assert tx.block.number == chain.blocks["pending"].number
+        assert tx.block.txs == [tx]
+        assert chain.blocks["pending"].txs == [tx]
+        chain.mine()
+        assert tx.block.txs == [tx]
+
+
 @pytest.mark.parametrize("send_in_context", [False, True])
 def test_pending_call_and_view_survive_snapshot_context(chain, send_in_context):
     with chain.change_automine(False):

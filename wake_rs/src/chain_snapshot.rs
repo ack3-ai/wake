@@ -7,7 +7,7 @@ use revm::primitives::Address as RevmAddress;
 use crate::{
     account::Account,
     blocks::{BlockSlot, Blocks},
-    chain::Chain,
+    chain::{BlockInfo, Chain},
     tx::TransactionAbc,
     txs::{TxSlot, Txs},
 };
@@ -59,7 +59,10 @@ pub struct ChainSnapshot {
 
     // Pending state
     pub(crate) pending_block_env: BlockEnv,
-    pending_txs: Vec<Py<TransactionAbc>>,
+    /// Each pending transaction with the pending block it was executed in.
+    /// Mining after the snapshot reassigns the transaction to a block the revert
+    /// discards, so the revert has to put this back.
+    pending_txs: Vec<(Py<TransactionAbc>, BlockEnv)>,
     pending_gas_used: u64,
 
     // Where the snapshot sits, recorded eagerly and cheaply.
@@ -98,7 +101,19 @@ impl ChainSnapshot {
             fqn_overrides: chain.fqn_overrides.clone(),
             latest_block_env: chain.latest_block_env.clone(),
             pending_block_env: evm.block.clone(),
-            pending_txs: chain.pending_txs.iter().map(|tx| tx.clone_ref(py)).collect(),
+            pending_txs: chain
+                .pending_txs
+                .iter()
+                .map(|tx| {
+                    let block_env = match &tx.borrow(py).block {
+                        BlockInfo::Pending(block_env) => block_env.clone(),
+                        // `mine` empties `pending_txs` as it assigns blocks, so a
+                        // listed transaction is always pending.
+                        BlockInfo::Mined(_) => evm.block.clone(),
+                    };
+                    (tx.clone_ref(py), block_env)
+                })
+                .collect(),
             pending_gas_used: chain.pending_gas_used,
             position,
             history: None,
@@ -219,7 +234,9 @@ impl ChainSnapshot {
         (oldest.saturating_sub(256), newest)
     }
 
-    pub fn restore_to_chain(self, chain: &mut Chain) -> PyResult<()> {
+    /// Returns the block references the restored pending transactions held, so
+    /// the caller can drop them once the chain borrow is released.
+    pub fn restore_to_chain(self, py: Python, chain: &mut Chain) -> PyResult<Vec<BlockInfo>> {
         let evm = chain.get_evm_mut()?;
         evm.cfg = self.cfg_env;
         evm.block = self.pending_block_env;
@@ -228,7 +245,18 @@ impl ChainSnapshot {
         chain.deployed_libraries = self.deployed_libraries;
         chain.fqn_overrides = self.fqn_overrides;
         chain.latest_block_env = self.latest_block_env;
-        chain.pending_txs = self.pending_txs;
+        let mut replaced = Vec::with_capacity(self.pending_txs.len());
+        chain.pending_txs = self
+            .pending_txs
+            .into_iter()
+            .map(|(tx, block_env)| {
+                replaced.push(std::mem::replace(
+                    &mut tx.borrow_mut(py).block,
+                    BlockInfo::Pending(block_env),
+                ));
+                tx
+            })
+            .collect();
         chain.pending_gas_used = self.pending_gas_used;
         chain.default_tx_account = self.default_tx_account;
         chain.default_call_account = self.default_call_account;
@@ -236,6 +264,6 @@ impl ChainSnapshot {
         chain.default_access_list_account = self.default_access_list_account;
         chain.block_gas_limit = self.block_gas_limit;
         chain.automine = self.automine;
-        Ok(())
+        Ok(replaced)
     }
 }
