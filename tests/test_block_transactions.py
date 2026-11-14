@@ -221,3 +221,21 @@ def test_pending_view_cannot_resolve_transactions_from_a_later_connection():
         with pytest.raises(HistoryPrunedError, match="previous connection"):
             pending.txs
         assert chain.blocks["pending"].txs == [tx]
+
+
+def test_first_tx_after_snapshot_is_discarded_by_the_revert(chain):
+    with chain.change_automine(False):
+        with chain.snapshot_and_revert():
+            discarded = send(chain)
+        # It starts exactly where the revert cuts, so its journal point alone
+        # cannot show that the revert discarded it.
+        with pytest.raises(HistoryPrunedError, match="discarded by a snapshot revert"):
+            discarded.block
+        with pytest.raises(HistoryPrunedError, match="discarded by a snapshot revert"):
+            discarded.cumulative_gas_used
+        kept = send(chain)
+        chain.mine()
+
+    with pytest.raises(HistoryPrunedError, match="discarded by a snapshot revert"):
+        discarded.block
+    assert kept.block.txs == [kept]
