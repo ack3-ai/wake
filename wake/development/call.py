@@ -159,7 +159,8 @@ class Call(Generic[T]):
         raw_return_value = self.raw_return_value
 
         if self._return_value is None:
-            if self._abi is None:
+            if self._abi is None or self._abi["type"] == "constructor":
+                # a deployment returns the runtime code, which has no outputs to decode
                 self._return_value = raw_return_value
             else:
                 self._return_value = self._chain._process_return_data(

@@ -48,3 +48,22 @@ def test_json_rpc_call_fetches_its_raw_value_on_first_access():
     assert call.raw_return_value == RUNTIME
     assert call.return_value == RUNTIME
     assert requests == [({"data": INIT}, 7)]
+
+
+def test_json_rpc_deploy_call_with_a_constructor_returns_runtime_code():
+    def decode(*args):
+        raise AssertionError("a deployment has no outputs to decode")
+
+    call = Call(
+        tx_params={"data": INIT},
+        block=7,
+        chain=SimpleNamespace(_process_return_data=decode),
+        abi={"inputs": [], "stateMutability": "nonpayable", "type": "constructor"},
+        return_type=bytes,
+        raw_return_value=RUNTIME,
+        raw_error=None,
+        estimated_gas=None,
+        access_list=None,
+    )
+
+    assert call.return_value == RUNTIME
