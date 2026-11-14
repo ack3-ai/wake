@@ -76,6 +76,15 @@ def _fetch_tx_receipt(f):
     return wrapper
 
 
+def _decoded_return_type(method) -> Any:
+    """Decoded return type of a pytypes method, from its `TransactionAbc[R, T]` overload.
+
+    Raises `StopIteration` if the method has no transaction overload.
+    """
+    return_types = get_args(get_type_hints(method)["return"])
+    return next(get_args(t)[1] for t in return_types if get_origin(t) is TransactionAbc)
+
+
 class ChainTransactions:
     _chain: Chain
     _transactions: Dict[str, TransactionAbc]
@@ -145,16 +154,8 @@ class ChainTransactions:
                     if hasattr(getattr(obj, m), "selector")
                     and getattr(obj, m).selector == selector
                 )
-                return_types = get_args(get_type_hints(method)["return"])
-                return_type = next(
-                    get_args(t)[0]
-                    for t in return_types
-                    if get_origin(t) is TransactionAbc
-                )
-            except (KeyError, StopIteration, NameError, TypeError):
-                # NameError/TypeError: generated pytypes annotate the overloads with
-                # Call[...], which is neither imported there nor evaluable at runtime,
-                # so get_type_hints() cannot resolve the return annotation
+                return_type = _decoded_return_type(method)
+            except (KeyError, StopIteration):
                 abi = None
                 return_type = bytes
         else:
