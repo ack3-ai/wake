@@ -599,7 +599,7 @@ All contract interaction functions now support an `authorization_list: Optional[
 `Call` describes a single non-transaction request (`call`, `estimate` or `access_list`) together with its result, so a request no longer has to be repeated to inspect it from a different angle. It is exported from both `wake.testing` and `wake.deployment` and offers:
 
 - `chain`, `block`, `data`, `from_`, `to`, `status`
-- `return_value` and `raw_return_value`
+- `return_value` and `raw_return_value`; the raw value is the returned bytes, which for `deploy` is the runtime code (a call deploys nothing, so unlike a transaction it has no new `Account` to return)
 - `error` and `raw_error`
 - `call_trace`
 - `estimated_gas` and `access_list`, regardless of the request type used

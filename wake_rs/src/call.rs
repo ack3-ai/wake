@@ -222,22 +222,14 @@ impl Call {
         }
     }
 
+    /// The bytes the call returned, which for a deployment is the runtime code.
+    /// Unlike a transaction, a call deploys nothing, so there is no account to
+    /// return, and JSON-RPC nodes return the same bytes from `eth_call`.
     #[getter]
     fn raw_return_value<'py>(slf: &Bound<Self>, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let borrowed = slf.borrow();
         if let ExecutionResult::Success { output, .. } = &borrowed.result {
-            match output {
-                Output::Call(data) => Ok(PyBytes::new(py, &data).into_any()),
-                Output::Create(_, address) => Bound::new(
-                    py,
-                    Account::from_address_native(
-                        py,
-                        address.unwrap(),
-                        borrowed.chain.clone_ref(py),
-                    )?,
-                )
-                .map(|a| a.into_any()),
-            }
+            Ok(PyBytes::new(py, output.data()).into_any())
         } else {
             Err(Call::error(slf, py)?.unwrap())
         }
