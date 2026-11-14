@@ -11,7 +11,7 @@ use revm::{
 };
 
 use crate::{
-    abi_old::{alloy_to_py, AbiError}, memory_db::JournalPoint, account::Account, address::Address, blocks::Block, chain::{BlockInfo, Chain}, inspectors::fqn_inspector::{ErrorMetadata, EventMetadata}, pytypes::{
+    abi_old::{alloy_to_py, AbiError}, memory_db::JournalPoint, account::Account, address::Address, blocks::Block, chain::{BlockInfo, Chain, HistoryPrunedError}, inspectors::fqn_inspector::{ErrorMetadata, EventMetadata}, pytypes::{
         collapse_if_tuple, decode_and_normalize, new_unknown_error,
         resolve_error, resolve_event,
     }, utils::get_py_objects
@@ -92,8 +92,23 @@ impl TransactionAbc {
     }
 
     #[getter]
-    fn block(&self, py: Python) -> PyResult<Py<Block>> {
-        self.block.resolve(py, &self.chain, self.journal_index)
+    fn block(slf: &Bound<Self>, py: Python) -> PyResult<Py<Block>> {
+        let borrowed = slf.borrow();
+        if let BlockInfo::Pending(_) = borrowed.block {
+            // `mine` marks every pending tx as mined and a revert puts back only the
+            // txs pending at its snapshot, so a pending tx missing from `pending_txs`
+            // was discarded by a revert. The lineage check in `resolve` misses the
+            // first tx after a snapshot: its journal point is where it started,
+            // which is exactly where the revert cuts.
+            let chain = borrowed.chain.borrow(py);
+            chain.ensure_history(borrowed.journal_index)?;
+            if !chain.pending_txs.iter().any(|tx| tx.bind(py).is(slf)) {
+                return Err(HistoryPrunedError::new_err(
+                    "this transaction was discarded by a snapshot revert",
+                ));
+            }
+        }
+        borrowed.block.resolve(py, &borrowed.chain, borrowed.journal_index)
     }
 
     #[getter]
@@ -130,8 +145,10 @@ impl TransactionAbc {
     }
 
     #[getter]
-    fn cumulative_gas_used(&self, py: Python) -> PyResult<u64> {
-        Ok(self.block(py)?.borrow(py).block_env.gas_limit - self.gas_limit_before + self.result.tx_gas_used())
+    fn cumulative_gas_used(slf: &Bound<Self>, py: Python) -> PyResult<u64> {
+        let block = Self::block(slf, py)?;
+        let borrowed = slf.borrow();
+        Ok(block.borrow(py).block_env.gas_limit - borrowed.gas_limit_before + borrowed.result.tx_gas_used())
     }
 
     #[getter]
