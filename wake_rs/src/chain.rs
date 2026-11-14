@@ -1200,10 +1200,16 @@ impl Chain {
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Not connected"))
     }
 
+    /// Whether `point` was recorded during the current connection. A disconnect
+    /// retires every point recorded before it, including while disconnected.
+    pub(crate) fn is_current_connection(&self, point: JournalPoint) -> bool {
+        point.epoch >= self.journal_epoch_floor
+    }
+
     /// A disconnect permanently retires the connection's history. Check this
     /// before following a stored point into any live chain state.
     pub(crate) fn ensure_history(&self, point: JournalPoint) -> PyResult<()> {
-        if point.epoch < self.journal_epoch_floor {
+        if !self.is_current_connection(point) {
             return Err(HistoryPrunedError::new_err(
                 "history was discarded on disconnect; this object belongs to a previous connection",
             ));

@@ -249,7 +249,7 @@ impl TransactionAbc {
 
                 let mut events = Vec::with_capacity(logs.len());
                 for log in logs {
-                    events.push(resolve_event(py, log, &self.chain, self.events_metadata.get(log), py_objects)?);
+                    events.push(resolve_event(py, log, &self.chain, self.journal_index, self.events_metadata.get(log), py_objects)?);
                 }
                 events
             }
@@ -318,6 +318,7 @@ impl TransactionAbc {
                     &borrowed.chain,
                     Some(slf),
                     None,
+                    borrowed.journal_index,
                     &borrowed.errors_metadata,
                     get_py_objects(py),
                 )?
