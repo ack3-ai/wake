@@ -5,7 +5,7 @@ npm install
 
 Run
 ```bash
-wake up
+wake up pytypes
 ```
 to generate pytypes or
 ```bash
