@@ -263,6 +263,9 @@ pub enum BlockInfo {
 #[pyclass]
 pub struct Chain {
     rng: Xoshiro256PlusPlus,
+    /// First valid journal epoch for this connection, or the next connection
+    /// while disconnected. Never reset when the execution database is replaced.
+    journal_epoch_floor: u64,
     pub(crate) evm: Option<EvmCell>,
     pub(crate) provider: Option<ProviderWrapper>,
     pub labels: Arc<HashMap<RevmAddress, String>>,
@@ -339,6 +342,7 @@ impl Chain {
                         .extract()?,
                 ),
                 evm: None,
+                journal_epoch_floor: 0,
                 provider: None,
                 deployed_libraries: Arc::new(HashMap::new()),
                 blocks: None,
@@ -897,12 +901,13 @@ impl Chain {
 
                 slf_.provider = Some(ProviderWrapper(provider.root().clone()));
 
-                let mut db = CacheDB::new(
+                let mut db = CacheDB::new_with_epoch(
                     WrapDatabaseAsync::with_handle(
                         AlloyDB::new(provider, forked_block.header.number.into()),
                         runtime.handle().clone(),
                     ),
                     forked_block.header.number,
+                    slf_.journal_epoch_floor,
                 );
 
                 let path = format!(
@@ -936,7 +941,7 @@ impl Chain {
                 slf_.forked_block = Some(forked_block.header.number);
             }
             None => {
-                let db = CacheDB::new(EmptyDB::new(), 0);
+                let db = CacheDB::new_with_epoch(EmptyDB::new(), 0, slf_.journal_epoch_floor);
 
                 let mut evm: CustomEvm = Evm::new(
                     Context::new(DB::EmptyDB(db), spec),
@@ -990,6 +995,17 @@ impl Chain {
 
     fn _disconnect(slf: Bound<Self>, py: Python) -> PyResult<()> {
         let mut borrowed = slf.borrow_mut();
+        if !borrowed.connected {
+            return Ok(());
+        }
+
+        // Retire every point created by this connection, including points from
+        // earlier snapshot lineages. A reconnect starts at this epoch instead
+        // of making old offsets valid again in a fresh epoch-zero database.
+        if let Some(evm) = &borrowed.evm {
+            borrowed.journal_epoch_floor = evm.db().journal_point().epoch.checked_add(1)
+                .ok_or_else(|| PyRuntimeError::new_err("journal epoch exhausted"))?;
+        }
         borrowed.connected = false;
 
         if let Some(block_number) = borrowed.forked_block {
@@ -1109,6 +1125,17 @@ impl Chain {
         self.evm
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Not connected"))
+    }
+
+    /// A disconnect permanently retires the connection's history. Check this
+    /// before following a stored point into any live chain state.
+    pub(crate) fn ensure_history(&self, point: JournalPoint) -> PyResult<()> {
+        if point.epoch < self.journal_epoch_floor {
+            return Err(HistoryPrunedError::new_err(
+                "history was discarded on disconnect; this object belongs to a previous connection",
+            ));
+        }
+        Ok(())
     }
 
     pub(crate) fn get_evm_mut(&mut self) -> PyResult<&mut EvmCell> {
@@ -1881,6 +1908,7 @@ impl Chain {
     where
         I: Send + InspectorExt<CustomContext>,
     {
+        self.ensure_history(journal_index)?;
         let execution_block: u64 = block_env
             .number
             .try_into()

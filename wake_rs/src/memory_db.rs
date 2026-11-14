@@ -22,7 +22,9 @@ use uuid::Uuid;
 /// a suffix of the journal and the replacement branch reuses those offsets, so a
 /// stale offset stops being out of range as soon as the new branch grows past it
 /// and silently starts resolving against different state — the same offset, a
-/// different history. `epoch` is what distinguishes the two.
+/// different history. `epoch` is what distinguishes the two. A reused chain
+/// starts each connection after the previous connection's last epoch, so points
+/// from disconnected history remain retired even when journal offsets repeat.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct JournalPoint {
     pub index: usize,
@@ -90,7 +92,7 @@ impl fmt::Display for JournalOutOfRange {
             } => write!(
                 f,
                 "lineage {epoch} was retired (lineages before {retired_before} have been \
-                 compacted away), so how much of its history the present still shares is no \
+                 discarded), so how much of its history the present still shares is no \
                  longer known. Metadata is still available, but it can no longer be re-executed."
             ),
             Self::Diverged {
@@ -182,8 +184,8 @@ pub struct CacheDB<ExtDB> {
     /// the next one, so the entries are strictly increasing and a new cut pops every
     /// trailing entry it undercuts.
     journal_cuts: Vec<(u64, usize, u64)>,
-    /// Lineages below this have had their cut records compacted away, so nothing
-    /// from them can be replayed. Retiring rather than merely deleting matters
+    /// Lineages below this belong to an earlier connection or have had their cut
+    /// records compacted away, so nothing from them can be replayed. Retiring matters
     /// because a later revert can lower `journal_base` again, which would
     /// otherwise resurrect points whose divergence point is no longer recorded.
     retired_epoch_before: u64,
@@ -191,6 +193,11 @@ pub struct CacheDB<ExtDB> {
 
 impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
     pub fn new(db: ExtDB, last_block_number: u64) -> Self {
+        Self::new_with_epoch(db, last_block_number, 0)
+    }
+
+    /// Start a fresh history, retiring every epoch from earlier connections.
+    pub fn new_with_epoch(db: ExtDB, last_block_number: u64, epoch: u64) -> Self {
         let mut contracts = HashMap::new();
         contracts.insert(KECCAK_EMPTY, Bytecode::default());
         contracts.insert(B256::ZERO, Bytecode::default());
@@ -204,9 +211,9 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
             journal: VecDeque::new(),
             journal_base: 0,
             snapshot_journal_indexes: vec![],
-            journal_epoch: 0,
+            journal_epoch: epoch,
             journal_cuts: vec![],
-            retired_epoch_before: 0,
+            retired_epoch_before: epoch,
         }
     }
 
@@ -1252,6 +1259,23 @@ mod tests {
 
     fn new_db() -> CacheDB<EmptyDB> {
         CacheDB::new(EmptyDB::default(), 0)
+    }
+
+    #[test]
+    fn new_connection_retires_points_from_every_previous_lineage() {
+        let mut previous = new_db();
+        let first = previous.journal_point();
+        let snapshot = previous.snapshot();
+        previous.revert_snapshot(snapshot).unwrap();
+        let after_revert = previous.journal_point();
+        let epoch = after_revert.epoch + 1;
+        let mut current = CacheDB::new_with_epoch(EmptyDB::default(), 0, epoch);
+
+        // Offsets and block numbers can coincide; retired epochs must still fail.
+        for point in [first, after_revert] {
+            assert!(matches!(current.rollback(point), Err(JournalOutOfRange::Retired { .. })));
+        }
+        assert!(current.rollback(current.journal_point()).is_ok());
     }
 
     impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
