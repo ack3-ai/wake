@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+
+from wake.development.call import Call
 from wake_rs import Chain
 
 RUNTIME = bytes.fromhex("602a60005260206000f3")  # MSTORE(0, 42), RETURN(0, 32)
@@ -18,3 +21,30 @@ def test_deploy_call_returns_runtime_code_on_revm():
         # A transaction does deploy, so its raw value stays the new account.
         tx = chain.deploy(INIT, return_tx=True)
         assert tx.raw_return_value.code == RUNTIME
+
+
+def test_json_rpc_call_fetches_its_raw_value_on_first_access():
+    requests = []
+
+    def eth_call(params, block):
+        requests.append((params, block))
+        return RUNTIME
+
+    # An estimate request produces no call output, like the JSON-RPC engines'
+    # `Chain._estimate`, which builds its `Call` with `raw_return_value=None`.
+    call = Call(
+        tx_params={"data": INIT},
+        block=7,
+        chain=SimpleNamespace(chain_interface=SimpleNamespace(call=eth_call)),
+        abi=None,
+        return_type=bytes,
+        raw_return_value=None,
+        raw_error=None,
+        estimated_gas=21000,
+        access_list=None,
+    )
+
+    assert call.estimated_gas == 21000
+    assert call.raw_return_value == RUNTIME
+    assert call.return_value == RUNTIME
+    assert requests == [({"data": INIT}, 7)]
