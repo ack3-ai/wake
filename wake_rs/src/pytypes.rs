@@ -37,6 +37,19 @@ pub(crate) fn decode_and_normalize(
     normalize_output(py, &decoded, pytype, chain.as_any(), py_objects)
 }
 
+/// Whether `address` runs code fetched from the fork. That is only known while
+/// connected: the state is discarded on disconnect, so an external error or event
+/// first decoded afterwards resolves as unknown instead of failing.
+fn is_forked_contract(chain: &Chain, address: &revm::primitives::Address) -> PyResult<bool> {
+    match chain.evm.as_ref() {
+        Some(evm) => evm
+            .db()
+            .is_contract_forked(address)
+            .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string())),
+        None => Ok(false),
+    }
+}
+
 fn external_or_unknown_error(
     py: Python,
     data: &[u8],
@@ -47,12 +60,7 @@ fn external_or_unknown_error(
     py_objects: &mut PyObjects,
 ) -> PyResult<Py<PyAny>> {
     let chain = chain.bind(py).borrow();
-    if chain
-        .get_evm()?
-        .db()
-        .is_contract_forked(&metadata.bytecode_address)
-        .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?
-    {
+    if is_forked_contract(&chain, &metadata.bytecode_address)? {
         let name_abi = py_objects.wake_get_name_abi.bind(py).call1((
             metadata.bytecode_address.to_string(),
             chain.forked_chain_id.unwrap(),
@@ -313,12 +321,7 @@ pub(crate) fn external_or_unknown_event(
     py_objects: &mut PyObjects,
 ) -> PyResult<Py<PyAny>> {
     let borrowed_chain = chain.bind(py).borrow();
-    if borrowed_chain
-        .get_evm()?
-        .db()
-        .is_contract_forked(&metadata.bytecode_address)
-        .map_err(|e| PyErr::new::<PyRuntimeError, _>(e.to_string()))?
-    {
+    if is_forked_contract(&borrowed_chain, &metadata.bytecode_address)? {
         let name_abi = py_objects
             .wake_get_name_abi
             .bind(py)

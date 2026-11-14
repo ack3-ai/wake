@@ -484,13 +484,15 @@ impl Chain {
     }
 
     #[getter]
-    fn get_blocks(&self, py: Python) -> Py<Blocks> {
-        self.blocks.as_ref().unwrap().clone_ref(py)
+    fn get_blocks(&self, py: Python) -> PyResult<Py<Blocks>> {
+        self.blocks.as_ref().map(|blocks| blocks.clone_ref(py))
+            .ok_or_else(|| PyRuntimeError::new_err("Not connected"))
     }
 
     #[getter]
-    fn get_txs(&self, py: Python) -> Py<Txs> {
-        self.txs.as_ref().unwrap().clone_ref(py)
+    fn get_txs(&self, py: Python) -> PyResult<Py<Txs>> {
+        self.txs.as_ref().map(|txs| txs.clone_ref(py))
+            .ok_or_else(|| PyRuntimeError::new_err("Not connected"))
     }
 
     #[getter]
@@ -735,18 +737,25 @@ impl Chain {
         py: Python,
         timestamp_change: Option<Bound<PyAny>>,
     ) -> PyResult<()> {
+        // Errors propagate rather than being discarded: after a disconnect the
+        // history is gone, and pruning it below would panic on the missing window.
         if let Some(timestamp_change) = timestamp_change {
-            let latest_timestamp = slf.borrow().latest_block_env.as_ref().unwrap().timestamp;
+            let latest_timestamp = slf
+                .borrow()
+                .latest_block_env
+                .as_ref()
+                .ok_or_else(|| PyRuntimeError::new_err("Not connected"))?
+                .timestamp;
             let new_timestamp = timestamp_change
                 .call1::<(u64,)>((latest_timestamp.try_into().unwrap(),))?
                 .extract::<u64>()?;
             let mut borrowed = slf.borrow_mut();
             let evm = borrowed.get_evm_mut()?;
             evm.block.timestamp = new_timestamp.try_into().unwrap();
-            let _ = borrowed.mine(py, true);
+            borrowed.mine(py, true)?;
             drop(borrowed);
         } else {
-            let _ = slf.borrow_mut().mine(py, true);
+            slf.borrow_mut().mine(py, true)?;
         }
 
         // Bare `chain.mine()` loops produce blocks with no transactions, so the
@@ -1030,12 +1039,35 @@ impl Chain {
             }
         }
 
+        // Clear the shared containers too: callers may still own chain.txs or
+        // chain.blocks. Keep their contents alive until the mutable borrow is
+        // released, because dropping Python objects can re-enter the chain.
+        //
+        // Only execution state and history go. Accounts, labels, default accounts
+        // and pytype overrides stay until `_connect` resets them: failure reports
+        // are rendered after the test's connection closes, and lazily decoded
+        // events and errors still resolve through the overrides.
+        let txs = borrowed.txs.take();
+        let discarded_txs = txs.as_ref().map(|txs| txs.borrow_mut(py).drain_all());
+        let blocks = borrowed.blocks.take();
+        let discarded_blocks = blocks.as_ref().map(|blocks| blocks.borrow_mut(py).retire());
+        let discarded_state = (
+            borrowed.evm.take(),
+            borrowed.provider.take(),
+            mem::take(&mut borrowed.snapshots),
+            mem::take(&mut borrowed.pending_txs),
+        );
+        borrowed.pending_gas_used = 0;
+        borrowed.latest_block_env = None;
+        drop(borrowed);
+
         let py_objects = get_py_objects(py);
         let connected_chains = py_objects.wake_connected_chains.bind(py);
 
         let index = connected_chains.index(slf.into_pyobject(py)?)?;
         connected_chains.del_item(index)?;
 
+        drop((discarded_txs, discarded_blocks, discarded_state, txs, blocks));
         Ok(())
     }
 
@@ -1263,8 +1295,16 @@ impl Chain {
                 return Ok(());
             };
 
-            let txs_cell = chain.txs.as_ref().expect("Not connected").clone_ref(py);
-            let blocks_cell = chain.blocks.as_ref().expect("Not connected").clone_ref(py);
+            let txs_cell = chain
+                .txs
+                .as_ref()
+                .ok_or_else(|| PyRuntimeError::new_err("Not connected"))?
+                .clone_ref(py);
+            let blocks_cell = chain
+                .blocks
+                .as_ref()
+                .ok_or_else(|| PyRuntimeError::new_err("Not connected"))?
+                .clone_ref(py);
             let mut txs = txs_cell.borrow_mut(py);
             let mut blocks = blocks_cell.borrow_mut(py);
 
