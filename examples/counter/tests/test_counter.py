@@ -59,20 +59,19 @@ def test_counter():
         # for each transaction, gas_limit can be specified with "max" as the default value
         # "max" uses chain.block_gas_limit as the gas limit
         # "auto" uses the estimated gas limit returned by a JSON-RPC node (not available on revm)
-        # it is also possible to specify a custom gas limit in wei
+        # it is also possible to specify a custom gas limit
 
-        # applies to Hardhat only:
-        #   gas_limit="auto" is needed in this case, otherwise tx1 would consume whole block gas limit
+        # a JSON-RPC node adds a transaction to a block only if its gas limit fits in
+        # the gas the block has left, so with "max" tx2 would be mined in the next block
 
         # confirmations=0 returns immediately instead of waiting for the transaction to be mined
-        tx1 = c.increment(confirmations=0)
-        tx2 = c.decrement(confirmations=0)
+        tx1 = c.increment(gas_limit=100_000, confirmations=0)
+        tx2 = c.decrement(gas_limit=100_000, confirmations=0)
 
     # hardhat does not mine blocks automatically after automine re-enables
     chain.mine()
 
-    # on revm transactions execute synchronously, on a JSON-RPC node accessing
-    # tx.status performs an implicit tx.wait()
+    # both transactions are mined now, so their status is final
     assert tx1.status == tx2.status == 1
     assert tx1.block == tx2.block
     assert len(tx1.block.txs) == 2
