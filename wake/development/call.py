@@ -156,25 +156,29 @@ class Call(Generic[T]):
 
     @property
     def return_value(self) -> T:
-        if self.error is not None:
-            raise self.error
-        assert self._raw_return_value is not None
+        raw_return_value = self.raw_return_value
 
         if self._return_value is None:
             if self._abi is None:
-                self._return_value = self._raw_return_value
+                self._return_value = raw_return_value
             else:
                 self._return_value = self._chain._process_return_data(
-                    self._raw_return_value, self._abi, self._return_type
+                    raw_return_value, self._abi, self._return_type
                 )
 
         return self._return_value
 
     @property
+    @_resolve_pending_block
     def raw_return_value(self) -> bytes:
         if self.error is not None:
             raise self.error
-        assert self._raw_return_value is not None
+        if self._raw_return_value is None:
+            # estimate and access_list requests do not run eth_call
+            self._raw_return_value = self._chain.chain_interface.call(
+                self._tx_params, self._block
+            )
+
         return self._raw_return_value
 
     @property
