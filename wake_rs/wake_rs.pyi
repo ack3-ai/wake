@@ -286,7 +286,7 @@ class Account:
         ] = "pending",
         revert_on_failure: bool = True,
         return_call: Literal[True] = ...,
-    ) -> Call[int]: ...
+    ) -> Call[bytes]: ...
 
     @overload
     def access_list(
@@ -332,7 +332,7 @@ class Account:
         ] = "pending",
         revert_on_failure: bool = True,
         return_call: Literal[True] = ...,
-    ) -> Call[Tuple[Dict[Address, List[int]], int]]: ...
+    ) -> Call[bytes]: ...
 
     def transact(
         self,
@@ -382,11 +382,14 @@ class HistoryPrunedError(Exception):
     retained window (``chain.txs[0]``, ``chain.blocks[0]``); when re-executing a
     transaction or historical call whose journal entries or block context were
     pruned, or whose branch was discarded by a snapshot revert; when reading
-    ``Block.txs`` of a pruned or discarded block; and when following the history
+    ``Block.txs`` of a pruned or discarded block; when resolving the pending block
+    of a call or unmined transaction whose history was pruned or discarded,
+    including a transaction discarded by a revert; and when following the history
     of a connection that has since been disconnected.
     Metadata such as ``from_``, ``status``, ``events`` and ``return_value`` never
-    raises; only ``call_trace``, ``console_logs``, ``access_list``, ``Block.txs``
-    and block-pinned calls need history.
+    raises; only ``call_trace``, ``console_logs``, ``access_list``, ``Block.txs``,
+    block-pinned calls, and the ``block`` of a call made in a pending block or of
+    a transaction not yet mined (and so its ``cumulative_gas_used``) need history.
     """
 
 
