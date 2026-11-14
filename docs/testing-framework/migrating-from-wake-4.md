@@ -410,7 +410,7 @@ Account("0xdAC17F958D2ee523a2206206994597C13D831ec7").pytypes_resolver = IUSDT
 
 #### Newly reserved pytypes names
 
-`Struct` and `FunctionPointer` (anywhere), `_fqn` (contract members) and `authorization_list` (function parameters) are now reserved in generated pytypes. A Solidity declaration whose name collides with a reserved name gets an underscore appended, so a contract named `Struct` is generated as `Struct_`. `RevertError` replaced `TransactionRevertedError` in the reserved set.
+`Struct`, `FunctionPointer`, `Call` and `SignedAuthorization` (anywhere), `_fqn` (contract members) and `authorization_list` (function parameters) are now reserved in generated pytypes. A Solidity declaration whose name collides with a reserved name gets an underscore appended, so a contract named `Struct` is generated as `Struct_`, and Multicall3's `Call` struct as `Multicall3.Call_`. `RevertError` replaced `TransactionRevertedError` in the reserved set.
 
 ### Types and helpers
 

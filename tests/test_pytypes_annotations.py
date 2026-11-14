@@ -18,12 +18,17 @@ from wake.development.pytypes_generator import TypeGenerator
 SOURCE = """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// Generated in the same module as `Holder`, so unless renamed it would shadow
+// the `Call` that the generated annotations refer to.
+struct Call { address target; bytes callData; }
+
 contract Holder {
     uint256 public stored;
 
     function set(uint256 value) external { stored = value; }
     function get() external view returns (uint256) { return stored; }
     function pair() external pure returns (uint256, bool) { return (1, true); }
+    function target(Call calldata c) external pure returns (address) { return c.target; }
 }
 """
 
@@ -32,8 +37,9 @@ contract Holder {
 CHECK = """
 from typing_extensions import get_args, get_origin, get_overloads, get_type_hints
 
-from pytypes.contracts.Holder import Holder
+from pytypes.contracts.Holder import Call_, Holder
 from wake.development.call import Call
+from wake.development.core import Address
 from wake.development.primitive_types import uint256
 from wake.development.transactions import _decoded_return_type
 
@@ -61,6 +67,7 @@ assert pair == {(tuple, (uint256, bool))}, call_types(Holder.pair)
 assert _decoded_return_type(Holder.set) is type(None)
 assert _decoded_return_type(Holder.get) is uint256
 assert _decoded_return_type(Holder.pair) == tuple[uint256, bool]
+assert _decoded_return_type(Holder.target) is Address
 """
 
 
