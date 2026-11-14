@@ -260,6 +260,45 @@ pub enum BlockInfo {
     Pending(BlockEnv),
 }
 
+impl BlockInfo {
+    /// Resolve a historical block using the origin recorded by its transaction
+    /// or call, rather than assigning it the current connection's identity.
+    pub(crate) fn resolve(
+        &self,
+        py: Python,
+        chain: &Py<Chain>,
+        origin: JournalPoint,
+    ) -> PyResult<Py<Block>> {
+        match self {
+            Self::Mined(block) => Ok(block.clone_ref(py)),
+            Self::Pending(env) => {
+                let chain = chain.borrow(py);
+                chain.ensure_history(origin)?;
+                let evm = chain.get_evm()?;
+                evm.db().check_lineage(origin)
+                    .map_err(|error| HistoryPrunedError::new_err(error.to_string()))?;
+                let block = if env.number == evm.block.number {
+                    BlockEnum::Pending
+                } else {
+                    BlockEnum::Int(env.number.try_into().map_err(|_| {
+                        PyValueError::new_err("block number exceeds the supported range")
+                    })?)
+                };
+                let blocks = chain.blocks.as_ref()
+                    .ok_or_else(|| PyRuntimeError::new_err("Not connected"))?;
+                let result = blocks.borrow_mut(py).get_block(
+                    py,
+                    block,
+                    chain.last_block_number()?,
+                    chain.provider.clone(),
+                    chain.forked_chain_id,
+                );
+                result
+            }
+        }
+    }
+}
+
 #[pyclass]
 pub struct Chain {
     rng: Xoshiro256PlusPlus,

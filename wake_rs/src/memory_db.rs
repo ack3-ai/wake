@@ -252,6 +252,37 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
         Some((index, block))
     }
 
+    fn check_epoch(&self, epoch: u64) -> Result<(), JournalOutOfRange> {
+        if epoch < self.retired_epoch_before {
+            return Err(JournalOutOfRange::Retired {
+                epoch,
+                retired_before: self.retired_epoch_before,
+            });
+        }
+        Ok(())
+    }
+
+    /// Check whether a recorded point still belongs to shared history. Unlike
+    /// rollback, this does not require its journal entries to remain retained.
+    pub fn check_lineage(&self, point: JournalPoint) -> Result<(), JournalOutOfRange> {
+        self.check_epoch(point.epoch)?;
+        if let Some((shared_index, shared_block)) = self.shared_up_to(point.epoch) {
+            // A revert can discard empty blocks without moving the journal,
+            // so both coordinates are needed to identify the preserved prefix.
+            if (point.index, point.block_number) > (shared_index, shared_block) {
+                return Err(JournalOutOfRange::Diverged {
+                    requested: point.index,
+                    requested_block: point.block_number,
+                    epoch: point.epoch,
+                    current_epoch: self.journal_epoch,
+                    shared_up_to: shared_index,
+                    shared_block,
+                });
+            }
+        }
+        Ok(())
+    }
+
     /// Records that a revert truncated to `cut`, ending the current lineage.
     fn cut_lineage(&mut self, cut: usize, cut_block: u64) {
         // Clamp every past lineage to this cut as well: it is the minimum over all
@@ -568,12 +599,7 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
         point: JournalPoint,
     ) -> Result<Vec<JournalEntry>, JournalOutOfRange> {
         let journal_index = point.index;
-        if point.epoch < self.retired_epoch_before {
-            return Err(JournalOutOfRange::Retired {
-                epoch: point.epoch,
-                retired_before: self.retired_epoch_before,
-            });
-        }
+        self.check_epoch(point.epoch)?;
         if journal_index < self.journal_base {
             return Err(JournalOutOfRange::Pruned {
                 requested: journal_index,
@@ -587,29 +613,7 @@ impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
                 tip,
             });
         }
-        // Only a point from an older lineage can predate a revert, so this is skipped
-        // entirely for the current one — every replay in a run that has not reverted,
-        // and most of them in one that has.
-        if let Some((shared_index, shared_block)) = self.shared_up_to(point.epoch) {
-            // At or below the cut, both the journal prefix and every block the replay
-            // can reach are bit-identical, so it stays replayable. Above it, the
-            // offset was reused by the replacement branch.
-            //
-            // The block number is part of the comparison because a revert moves blocks
-            // without moving the journal: the first transaction after a run of empty
-            // blocks carries exactly the snapshot's offset, and only its block places
-            // it after the cut.
-            if (journal_index, point.block_number) > (shared_index, shared_block) {
-                return Err(JournalOutOfRange::Diverged {
-                    requested: journal_index,
-                    requested_block: point.block_number,
-                    epoch: point.epoch,
-                    current_epoch: self.journal_epoch,
-                    shared_up_to: shared_index,
-                    shared_block,
-                });
-            }
-        }
+        self.check_lineage(point)?;
 
         let items_to_remove = tip - journal_index;
         let mut rollback_items = Vec::with_capacity(items_to_remove);
@@ -1276,6 +1280,28 @@ mod tests {
             assert!(matches!(current.rollback(point), Err(JournalOutOfRange::Retired { .. })));
         }
         assert!(current.rollback(current.journal_point()).is_ok());
+    }
+
+    #[test]
+    fn lineage_check_preserves_shared_points_without_requiring_retained_entries() {
+        let mut db = new_db();
+        let address = Address::from([1u8; 20]);
+        db.set_balance(address, U256::from(1)).unwrap();
+        let shared = db.journal_point();
+        let snapshot = db.snapshot();
+        db.set_balance(address, U256::from(2)).unwrap();
+        let discarded = db.journal_point();
+        db.revert_snapshot(snapshot).unwrap();
+
+        assert!(db.check_lineage(shared).is_ok());
+        assert!(matches!(db.check_lineage(discarded), Err(JournalOutOfRange::Diverged { .. })));
+
+        let current = db.journal_point();
+        db.set_balance(address, U256::from(3)).unwrap();
+        db.compact_journal(db.journal_index(), 0);
+        assert!(current.index < db.journal_base);
+        assert!(db.check_lineage(current).is_ok());
+        assert!(matches!(db.rollback(current), Err(JournalOutOfRange::Pruned { .. })));
     }
 
     impl<ExtDB: DatabaseRef> CacheDB<ExtDB> {
