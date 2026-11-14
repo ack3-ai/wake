@@ -37,13 +37,16 @@ def test_disconnect_permanently_retires_uncached_replay(reverts):
             chain.revert(snapshot)
         call = target.call(from_=sender, block="pending", return_call=True)
         tx = target.transact(from_=sender)
+        block = tx.block
 
     def check_retired_history():
         for obj, attribute in (
             (call, "access_list"),
             (call, "call_trace"),
+            (call, "block"),
             (tx, "call_trace"),
             (tx, "console_logs"),
+            (block, "txs"),
         ):
             with pytest.raises(HistoryPrunedError, match="disconnect"):
                 getattr(obj, attribute)
@@ -63,6 +66,36 @@ def test_disconnect_permanently_retires_uncached_replay(reverts):
         check_retired_history()
 
 
+def test_old_pending_objects_cannot_create_views_of_a_new_connection():
+    chain = Chain()
+    with chain.connect(accounts=2), chain.change_automine(False):
+        tx = send(chain)
+        call = chain.accounts[1].call(
+            from_=chain.accounts[0], block="pending", return_call=True
+        )
+        number = tx.block_number
+
+    with chain.connect(accounts=2), chain.change_automine(False):
+        replacement = send(chain)
+        assert replacement.block_number == number
+        for old in (tx, call):
+            with pytest.raises(HistoryPrunedError, match="disconnect"):
+                old.block
+        assert replacement.block.txs == [replacement]
+
+
+def test_pending_call_resolves_its_original_block_after_mining():
+    chain = Chain()
+    with chain.connect(accounts=2):
+        call = chain.accounts[1].call(
+            from_=chain.accounts[0], block="pending", return_call=True
+        )
+        tx = send(chain)
+        chain.mine()
+        assert call.block is tx.block
+        assert call.block.txs == [tx]
+
+
 def test_disconnect_clears_saved_history_containers():
     chain = Chain()
     with chain.connect(accounts=2):
@@ -78,6 +111,7 @@ def test_disconnect_clears_saved_history_containers():
             lookup()
 
     with chain.connect(accounts=2):
+        assert chain.blocks["latest"].txs == []
         assert len(chain.txs) == 0
         for lookup in (lambda: txs[0], lambda: blocks[0], lambda: blocks["pending"]):
             with pytest.raises(HistoryPrunedError):

@@ -378,13 +378,15 @@ class Library(Contract):
 class HistoryPrunedError(Exception):
     """Raised when history that can no longer be reached is accessed.
 
-    Retention is bounded by ``testing.block_history``. Raised on three occasions:
-    reaching past the retained window (``chain.txs[0]``, ``chain.blocks[0]``), and
-    re-executing a transaction or historical call whose journal entries or block
-    context were pruned, or whose branch was discarded by a snapshot revert.
+    Retention is bounded by ``testing.block_history``. Raised when reaching past the
+    retained window (``chain.txs[0]``, ``chain.blocks[0]``); when re-executing a
+    transaction or historical call whose journal entries or block context were
+    pruned, or whose branch was discarded by a snapshot revert; when reading
+    ``Block.txs`` of a pruned or discarded block; and when following the history
+    of a connection that has since been disconnected.
     Metadata such as ``from_``, ``status``, ``events`` and ``return_value`` never
-    raises; only ``call_trace``, ``console_logs``, ``access_list`` and block-pinned
-    calls need to re-execute.
+    raises; only ``call_trace``, ``console_logs``, ``access_list``, ``Block.txs``
+    and block-pinned calls need history.
     """
 
 

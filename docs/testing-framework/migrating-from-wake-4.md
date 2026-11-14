@@ -81,7 +81,7 @@ block_history = null
 
 The option applies to `revm` only. See [configuration](../configuration.md#testing-namespace) for the full description.
 
-Disconnecting discards the connection's history. Transaction and call objects keep their stored results (`status`, `events`, `return_value`, and a `call_trace` read before disconnecting), but re-executing them raises `HistoryPrunedError`. Objects from a previous connection never resolve against a later connection of the same `Chain`. On a fork, events and errors of forked contracts that were not decoded before disconnecting come back as `UnknownEvent` and `UnknownRevertError`.
+Disconnecting discards the connection's history. Transaction and call objects keep their stored results (`status`, `events`, `return_value`, and a `call_trace` read before disconnecting), but re-executing them and reading `block.txs` raise `HistoryPrunedError`. Objects from a previous connection never resolve against a later connection of the same `Chain`. On a fork, events and errors of forked contracts that were not decoded before disconnecting come back as `UnknownEvent` and `UnknownRevertError`.
 
 #### Dropped development chain support
 
@@ -211,11 +211,14 @@ for number in range(chain.blocks.first_number, chain.blocks["latest"].number + 1
 
 #### `Block` attributes removed under `revm`
 
-`revm` builds no block header, so only `chain`, `number`, `timestamp`, `hash` and `gas_used` remain.
+`revm` exposes `chain`, `number`, `timestamp`, `hash`, `gas_used` and `txs` on block objects.
+
+`block.txs` returns locally executed transactions in execution order. It raises `HistoryPrunedError` if the block has been pruned or discarded by a snapshot revert. Pending block views follow their block through mining and remain valid across snapshot reverts that preserve their recorded history.
+
+Transactions of provider-backed pre-fork blocks are not available through this property and raise `NotImplementedError`.
 
 | Wake 4 `Block` attribute | Replacement under `revm`                        |
 |--------------------------|-------------------------------------------------|
-| `txs`                    | filter `chain.txs` on `tx.block_number`         |
 | `gas_limit`              | `chain.block_gas_limit`                         |
 | `miner`                  | `chain.coinbase`                                |
 | `base_fee_per_gas`       | none                                            |

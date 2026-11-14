@@ -98,6 +98,13 @@ impl DB {
         }
     }
 
+    pub(crate) fn check_lineage(&self, point: JournalPoint) -> Result<(), JournalOutOfRange> {
+        match self {
+            DB::EmptyDB(db) => db.check_lineage(point),
+            DB::ForkDB(db) => db.check_lineage(point),
+        }
+    }
+
     pub(crate) fn rollback(
         &mut self,
         point: JournalPoint,

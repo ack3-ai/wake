@@ -8,7 +8,7 @@ use pyo3::types::{PyBytes, PyNone, PyWeakrefMethods, PyWeakrefReference};
 use pyo3::{prelude::*, types::PyDict};
 use revm::context::TxEnv;
 use revm::context::result::{ExecutionResult, Output};
-use revm::primitives::{B256, TxKind};
+use revm::primitives::TxKind;
 
 use crate::account::Account;
 use crate::memory_db::JournalPoint;
@@ -72,29 +72,7 @@ impl Call {
 impl Call {
     #[getter]
     fn block(&self, py: Python) -> PyResult<Py<Block>> {
-        match &self.block {
-            BlockInfo::Mined(block) => Ok(block.clone_ref(py)),
-            BlockInfo::Pending(_) => {
-                // TODO!!!
-                let borrowed_chain = self.chain.borrow(py);
-                let mut block_env = borrowed_chain.get_evm()?.block.clone();
-                let gas_used = borrowed_chain.pending_gas_used;
-
-                // add pending gas used to the block gas limit
-                block_env.gas_limit += gas_used;
-
-                return Py::new(
-                    py,
-                    Block {
-                        chain: self.chain.clone_ref(py),
-                        block_hash: B256::ZERO,
-                        block_env,
-                        journal_index: None,
-                        gas_used,
-                    },
-                );
-            }
-        }
+        self.block.resolve(py, &self.chain, self.journal_index)
     }
 
     #[getter]

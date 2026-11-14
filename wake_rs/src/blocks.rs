@@ -1,11 +1,12 @@
 use std::collections::{HashMap, VecDeque};
 
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use revm::context::BlockEnv;
+use revm::context::{BlockEnv, ContextTr};
 use revm::primitives::B256;
 
-use crate::chain::{Chain, HistoryPrunedError, ProviderWrapper};
+use crate::chain::{BlockInfo, Chain, HistoryPrunedError, ProviderWrapper};
+use crate::tx::TransactionAbc;
 use crate::memory_db::JournalPoint;
 use crate::enums::BlockEnum;
 use crate::globals::TOKIO_RUNTIME;
@@ -184,7 +185,7 @@ impl Blocks {
                         chain: chain.clone_ref(py),
                         block_hash: B256::ZERO,
                         block_env,
-                        journal_index: None,
+                        journal_index: Some(borrowed_chain.get_evm()?.db().journal_point()),
                         gas_used: borrowed_chain.pending_gas_used,
                     },
                 );
@@ -283,8 +284,8 @@ pub struct Block {
     pub chain: Py<Chain>,
     pub block_env: BlockEnv,
     pub block_hash: B256,
-    /// Journal position after this block was created, for replaying calls
-    /// against it. `None` if the block was forked or is the pending block.
+    /// End-of-block state for a mined block, or the recorded origin of a pending
+    /// view. Provider-backed pre-fork blocks have no local journal point.
     pub journal_index: Option<JournalPoint>,
     #[pyo3(get)]
     pub gas_used: u64,
@@ -292,6 +293,64 @@ pub struct Block {
 
 #[pymethods]
 impl Block {
+    /// Transactions in execution order, resolved from the retained local history.
+    /// The returned list owns its references; the block does not cache them.
+    #[getter]
+    fn txs(slf: &Bound<'_, Self>, py: Python<'_>) -> PyResult<Vec<Py<TransactionAbc>>> {
+        let block = slf.borrow();
+        let chain = block.chain.borrow(py);
+        let point = block.journal_index.ok_or_else(|| PyNotImplementedError::new_err(
+            "transactions of provider-backed pre-fork blocks are not available; Block.txs supports locally executed blocks",
+        ))?;
+        chain.ensure_history(point)?;
+        let evm = chain.get_evm()?;
+        let number = block.get_number();
+        let pending = block.block_hash == B256::ZERO;
+
+        if pending {
+            evm.db().check_lineage(point)
+                .map_err(|error| HistoryPrunedError::new_err(error.to_string()))?;
+            if block.block_env.number == evm.block.number {
+                return Ok(chain.pending_txs.iter().map(|tx| tx.clone_ref(py)).collect());
+            }
+        }
+
+        if number > chain.last_block_number()? {
+            return Err(HistoryPrunedError::new_err(format!(
+                "block {number} was discarded by a snapshot revert",
+            )));
+        }
+        let blocks = chain
+            .blocks
+            .as_ref()
+            .ok_or_else(|| PyRuntimeError::new_err("Not connected"))?
+            .borrow(py);
+        let canonical = blocks.lookup_mined(py, number)?;
+        if !pending && !canonical.bind(py).is(slf) {
+            return Err(HistoryPrunedError::new_err(format!(
+                "block {number} was discarded by a snapshot revert; its number now denotes a different block",
+            )));
+        }
+
+        let txs = chain
+            .txs
+            .as_ref()
+            .ok_or_else(|| PyRuntimeError::new_err("Not connected"))?
+            .borrow(py);
+        Ok(txs
+            .iter()
+            .filter_map(|slot| {
+                let tx = slot.tx.borrow(py);
+                match &tx.block {
+                    BlockInfo::Mined(tx_block) if tx_block.bind(py).is(canonical.bind(py)) => {
+                        Some(slot.tx.clone_ref(py))
+                    }
+                    _ => None,
+                }
+            })
+            .collect())
+    }
+
     #[getter]
     fn get_number(&self) -> u64 {
         self.block_env.number.try_into().unwrap()

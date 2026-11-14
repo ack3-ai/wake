@@ -93,28 +93,7 @@ impl TransactionAbc {
 
     #[getter]
     fn block(&self, py: Python) -> PyResult<Py<Block>> {
-        match &self.block {
-            BlockInfo::Mined(block) => Ok(block.clone_ref(py)),
-            BlockInfo::Pending(_) => {
-                let borrowed_chain = self.chain.borrow(py);
-                let mut block_env = borrowed_chain.get_evm()?.block.clone();
-                let gas_used = borrowed_chain.pending_gas_used;
-
-                // add pending gas used to the block gas limit
-                block_env.gas_limit += gas_used;
-
-                return Py::new(
-                    py,
-                    Block {
-                        chain: self.chain.clone_ref(py),
-                        block_hash: B256::ZERO,
-                        block_env,
-                        journal_index: None,
-                        gas_used,
-                    },
-                );
-            }
-        }
+        self.block.resolve(py, &self.chain, self.journal_index)
     }
 
     #[getter]
