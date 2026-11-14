@@ -2273,6 +2273,8 @@ class NameSanitizer:
             "LegacyTransaction",
             "Eip2930Transaction",
             "Eip1559Transaction",
+            "SignedAuthorization",
+            "Call",
             "ValueRange",
             "Length",
             "bytes",
