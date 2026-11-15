@@ -949,9 +949,9 @@ def print_detection(
         title += detection.message
         if detector_id is not None:
             if isinstance(info, DetectorResult) and info.uri is not None:
-                title += f" [link={info.uri}]\[{detector_id}][/link]"  # pyright: ignore reportInvalidStringEscapeSequence
+                title += f" [link={info.uri}]\\[{detector_id}][/link]"
             else:
-                title += f" \[{detector_id}]"  # pyright: ignore reportInvalidStringEscapeSequence
+                title += f" \\[{detector_id}]"
 
         syntax = Syntax(
             source[:-1] if source.endswith("\n") else source,
