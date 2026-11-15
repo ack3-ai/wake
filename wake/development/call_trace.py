@@ -610,33 +610,23 @@ class CallTrace:
 
         if "call_type" in options:
             if self.kind != CallTraceKind.CALL:
-                ret.append_text(
-                    Text.from_markup(
-                        f" [yellow]\[{self.kind}][/yellow]"  # pyright: ignore reportInvalidStringEscapeSequence
-                    )
-                )
+                ret.append_text(Text.from_markup(f" [yellow]\\[{self.kind}][/yellow]"))
 
         if "value" in options and self.value > 0:
             ret.append_text(
                 Text.from_markup(
-                    f" [sea_green2]\[{format_wei(self.value)}][/sea_green2]"  # pyright: ignore reportInvalidStringEscapeSequence
+                    f" [sea_green2]\\[{format_wei(self.value)}][/sea_green2]"
                 )
             )
 
         if "gas" in options:
-            ret.append_text(
-                Text.from_markup(
-                    f" [cyan]\[{self.gas:,} gas][/cyan]"  # pyright: ignore reportInvalidStringEscapeSequence
-                )
-            )
+            ret.append_text(Text.from_markup(f" [cyan]\\[{self.gas:,} gas][/cyan]"))
 
         if "sender" in options:
             sender = self.sender
             if sender is not None:
                 ret.append_text(
-                    Text.from_markup(
-                        f" [blue_violet]\[{sender} sender][/blue_violet]"  # pyright: ignore reportInvalidStringEscapeSequence
-                    )
+                    Text.from_markup(f" [blue_violet]\\[{sender} sender][/blue_violet]")
                 )
 
         if "return_value" in options:
