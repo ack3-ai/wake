@@ -126,6 +126,19 @@ cmd = "anvil"
 
 Unlike the table above, these are gone for `anvil` and `hardhat` too.
 
+#### `tx.events` is a `tuple`
+
+On every engine, `tx.events` is now a `tuple` instead of a `list`, so comparing it with a list is always false and in-place list operations fail:
+
+```python
+# before
+assert tx.events == [Counter.Incremented()]
+tx.events.append(x)
+# after
+assert tx.events == (Counter.Incremented(),)
+events = list(tx.events)
+```
+
 #### Removed `type` kwarg from functions interacting with contracts
 
 Transaction type can no longer be specified through the `type` keyword argument. Instead, the transaction type is derived automatically from the passed arguments.
@@ -172,16 +185,7 @@ Nothing describing the signed transaction envelope survives.
 | `r`, `s`, `v`, `y_parity`  | none                     |
 | `wait()`                   | drop the call, execution is synchronous |
 
-`tx_hash`, `tx_index`, `chain`, `block`, `block_number`, `data`, `from_`, `to`, `gas_used`, `cumulative_gas_used`, `status`, `return_value`, `raw_return_value`, `events`, `raw_events`, `error`, `raw_error`, `console_logs` and `call_trace` are unchanged. The type of `tx.status` was renamed, see [Renamed symbols](#renamed-symbols).
-
-`tx.events` is now a `tuple` instead of a `list`, so in-place list operations on it fail:
-
-```python
-# before
-tx.events.append(x)
-# after
-events = list(tx.events)
-```
+`tx_hash`, `tx_index`, `chain`, `block`, `block_number`, `data`, `from_`, `to`, `gas_used`, `cumulative_gas_used`, `status`, `return_value`, `raw_return_value`, `events`, `raw_events`, `error`, `raw_error`, `console_logs` and `call_trace` are unchanged. The type of `tx.status` was renamed, see [Renamed symbols](#renamed-symbols), and `tx.events` is now a `tuple`, see [`tx.events` is a `tuple`](#txevents-is-a-tuple).
 
 The per-type subclasses are never produced either — every transaction is a bare `TransactionAbc`, and it is not the `TransactionAbc` exported from `wake.testing` (that one is the JSON-RPC implementation). Type checks silently stop matching:
 
