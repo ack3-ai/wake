@@ -490,6 +490,7 @@ def update_gitignore(file: Path) -> None:
         "*.py[cod]",
         ".hypothesis/",
         "wake-coverage.cov",
+        "wake-coverage.cov.*.tmp",
     ]
 
     new_lines = [l for l in new_lines if l not in lines]

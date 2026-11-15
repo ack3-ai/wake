@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import os
 import pathlib
 import re
 import time
@@ -149,7 +150,9 @@ def export_coverage(
     }
 
     path = Path("wake-coverage.cov")
-    tmp_path = path.with_suffix(".cov.tmp")
+    # a per-process name keeps concurrent runs in the same directory from writing
+    # into each other's temporary file
+    tmp_path = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         with tmp_path.open("w") as f:
             json.dump(info, f)
