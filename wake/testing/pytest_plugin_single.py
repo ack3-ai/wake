@@ -315,6 +315,7 @@ class PytestWakePluginSingle:
                         >= self._config.testing.coverage_sync_timeout
                     ):
                         queue.put(handler.get_contract_ide_coverage())
+                        last_coverage_sync = t
 
                 handler.set_callback(coverage_callback)
             else:
