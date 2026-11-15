@@ -48,7 +48,7 @@ from pytypes.contracts.Counter import Counter
 def test_events():
     counter = Counter.deploy()
     tx = counter.increment()
-    assert tx.events == [Counter.Incremented()]
+    assert tx.events == (Counter.Incremented(),)
 ```
 
 Or in `tx_callback`:

@@ -216,7 +216,7 @@ class TransactionAbc(ABC, Generic[R, T]):
     _debug_trace_transaction = Optional[Dict[str, Any]]
     _error: Optional[Union[RevertError, Halt]]
     _raw_error: Optional[UnknownRevertError]
-    _events: Optional[List]
+    _events: Optional[tuple]
 
     def __init__(
         self,
@@ -419,17 +419,17 @@ class TransactionAbc(ABC, Generic[R, T]):
 
     @property
     @_fetch_tx_receipt
-    def events(self) -> list:
+    def events(self) -> tuple:
         if self._events is not None:
             return self._events
 
         assert self._tx_receipt is not None
 
         if len(self._tx_receipt["logs"]) == 0:
-            self._events = []
+            self._events = ()
             return self._events
 
-        self._events = resolve_tx_events(self)
+        self._events = tuple(resolve_tx_events(self))
         return self._events
 
     @property
