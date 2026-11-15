@@ -1,6 +1,6 @@
 use alloy::hex::FromHexError;
 use num_bigint::BigUint;
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyNotImplementedError, PyValueError};
 use pyo3::intern;
 use pyo3::types::PyByteArray;
 use pyo3::{prelude::*, types::PyBytes};
@@ -82,7 +82,7 @@ impl ChainInterface {
                 let journal_index = if let Some(journal_index) = journal_index {
                     journal_index
                 } else {
-                    todo!() // fetch from forked chain wih rpc
+                    return Err(PyNotImplementedError::new_err(())); // TODO: fetch from forked chain wih rpc
                 };
 
                 drop(chain);
@@ -178,7 +178,7 @@ impl ChainInterface {
                 let journal_index = if let Some(journal_index) = journal_index {
                     journal_index
                 } else {
-                    todo!() // fetch from forked chain wih rpc
+                    return Err(PyNotImplementedError::new_err(())); // TODO: fetch from forked chain wih rpc
                 };
 
                 drop(chain);
