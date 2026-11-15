@@ -5,7 +5,7 @@ use alloy::rpc::types::Block as AlloyBlock;
 use alloy::transports::{RpcError, TransportErrorKind};
 use auto_impl::auto_impl;
 use num_bigint::BigUint;
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyValueError};
 use pyo3::types::{PyBytes, PyDict, PyNone, PyString, PyTuple, PyType};
 use send_wrapper::SendWrapper;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -1482,7 +1482,7 @@ impl Chain {
                 let journal_index = if let Some(journal_index) = journal_index {
                     journal_index
                 } else {
-                    todo!() // fetch from forked chain wih rpc
+                    return Err(PyNotImplementedError::new_err(())); // TODO: fetch from forked chain wih rpc
                 };
                 let block_env = block.block_env.clone();
 
@@ -1760,7 +1760,7 @@ impl Chain {
                 let journal_index = if let Some(journal_index) = journal_index {
                     journal_index
                 } else {
-                    todo!() // fetch from forked chain wih rpc
+                    return Err(PyNotImplementedError::new_err(())); // TODO: fetch from forked chain wih rpc
                 };
                 let block_env = block.block_env.clone();
 
@@ -1900,7 +1900,7 @@ impl Chain {
                 let journal_index = if let Some(journal_index) = journal_index {
                     journal_index
                 } else {
-                    todo!() // fetch from forked chain wih rpc
+                    return Err(PyNotImplementedError::new_err(())); // TODO: fetch from forked chain wih rpc
                 };
                 let block_env = block.block_env.clone();
 

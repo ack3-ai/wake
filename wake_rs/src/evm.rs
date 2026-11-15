@@ -7,7 +7,7 @@ use alloy::{
 };
 use num_bigint::BigUint;
 use pyo3::{
-    exceptions::{PyRuntimeError, PyValueError},
+    exceptions::{PyNotImplementedError, PyRuntimeError, PyValueError},
     intern,
     prelude::*,
     types::{PyBytes, PyDict, PyList, PyString}, IntoPyObjectExt,
@@ -48,7 +48,7 @@ pub(crate) fn prepare_tx_env(
     tx_env.gas_limit = match gas_limit {
         Some(GasLimitEnum::Int(v)) => v.try_into().unwrap(),
         Some(GasLimitEnum::Max) | None => min(block_gas_limit, tx_gas_limit_cap),
-        Some(GasLimitEnum::Auto) => todo!(),
+        Some(GasLimitEnum::Auto) => return Err(PyNotImplementedError::new_err(())),
     };
 
     tx_env.gas_price = gas_price.unwrap_or(0);
@@ -57,11 +57,11 @@ pub(crate) fn prepare_tx_env(
     tx_env.data = data.into();
 
     if let Some(_) = max_fee_per_gas {
-        todo!()
+        return Err(PyNotImplementedError::new_err(()));
     }
 
     if let Some(_) = max_priority_fee_per_gas {
-        todo!()
+        return Err(PyNotImplementedError::new_err(()));
     }
 
     tx_env.access_list = match access_list {
@@ -78,7 +78,7 @@ pub(crate) fn prepare_tx_env(
             }
             access_list.into()
         }
-        Some(AccessListEnum::Auto) => todo!(),
+        Some(AccessListEnum::Auto) => return Err(PyNotImplementedError::new_err(())),
         None => AccessList::default(),
     };
 
