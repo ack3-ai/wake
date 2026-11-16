@@ -143,8 +143,7 @@ impl Blocks {
             Some(slot) => Ok(slot.block.clone_ref(py)),
             None => Err(HistoryPrunedError::new_err(format!(
                 "block {number} is no longer retained: blocks {}..{} are available. Raise \
-                 `testing.block_history` in the configuration (or set it to null to disable \
-                 pruning) to keep more.",
+                 `testing.block_history` in the configuration to keep more.",
                 self.blocks_start_index,
                 self.blocks_start_index + self.blocks.len()
             ))),

@@ -2009,7 +2009,7 @@ impl Chain {
             .start_index() as u64;
         if execution_block < oldest_replayable_block {
             return Err(HistoryPrunedError::new_err(format!(
-                "block {execution_block} is no longer retained for replay because its block context was pruned: the retained window starts at block {oldest_replayable_block}. Raise `testing.block_history` in the configuration (or set it to null to disable pruning) to keep more."
+                "block {execution_block} is no longer retained for replay because its block context was pruned: the retained window starts at block {oldest_replayable_block}. Raise `testing.block_history` in the configuration to keep more."
             )));
         }
 
