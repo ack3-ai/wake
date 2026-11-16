@@ -11,15 +11,6 @@ pip3 install eth-wake
 
 `eth-wake` is automatically installed with the [Tools for Solidity](https://marketplace.visualstudio.com/items?itemName=AckeeBlockchain.tools-for-solidity) extension.
 
-## Docker image
-
-Wake is also available as a Docker image:
-
-```shell
-docker pull ackeeblockchain/wake
-docker run -it ackeeblockchain/wake wake --help
-```
-
 ## Shell completions
 
 It is possible to enable shell completions for the `wake` command (does not apply to `wake-solc`).
