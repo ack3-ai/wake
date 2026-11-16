@@ -187,7 +187,7 @@ def write_config(config: WakeConfig) -> None:
         f.write("\n")
 
         f.write("[testing]\n")
-        f.write('cmd = "anvil"\n')
+        f.write(f'cmd = "{config.testing.cmd}"\n')
         f.write("\n")
 
         f.write("[testing.anvil]\n")
