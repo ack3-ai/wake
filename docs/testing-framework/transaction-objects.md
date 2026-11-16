@@ -1,11 +1,11 @@
 # Transaction objects
 
 When sending a transaction, a transaction object is returned. This object can be used to access
-the transaction's properties and wait for it to be mined (if `confirmations=0` set).
-Accessing some of the transaction object's properties also performs an implicit `wait()`.
+the transaction's properties, such as its status, events or return value.
+Transactions are executed immediately, so the object is final as soon as it is returned.
 
 A `tx_callback` can be registered on a `Chain` instance. The callback receives a single argument,
-the transaction object. This can be used to process all transactions in a single place.
+the transaction object, and is called for every transaction. This can be used to process all transactions in a single place.
 
 ```python
 from wake.testing import *
@@ -24,66 +24,36 @@ def test_callback():
     counter.increment()
 ```
 
-!!! warning
-    `tx_callback` is not invoked for transactions with `confirmations=0`!
-
 ## Transaction properties
 
 Every transaction object has the following properties:
 
-| Property                           | Description                                                                                                                                                       | Note                                                                 |
-|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
-| `block`                            | `Block` the transaction was mined in                                                                                                                              | performs implicit `wait()`                                           |
-| `call_trace`                       | `CallTrace` instance representing the call trace of the transaction                                                                                               | performs implicit `wait()`                                           |
-| `chain`                            | `Chain` the transaction was sent to                                                                                                                               |                                                                      |
-| `console_logs`                     | list of `console.log` calls made by the transaction                                                                                                               | performs implicit `wait()`                                           |
-| <nobr>`cumulative_gas_used`</nobr> | gas consumed by this and all previous transactions in the same block                                                                                              | performs implicit `wait()`                                           |
-| `data`                             | data sent in the transaction                                                                                                                                      |                                                                      |
-| `effective_gas_price`              | effective gas price of the transaction                                                                                                                            | performs implicit `wait()`                                           |
-| `error`                            | native (`pytypes`) revert error, `None` if the transaction succeeded                                                                                              | performs implicit `wait()`                                           |
-| `events`                           | list of native (`pytypes`) events emitted by the transaction                                                                                                      | performs implicit `wait()`                                           |
-| `from_`                            | `Account` the transaction was sent from                                                                                                                           |                                                                      |
-| `gas_limit`                        | gas limit specified in the transaction                                                                                                                            |                                                                      |
-| `gas_used`                         | gas used by the transaction                                                                                                                                       | performs implicit `wait()`                                           |
-| `nonce`                            | nonce specified in the transaction                                                                                                                                |                                                                      |
-| `r`                                | `r` part of the ECDSA signature                                                                                                                                   | performs implicit `wait()`                                           |
-| `raw_error`                        | `UnknownRevertError` instance, `None` if the transaction succeeded                                                                                   | performs implicit `wait()`                                           |
-| `raw_events`                       | list of `UnknownEvent` instances emitted by the transaction                                                                                                       | performs implicit `wait()`                                           |
-| `raw_return_value`                 | raw return value of the transaction; `Account` for contract deployment, `bytearray` otherwise                                                                     | performs implicit `wait()`, raises `error` if the transaction failed |
-| `return_value`                     | return value of the transaction                                                                                                                                   | performs implicit `wait()`, raises `error` if the transaction failed |
-| `s`                                | `s` part of the ECDSA signature                                                                                                                                   | performs implicit `wait()`                                           |
-| `status`                           | status of the transaction, `1` for success, `0` for failure, `-1` for pending                                                                                     |                                                                      |
-| `to`                               | `Account` the transaction was sent to                                                                                                                             |                                                                      |
-| `tx_hash`                          | string hash of the transaction                                                                                                                                    |                                                                      |
-| `tx_index`                         | index of the transaction in the block                                                                                                                             | performs implicit `wait()`                                           |
-| `type`                             | type of the transaction, `0` for legacy, `1` for [EIP-2930](https://eips.ethereum.org/EIPS/eip-2930), `2` for [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) |                                                                      |
-| `value`                            | amount of Wei sent in the transaction                                                                                                                             |                                                                      |
+| Property                           | Description                                                                                                  |
+|------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `block`                            | `Block` the transaction was mined in (the pending block while automine is disabled and the block is not mined) |
+| `block_number`                     | number of that block                                                                                         |
+| `call_trace`                       | `CallTrace` instance representing the call trace of the transaction                                         |
+| `chain`                            | `Chain` the transaction was sent to                                                                          |
+| `console_logs`                     | list of `console.log` calls made by the transaction                                                          |
+| <nobr>`cumulative_gas_used`</nobr> | gas consumed by this and all previous transactions in the same block                                         |
+| `data`                             | data sent in the transaction                                                                                 |
+| `error`                            | native (`pytypes`) revert error, `None` if the transaction succeeded                                         |
+| `events`                           | tuple of native (`pytypes`) events emitted by the transaction                                                |
+| `from_`                            | `Account` the transaction was sent from                                                                      |
+| `gas_used`                         | gas used by the transaction                                                                                  |
+| `raw_error`                        | `UnknownRevertError` instance, `None` if the transaction succeeded                                           |
+| `raw_events`                       | list of `UnknownEvent` instances emitted by the transaction                                                  |
+| `raw_return_value`                 | raw return value of the transaction; `Account` for contract deployment, `bytes` otherwise; raises `error` if the transaction failed |
+| `return_value`                     | return value of the transaction; raises `error` if the transaction failed                                    |
+| `status`                           | `ExecutionStatusEnum.SUCCESS` or `ExecutionStatusEnum.FAILURE`                                               |
+| `to`                               | `Account` the transaction was sent to                                                                        |
+| `tx_hash`                          | string hash of the transaction                                                                               |
+| `tx_index`                         | index of the transaction in the block                                                                        |
 
-Legacy transactions (type `0`) have the following additional properties:
+`call_trace` and `console_logs` re-execute the transaction, so they are only available while its block is within the chain history, see [Chain history](./chains-and-blocks.md#chain-history).
+The remaining properties are stored with the object and stay available for as long as it is referenced.
 
-| Property              | Description                            | Note                       |
-|-----------------------|----------------------------------------|----------------------------|
-| `gas_price`           | gas price specified in the transaction |                            |
-| `v`                   | ECDSA signature recovery ID            |                            |
-
-EIP-2930 transactions (type `1`) have the following additional properties:
-
-| Property                   | Description                                                                              | Note |
-|----------------------------|------------------------------------------------------------------------------------------|------|
-| <nobr>`access_list`</nobr> | access list of the transaction (see [EIP-2930](https://eips.ethereum.org/EIPS/eip-2930)) |      |
-| `chain_id`                 | chain ID of the transaction                                                              |      |
-| `gas_price`                | gas price specified in the transaction                                                   |      |
-| `y_parity`                 | `y` parity of the ECDSA signature                                                        |      |
-
-EIP-1559 transactions (type `2`) have the following additional properties:
-
-| Property                                | Description                                                                                                         | Note |
-|-----------------------------------------|---------------------------------------------------------------------------------------------------------------------|------|
-| `access_list`                           | access list of the transaction (see [EIP-2930](https://eips.ethereum.org/EIPS/eip-2930))                            |      |
-| `chain_id`                              | chain ID of the transaction                                                                                         |      |
-| `max_fee_per_gas`                       | maximum fee per gas specified in the transaction (see [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559))          |      |
-| <nobr>`max_priority_fee_per_gas`</nobr> | maximum priority fee per gas specified in the transaction (see [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559)) |      |
-| `y_parity`                              | `y` parity of the ECDSA signature                                                                                   |      |
+Properties of the signed transaction, such as `nonce`, `value`, `gas_limit`, `type` or the signature, are available only on the Anvil and Hardhat engines, see [Anvil and Hardhat](./anvil-and-hardhat.md#transaction-objects).
 
 ## Multiple transactions in a single block
 
@@ -91,10 +61,9 @@ It is possible to send multiple transactions in a way that they are mined in the
 can be achieved in the following steps:
 
 1. Disable `automine` on the `Chain` instance
-2. Send any number of transactions with `confirmations=0` and `gas_limit="auto"`
+2. Send any number of transactions
 3. Re-enable `automine`
 4. Call `.mine()` on the `Chain` instance
-5. Wait for the block to be mined
 
 ```python
 from wake.testing import *
@@ -107,17 +76,18 @@ def test_multiple_txs():
 
     # temporarily disable automine
     with chain.change_automine(False):
-        tx1 = counter.increment(confirmations=0, gas_limit="auto")
-        tx2 = counter.increment(confirmations=0, gas_limit="auto")
-        tx3 = counter.increment(confirmations=0, gas_limit="auto")
+        tx1 = counter.increment()
+        tx2 = counter.increment()
+        tx3 = counter.increment()
 
     chain.mine()
 
     assert tx1.block == tx2.block == tx3.block
 ```
 
+While automine is disabled, each transaction is executed right away in the pending block, so its status, events and return value are available before the block is mined.
+
 !!! tip "Changing `automine`"
     While it is possible to change the `automine` property of a `Chain` instance manually, it is not recommended.
-    In a case when a test connects to an existing chain and an exception is raised before `automine` is re-enabled,
-    the chain will be left in `automine` disabled state. This can be overcome by using the `change_automine` context
-    manager.
+    If an exception is raised before `automine` is re-enabled, the chain is left with `automine` disabled.
+    This can be overcome by using the `change_automine` context manager.

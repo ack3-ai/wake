@@ -94,25 +94,24 @@ gas_estimate = Counter.deploy(request_type="estimate")
 access_list, gas_estimate = Counter.deploy(request_type="access_list")
 ```
 
-!!! warning
-    The `call` request type used to return empty bytes for `deploy` methods in earlier versions of Anvil.
-
 ## Keyword arguments
 
 Both methods generated in `pytypes` and low-level methods accept the following keyword arguments common for all request types:
 
-| Argument                   | Description                                                                                                                                |
-|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| `from_`                    | `Account` or `Address` used as a sender of a transaction/call. If not provided, the default account for the request type will be used.     |
-| `value`                    | Amount of Ether to be sent. Can be either an `int` in Wei or a string with a unit (e.g. `"1 ether"`).                                      |
-| `gas_limit`                | Maximum amount of gas that can be consumed by the transaction.                                                                             |
-| `gas_price`                | Gas price to be used for type 0 and type 1 transactions. Can be either an `int` in Wei or a string with a unit (e.g. `"10 gwei"`).         |
-| `max_fee_per_gas`          | Maximum fee per gas to be used for type 2 transactions. Can be either an `int` in Wei or a string with a unit (e.g. `"10 gwei"`).          |
-| `max_priority_fee_per_gas` | Maximum priority fee per gas to be used for type 2 transactions. Can be either an `int` in Wei or a string with a unit (e.g. `"10 gwei"`). |
-| `access_list`              | Access list to be used for type 1 and type 2 transactions. See [EIP-2930](https://eips.ethereum.org/EIPS/eip-2930) for more information.   |
-| `type`                     | Transaction type to be used. Can be either `0`, `1`, or `2`.                                                                               |
+| Argument                            | Description                                                                                                                                                         |
+|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `from_`                             | `Account` or `Address` used as a sender of a transaction/call. If not provided, the default account for the request type will be used.                              |
+| `value`                             | Amount of Ether to be sent. Can be either an `int` in Wei or a string with a unit (e.g. `"1 ether"`).                                                               |
+| `gas_limit`                         | Maximum amount of gas that can be consumed by the transaction. Either an `int` or `"max"`.                                                                          |
+| `gas_price`                         | Gas price. Can be either an `int` in Wei or a string with a unit (e.g. `"10 gwei"`).                                                                                |
+| `access_list`                       | Access list to be used, a mapping of accounts to lists of storage slots. See [EIP-2930](https://eips.ethereum.org/EIPS/eip-2930) for more information.              |
+| <nobr>`authorization_list`</nobr>   | List of [EIP-7702](https://eips.ethereum.org/EIPS/eip-7702) authorizations signed with [`Account.sign_authorization`](./accounts-and-addresses.md#signing-eip-7702-authorizations). |
 
-Low-level methods also accept the `data` keyword argument (of type `bytes` or `bytearray`) that can be used to specify the data to be sent to a contract.
+`max_fee_per_gas`, `max_priority_fee_per_gas`, `gas_limit="auto"` and `access_list="auto"` are accepted too, but only the Anvil and Hardhat engines implement them; the default engine raises `NotImplementedError`.
+Use an explicit value instead, e.g. a gas limit from an `estimate` request or an access list from an `access_list` request.
+See [Anvil and Hardhat](./anvil-and-hardhat.md#transaction-arguments) for how they behave there.
+
+Low-level methods also accept the `data` keyword argument (of type `bytes`) that can be used to specify the data to be sent to a contract.
 
 !!! tip "Encoding data for low-level calls and transactions"
     To prepare the `data` payload, the `Abi` helper class can be used. It offers the same ABI encoding
@@ -144,15 +143,10 @@ Methods generated in `pytypes` accept the `to` keyword argument (of type `Accoun
 
 ## `tx` request type
 
-The `tx` request type is used to send a transaction. It accepts one more keyword argument, `confirmations`, that can be used to specify the number of blocks that should be mined before a transaction object is returned.
-Setting `confirmations` to `0` returns a transaction object immediately after the transaction is sent.
+The `tx` request type is used to send a transaction. Transactions are executed immediately, so the returned value (or the transaction object with `return_tx=True`) is already final.
+The `confirmations` keyword argument is accepted for compatibility and has no effect on the default engine.
 
-
-!!! warning "Sending transactions from any account"
-    The `from_` argument can be used to send transactions from any account (including contract) or address.
-    However, this may come at a cost of decreased performance (see [Performance considerations](performance-considerations.md)).
-
-    **When sending transactions from an account with code (contract), the contract behaves as if it had no code during the execution of the transaction!**
+The `from_` argument can be used to send transactions from any account or address, including a contract.
 
 ## `call` request type
 
@@ -169,3 +163,43 @@ The default value is `pending` which means that the estimation will be executed 
 The `access_list` request type is used to estimate the access list and the amount of gas needed to execute a transaction when using the returned access list.
 It accepts one more keyword argument, `block`, that can be used to specify the number of the block to be used as a context for the estimation.
 The default value is `pending` which means that the estimation will be executed in the context of the pending block.
+
+!!! info "Requests in older blocks"
+    Chains keep only the newest `testing.block_history` blocks (256 by default), so the `block` argument can only name a block within that window.
+    Naming an older block raises `HistoryPrunedError`, see [Chains and blocks](./chains-and-blocks.md#chain-history).
+
+## Estimating reverting transactions
+
+By default, `estimate` and `access_list` requests raise the revert error when the transaction would revert.
+Setting `revert=False` returns the estimate or the access list anyway (the low-level methods call the same argument `revert_on_failure`).
+
+```python
+# the counter is 0, so decrementing reverts
+gas_estimate = counter.decrement(request_type="estimate", revert=False)
+access_list, gas_estimate = counter.decrement(request_type="access_list", revert=False)
+```
+
+`revert` can be set to `False` only for `estimate` and `access_list` requests, and only on the default engine.
+
+## Inspecting a request with `Call`
+
+`call`, `estimate` and `access_list` requests return a `Call` object instead of the plain result when `return_call=True` is passed.
+A `Call` describes the request together with its result, so it can be inspected from several angles without repeating it:
+
+- `chain`, `block`, `data`, `from_`, `to`, `status`,
+- `return_value` and `raw_return_value`; for `deploy`, the raw value is the runtime code,
+- `error` and `raw_error`,
+- `call_trace`,
+- `estimated_gas` and `access_list`, regardless of the request type used.
+
+Values the request did not already produce are computed on first access.
+
+```python
+call = counter.increment(request_type="call", return_call=True)
+print(call.estimated_gas)
+print(call.access_list)
+print(call.call_trace)
+```
+
+`return_call` cannot be combined with the `tx` request type; use `return_tx=True` to get the transaction object instead.
+Combined with `revert=False`, the `Call` of a reverting request has its `error` set while `estimated_gas` and `access_list` remain available.

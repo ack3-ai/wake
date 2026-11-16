@@ -55,6 +55,7 @@ nav:
                 - Transaction objects: "testing-framework/transaction-objects.md"
                 - Events and errors: "testing-framework/events-and-errors.md"
                 - Helper functions: "testing-framework/helper-functions.md"
+                - Anvil and Hardhat: "testing-framework/anvil-and-hardhat.md"
           - Fuzzing: "testing-framework/fuzzing.md"
           - Cross-chain testing: "testing-framework/cross-chain-testing.md"
           - Deployment: "testing-framework/deployment.md"

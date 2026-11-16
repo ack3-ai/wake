@@ -2,15 +2,8 @@
 
 This guide explains how to run the first test in Wake development and testing framework.
 
-!!! warning "Important"
-    Before getting started, make sure to have the latest version of a development chain installed.
-
-    This is especially important in the case of [Anvil](https://github.com/foundry-rs/foundry/tree/master/crates/anvil), because it is under active development.
-    To install the latest version of Anvil, run the following command:
-
-    ```shell
-    foundryup
-    ```
+Tests run on an EVM built into Wake ([revm](https://github.com/bluealloy/revm)), so there is nothing to install besides Wake.
+A development chain such as Anvil is needed only when switching to it, see [Anvil and Hardhat](./anvil-and-hardhat.md).
 
 !!! tip
     The command `wake up --example counter` can be used to generate an example project in the empty current working directory.
@@ -70,10 +63,14 @@ The test files should start with `test_` or end with `_test.py` to be collected.
     The best way to achieve this is to prepare a fixture that connects to the chain and use it wherever needed.
 
     ```python
-    @fixture
-    def chain():
+    import pytest
+    from wake.testing import *
+
+
+    @pytest.fixture
+    def connected_chain():
         if chain.connected:
-            return chain
+            yield chain
         else:
             with chain.connect():
                 yield chain
@@ -97,24 +94,19 @@ The recommended project structure is as follows:
 ### Connecting to a chain
 
 In single-chain tests, it is recommended to use the `chain` object that is automatically created by Wake.
-The `connect` decorator either launches a new development chain or connects to an existing one, if an argument is specified.
-It is possible to connect using:
-
-- an HTTP connection (e.g. `http://localhost:8545`),
-- a WebSocket connection (e.g. `ws://localhost:8545`),
-- an IPC socket (e.g. `/tmp/anvil.ipc`).
+The `connect` decorator creates a fresh chain for the duration of the test and discards it afterwards.
+It accepts keyword-only arguments to set the number of `accounts`, the `chain_id`, the `hardfork`, and a chain to `fork` from, see [Chains and blocks](./chains-and-blocks.md#connecting-to-a-chain).
 
 ```python
 from wake.testing import *
 
 
-# launch a new development chain
 @chain.connect()
-# or connect to an existing chain
-# @chain.connect("ws://localhost:8545")
 def test_counter():
     print(chain.chain_id)
 ```
+
+Connecting to an already running node requires the Anvil or Hardhat engine, see [Anvil and Hardhat](./anvil-and-hardhat.md).
 
 To run the test, execute the following command:
 
@@ -167,11 +159,11 @@ def test_counter():
     counter.increment(from_=other)
     assert counter.count() == 1
 
-    # setCount can only be called by the owner
+    # setCount can only be called by whitelisted accounts; the deployer is whitelisted
     counter.setCount(10, from_=owner)
     assert counter.count() == 10
 
-    # this will fail because the sender account is not the owner
+    # this will fail because the sender account is not whitelisted
     with must_revert():
         counter.setCount(20, from_=other)
     assert counter.count() == 10

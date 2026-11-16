@@ -68,7 +68,7 @@ Abi.encode_call(Counter.setCount, [0xff])
 
 ### Abi.decode
 
-`Abi.decode` decodes a `bytes` object given a list of types. It returns a list of values:
+`Abi.decode` decodes a `bytes` object given a list of types. It returns a tuple of values:
 
 ```python
 from wake.testing import Abi
@@ -172,10 +172,11 @@ write_storage_variable(usdc_proxy, "balances", 1000, keys=[Address(1)])
 assert read_storage_variable(usdc_proxy, "balances", keys=[Address(1)]) == 1000
 ```
 
-## ERC-20 mint and burn
+## Token mint and burn
 
 `mint_erc20` and `burn_erc20` mint and burn ERC-20 tokens. They detect the `totalSupply` and `balances` variables using heuristics and may not work for all contracts.
 Optionally, `balance_slot` and `total_supply_slot` arguments can be used to specify the storage slot where the balance of the given account and the total supply are stored.
+If the total supply cannot be detected, a warning is printed and only the balance changes.
 
 ```python
 from wake.testing import Account, mint_erc20, burn_erc20
@@ -187,11 +188,19 @@ mint_erc20(usdc_proxy, Account(1), 1000)
 assert usdc_proxy.balanceOf(Account(1)) == 1000
 ```
 
+ERC-721 and ERC-1155 tokens have equivalent helpers:
+
+- `mint_erc721(contract, to, token_id)` and `burn_erc721(contract, from_, token_id)`, optionally with `owner_slot`, `balance_slot` and `owner_mapping_slot`,
+- `mint_erc1155(contract, to, token_id, amount)` and `burn_erc1155(contract, from_, token_id, amount)`, optionally with `balance_slot` (and `total_supply_slot` for minting).
+
+All of them write the token state of the pending block, so they also work while automine is disabled.
+
 ## Decorators
 
 ### on_revert
 
 `on_revert` is a decorator that simplifies handling of revert exceptions. It accepts a callback function that will be called if the decorated function reverts.
+It is not called for a [`Halt`](./events-and-errors.md#halts), which is not a revert error.
 
 ```python
 from wake.testing import *
