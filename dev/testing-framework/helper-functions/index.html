@@ -18,7 +18,7 @@
         <link rel="prev" href="../events-and-errors/">
       
       
-        <link rel="next" href="../fuzzing/">
+        <link rel="next" href="../anvil-and-hardhat/">
       
       
         
@@ -845,6 +845,8 @@
       
         
       
+        
+      
     
     
     
@@ -1294,10 +1296,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#erc-20-mint-and-burn" class="md-nav__link">
+  <a href="#token-mint-and-burn" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ERC-20 mint and burn
+        Token mint and burn
       
     </span>
   </a>
@@ -1336,6 +1338,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -8621,10 +8651,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#erc-20-mint-and-burn" class="md-nav__link">
+  <a href="#token-mint-and-burn" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ERC-20 mint and burn
+        Token mint and burn
       
     </span>
   </a>
@@ -8726,7 +8756,7 @@ The common mistakes are:</p>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">Abi</span><span class="o">.</span><span class="n">encode_call</span><span class="p">(</span><span class="n">Counter</span><span class="o">.</span><span class="n">setCount</span><span class="p">,</span> <span class="p">[</span><span class="mh">0xff</span><span class="p">])</span>
 </code></pre></div>
 <h3 id="abidecode">Abi.decode<a class="headerlink" href="#abidecode" title="Permanent link">#</a></h3>
-<p><code>Abi.decode</code> decodes a <code>bytes</code> object given a list of types. It returns a list of values:</p>
+<p><code>Abi.decode</code> decodes a <code>bytes</code> object given a list of types. It returns a tuple of values:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Abi</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">Abi</span><span class="o">.</span><span class="n">decode</span><span class="p">([</span><span class="s1">'uint8'</span><span class="p">,</span> <span class="s1">'address'</span><span class="p">],</span>
@@ -8800,9 +8830,10 @@ In this case, the variable definition is searched in the provided <code>storage_
 <a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">write_storage_variable</span><span class="p">(</span><span class="n">usdc_proxy</span><span class="p">,</span> <span class="s2">"balances"</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="n">Address</span><span class="p">(</span><span class="mi">1</span><span class="p">)])</span>
 <a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="k">assert</span> <span class="n">read_storage_variable</span><span class="p">(</span><span class="n">usdc_proxy</span><span class="p">,</span> <span class="s2">"balances"</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="n">Address</span><span class="p">(</span><span class="mi">1</span><span class="p">)])</span> <span class="o">==</span> <span class="mi">1000</span>
 </code></pre></div>
-<h2 id="erc-20-mint-and-burn">ERC-20 mint and burn<a class="headerlink" href="#erc-20-mint-and-burn" title="Permanent link">#</a></h2>
+<h2 id="token-mint-and-burn">Token mint and burn<a class="headerlink" href="#token-mint-and-burn" title="Permanent link">#</a></h2>
 <p><code>mint_erc20</code> and <code>burn_erc20</code> mint and burn ERC-20 tokens. They detect the <code>totalSupply</code> and <code>balances</code> variables using heuristics and may not work for all contracts.
-Optionally, <code>balance_slot</code> and <code>total_supply_slot</code> arguments can be used to specify the storage slot where the balance of the given account and the total supply are stored.</p>
+Optionally, <code>balance_slot</code> and <code>total_supply_slot</code> arguments can be used to specify the storage slot where the balance of the given account and the total supply are stored.
+If the total supply cannot be detected, a warning is printed and only the balance changes.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Account</span><span class="p">,</span> <span class="n">mint_erc20</span><span class="p">,</span> <span class="n">burn_erc20</span>
 <a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pytypes.contracts.IERC20</span><span class="w"> </span><span class="kn">import</span> <span class="n">IERC20</span>
 <a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
@@ -8811,9 +8842,16 @@ Optionally, <code>balance_slot</code> and <code>total_supply_slot</code> argumen
 <a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="n">mint_erc20</span><span class="p">(</span><span class="n">usdc_proxy</span><span class="p">,</span> <span class="n">Account</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="mi">1000</span><span class="p">)</span>
 <a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="k">assert</span> <span class="n">usdc_proxy</span><span class="o">.</span><span class="n">balanceOf</span><span class="p">(</span><span class="n">Account</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">==</span> <span class="mi">1000</span>
 </code></pre></div>
+<p>ERC-721 and ERC-1155 tokens have equivalent helpers:</p>
+<ul>
+<li><code>mint_erc721(contract, to, token_id)</code> and <code>burn_erc721(contract, from_, token_id)</code>, optionally with <code>owner_slot</code>, <code>balance_slot</code> and <code>owner_mapping_slot</code>,</li>
+<li><code>mint_erc1155(contract, to, token_id, amount)</code> and <code>burn_erc1155(contract, from_, token_id, amount)</code>, optionally with <code>balance_slot</code> (and <code>total_supply_slot</code> for minting).</li>
+</ul>
+<p>All of them write the token state of the pending block, so they also work while automine is disabled.</p>
 <h2 id="decorators">Decorators<a class="headerlink" href="#decorators" title="Permanent link">#</a></h2>
 <h3 id="on_revert">on_revert<a class="headerlink" href="#on_revert" title="Permanent link">#</a></h3>
-<p><code>on_revert</code> is a decorator that simplifies handling of revert exceptions. It accepts a callback function that will be called if the decorated function reverts.</p>
+<p><code>on_revert</code> is a decorator that simplifies handling of revert exceptions. It accepts a callback function that will be called if the decorated function reverts.
+It is not called for a <a href="../events-and-errors/#halts"><code>Halt</code></a>, which is not a revert error.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
 <a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
 <a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
@@ -8925,8 +8963,6 @@ Optionally, <code>balance_slot</code> and <code>total_supply_slot</code> argumen
         <script src="../../js/mathjax.js"></script>
       
         <script src="../../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       

@@ -845,6 +845,8 @@
       
         
       
+        
+      
     
     
     
@@ -1145,6 +1147,34 @@
     
   
     Helper functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
   
 
     
@@ -8315,10 +8345,10 @@
 
 <h1 id="transaction-objects">Transaction objects<a class="headerlink" href="#transaction-objects" title="Permanent link">#</a></h1>
 <p>When sending a transaction, a transaction object is returned. This object can be used to access
-the transaction's properties and wait for it to be mined (if <code>confirmations=0</code> set).
-Accessing some of the transaction object's properties also performs an implicit <code>wait()</code>.</p>
+the transaction's properties, such as its status, events or return value.
+Transactions are executed immediately, so the object is final as soon as it is returned.</p>
 <p>A <code>tx_callback</code> can be registered on a <code>Chain</code> instance. The callback receives a single argument,
-the transaction object. This can be used to process all transactions in a single place.</p>
+the transaction object, and is called for every transaction. This can be used to process all transactions in a single place.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pytypes.contracts.Counter</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
@@ -8334,10 +8364,6 @@ the transaction object. This can be used to process all transactions in a single
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">counter</span> <span class="o">=</span> <span class="n">Counter</span><span class="o">.</span><span class="n">deploy</span><span class="p">()</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">()</span>
 </code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p><code>tx_callback</code> is not invoked for transactions with <code>confirmations=0</code>!</p>
-</div>
 <h2 id="transaction-properties">Transaction properties<a class="headerlink" href="#transaction-properties" title="Permanent link">#</a></h2>
 <p>Every transaction object has the following properties:</p>
 <table>
@@ -8345,237 +8371,98 @@ the transaction object. This can be used to process all transactions in a single
 <tr>
 <th>Property</th>
 <th>Description</th>
-<th>Note</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>block</code></td>
-<td><code>Block</code> the transaction was mined in</td>
-<td>performs implicit <code>wait()</code></td>
+<td><code>Block</code> the transaction was mined in (the pending block while automine is disabled and the block is not mined)</td>
+</tr>
+<tr>
+<td><code>block_number</code></td>
+<td>number of that block</td>
 </tr>
 <tr>
 <td><code>call_trace</code></td>
 <td><code>CallTrace</code> instance representing the call trace of the transaction</td>
-<td>performs implicit <code>wait()</code></td>
 </tr>
 <tr>
 <td><code>chain</code></td>
 <td><code>Chain</code> the transaction was sent to</td>
-<td></td>
 </tr>
 <tr>
 <td><code>console_logs</code></td>
 <td>list of <code>console.log</code> calls made by the transaction</td>
-<td>performs implicit <code>wait()</code></td>
 </tr>
 <tr>
 <td><nobr><code>cumulative_gas_used</code></nobr></td>
 <td>gas consumed by this and all previous transactions in the same block</td>
-<td>performs implicit <code>wait()</code></td>
 </tr>
 <tr>
 <td><code>data</code></td>
 <td>data sent in the transaction</td>
-<td></td>
-</tr>
-<tr>
-<td><code>effective_gas_price</code></td>
-<td>effective gas price of the transaction</td>
-<td>performs implicit <code>wait()</code></td>
 </tr>
 <tr>
 <td><code>error</code></td>
 <td>native (<code>pytypes</code>) revert error, <code>None</code> if the transaction succeeded</td>
-<td>performs implicit <code>wait()</code></td>
 </tr>
 <tr>
 <td><code>events</code></td>
-<td>list of native (<code>pytypes</code>) events emitted by the transaction</td>
-<td>performs implicit <code>wait()</code></td>
+<td>tuple of native (<code>pytypes</code>) events emitted by the transaction</td>
 </tr>
 <tr>
 <td><code>from_</code></td>
 <td><code>Account</code> the transaction was sent from</td>
-<td></td>
-</tr>
-<tr>
-<td><code>gas_limit</code></td>
-<td>gas limit specified in the transaction</td>
-<td></td>
 </tr>
 <tr>
 <td><code>gas_used</code></td>
 <td>gas used by the transaction</td>
-<td>performs implicit <code>wait()</code></td>
-</tr>
-<tr>
-<td><code>nonce</code></td>
-<td>nonce specified in the transaction</td>
-<td></td>
-</tr>
-<tr>
-<td><code>r</code></td>
-<td><code>r</code> part of the ECDSA signature</td>
-<td>performs implicit <code>wait()</code></td>
 </tr>
 <tr>
 <td><code>raw_error</code></td>
 <td><code>UnknownRevertError</code> instance, <code>None</code> if the transaction succeeded</td>
-<td>performs implicit <code>wait()</code></td>
 </tr>
 <tr>
 <td><code>raw_events</code></td>
 <td>list of <code>UnknownEvent</code> instances emitted by the transaction</td>
-<td>performs implicit <code>wait()</code></td>
 </tr>
 <tr>
 <td><code>raw_return_value</code></td>
-<td>raw return value of the transaction; <code>Account</code> for contract deployment, <code>bytearray</code> otherwise</td>
-<td>performs implicit <code>wait()</code>, raises <code>error</code> if the transaction failed</td>
+<td>raw return value of the transaction; <code>Account</code> for contract deployment, <code>bytes</code> otherwise; raises <code>error</code> if the transaction failed</td>
 </tr>
 <tr>
 <td><code>return_value</code></td>
-<td>return value of the transaction</td>
-<td>performs implicit <code>wait()</code>, raises <code>error</code> if the transaction failed</td>
-</tr>
-<tr>
-<td><code>s</code></td>
-<td><code>s</code> part of the ECDSA signature</td>
-<td>performs implicit <code>wait()</code></td>
+<td>return value of the transaction; raises <code>error</code> if the transaction failed</td>
 </tr>
 <tr>
 <td><code>status</code></td>
-<td>status of the transaction, <code>1</code> for success, <code>0</code> for failure, <code>-1</code> for pending</td>
-<td></td>
+<td><code>ExecutionStatusEnum.SUCCESS</code> or <code>ExecutionStatusEnum.FAILURE</code></td>
 </tr>
 <tr>
 <td><code>to</code></td>
 <td><code>Account</code> the transaction was sent to</td>
-<td></td>
 </tr>
 <tr>
 <td><code>tx_hash</code></td>
 <td>string hash of the transaction</td>
-<td></td>
 </tr>
 <tr>
 <td><code>tx_index</code></td>
 <td>index of the transaction in the block</td>
-<td>performs implicit <code>wait()</code></td>
-</tr>
-<tr>
-<td><code>type</code></td>
-<td>type of the transaction, <code>0</code> for legacy, <code>1</code> for <a href="https://eips.ethereum.org/EIPS/eip-2930">EIP-2930</a>, <code>2</code> for <a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a></td>
-<td></td>
-</tr>
-<tr>
-<td><code>value</code></td>
-<td>amount of Wei sent in the transaction</td>
-<td></td>
 </tr>
 </tbody>
 </table>
-<p>Legacy transactions (type <code>0</code>) have the following additional properties:</p>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Description</th>
-<th>Note</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>gas_price</code></td>
-<td>gas price specified in the transaction</td>
-<td></td>
-</tr>
-<tr>
-<td><code>v</code></td>
-<td>ECDSA signature recovery ID</td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<p>EIP-2930 transactions (type <code>1</code>) have the following additional properties:</p>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Description</th>
-<th>Note</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><nobr><code>access_list</code></nobr></td>
-<td>access list of the transaction (see <a href="https://eips.ethereum.org/EIPS/eip-2930">EIP-2930</a>)</td>
-<td></td>
-</tr>
-<tr>
-<td><code>chain_id</code></td>
-<td>chain ID of the transaction</td>
-<td></td>
-</tr>
-<tr>
-<td><code>gas_price</code></td>
-<td>gas price specified in the transaction</td>
-<td></td>
-</tr>
-<tr>
-<td><code>y_parity</code></td>
-<td><code>y</code> parity of the ECDSA signature</td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<p>EIP-1559 transactions (type <code>2</code>) have the following additional properties:</p>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Description</th>
-<th>Note</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>access_list</code></td>
-<td>access list of the transaction (see <a href="https://eips.ethereum.org/EIPS/eip-2930">EIP-2930</a>)</td>
-<td></td>
-</tr>
-<tr>
-<td><code>chain_id</code></td>
-<td>chain ID of the transaction</td>
-<td></td>
-</tr>
-<tr>
-<td><code>max_fee_per_gas</code></td>
-<td>maximum fee per gas specified in the transaction (see <a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a>)</td>
-<td></td>
-</tr>
-<tr>
-<td><nobr><code>max_priority_fee_per_gas</code></nobr></td>
-<td>maximum priority fee per gas specified in the transaction (see <a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a>)</td>
-<td></td>
-</tr>
-<tr>
-<td><code>y_parity</code></td>
-<td><code>y</code> parity of the ECDSA signature</td>
-<td></td>
-</tr>
-</tbody>
-</table>
+<p><code>call_trace</code> and <code>console_logs</code> re-execute the transaction, so they are only available while its block is within the chain history, see <a href="../chains-and-blocks/#chain-history">Chain history</a>.
+The remaining properties are stored with the object and stay available for as long as it is referenced.</p>
+<p>Properties of the signed transaction, such as <code>nonce</code>, <code>value</code>, <code>gas_limit</code>, <code>type</code> or the signature, are available only on the Anvil and Hardhat engines, see <a href="../anvil-and-hardhat/#transaction-objects">Anvil and Hardhat</a>.</p>
 <h2 id="multiple-transactions-in-a-single-block">Multiple transactions in a single block<a class="headerlink" href="#multiple-transactions-in-a-single-block" title="Permanent link">#</a></h2>
 <p>It is possible to send multiple transactions in a way that they are mined in the same block. This
 can be achieved in the following steps:</p>
 <ol>
 <li>Disable <code>automine</code> on the <code>Chain</code> instance</li>
-<li>Send any number of transactions with <code>confirmations=0</code> and <code>gas_limit="auto"</code></li>
+<li>Send any number of transactions</li>
 <li>Re-enable <code>automine</code></li>
 <li>Call <code>.mine()</code> on the <code>Chain</code> instance</li>
-<li>Wait for the block to be mined</li>
 </ol>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pytypes.contracts.Counter</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
@@ -8587,20 +8474,20 @@ can be achieved in the following steps:</p>
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="c1"># temporarily disable automine</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="k">with</span> <span class="n">chain</span><span class="o">.</span><span class="n">change_automine</span><span class="p">(</span><span class="kc">False</span><span class="p">):</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        <span class="n">tx1</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">confirmations</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">gas_limit</span><span class="o">=</span><span class="s2">"auto"</span><span class="p">)</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        <span class="n">tx2</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">confirmations</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">gas_limit</span><span class="o">=</span><span class="s2">"auto"</span><span class="p">)</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        <span class="n">tx3</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">confirmations</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">gas_limit</span><span class="o">=</span><span class="s2">"auto"</span><span class="p">)</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        <span class="n">tx1</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">()</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        <span class="n">tx2</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">()</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        <span class="n">tx3</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">()</span>
 <a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="n">chain</span><span class="o">.</span><span class="n">mine</span><span class="p">()</span>
 <a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
 <a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    <span class="k">assert</span> <span class="n">tx1</span><span class="o">.</span><span class="n">block</span> <span class="o">==</span> <span class="n">tx2</span><span class="o">.</span><span class="n">block</span> <span class="o">==</span> <span class="n">tx3</span><span class="o">.</span><span class="n">block</span>
 </code></pre></div>
+<p>While automine is disabled, each transaction is executed right away in the pending block, so its status, events and return value are available before the block is mined.</p>
 <div class="admonition tip">
 <p class="admonition-title">Changing <code>automine</code></p>
 <p>While it is possible to change the <code>automine</code> property of a <code>Chain</code> instance manually, it is not recommended.
-In a case when a test connects to an existing chain and an exception is raised before <code>automine</code> is re-enabled,
-the chain will be left in <code>automine</code> disabled state. This can be overcome by using the <code>change_automine</code> context
-manager.</p>
+If an exception is raised before <code>automine</code> is re-enabled, the chain is left with <code>automine</code> disabled.
+This can be overcome by using the <code>change_automine</code> context manager.</p>
 </div>
 
 
@@ -8699,8 +8586,6 @@ manager.</p>
         <script src="../../js/mathjax.js"></script>
       
         <script src="../../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       

@@ -845,6 +845,8 @@
       
         
       
+        
+      
     
     
     
@@ -1053,6 +1055,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#estimating-reverting-transactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Estimating reverting transactions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspecting-a-request-with-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspecting a request with Call
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1189,6 +1213,34 @@
     
   
     Helper functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
   
 
     
@@ -8381,6 +8433,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#estimating-reverting-transactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Estimating reverting transactions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspecting-a-request-with-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspecting a request with Call
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -8483,10 +8557,6 @@ Each request type has its default account used when no <code>from_</code> argume
 <a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="c1"># access list and amount of gas needed to deploy the contract</span>
 <a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="n">access_list</span><span class="p">,</span> <span class="n">gas_estimate</span> <span class="o">=</span> <span class="n">Counter</span><span class="o">.</span><span class="n">deploy</span><span class="p">(</span><span class="n">request_type</span><span class="o">=</span><span class="s2">"access_list"</span><span class="p">)</span>
 </code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>The <code>call</code> request type used to return empty bytes for <code>deploy</code> methods in earlier versions of Anvil.</p>
-</div>
 <h2 id="keyword-arguments">Keyword arguments<a class="headerlink" href="#keyword-arguments" title="Permanent link">#</a></h2>
 <p>Both methods generated in <code>pytypes</code> and low-level methods accept the following keyword arguments common for all request types:</p>
 <table>
@@ -8507,31 +8577,26 @@ Each request type has its default account used when no <code>from_</code> argume
 </tr>
 <tr>
 <td><code>gas_limit</code></td>
-<td>Maximum amount of gas that can be consumed by the transaction.</td>
+<td>Maximum amount of gas that can be consumed by the transaction. Either an <code>int</code> or <code>"max"</code>.</td>
 </tr>
 <tr>
 <td><code>gas_price</code></td>
-<td>Gas price to be used for type 0 and type 1 transactions. Can be either an <code>int</code> in Wei or a string with a unit (e.g. <code>"10 gwei"</code>).</td>
-</tr>
-<tr>
-<td><code>max_fee_per_gas</code></td>
-<td>Maximum fee per gas to be used for type 2 transactions. Can be either an <code>int</code> in Wei or a string with a unit (e.g. <code>"10 gwei"</code>).</td>
-</tr>
-<tr>
-<td><code>max_priority_fee_per_gas</code></td>
-<td>Maximum priority fee per gas to be used for type 2 transactions. Can be either an <code>int</code> in Wei or a string with a unit (e.g. <code>"10 gwei"</code>).</td>
+<td>Gas price. Can be either an <code>int</code> in Wei or a string with a unit (e.g. <code>"10 gwei"</code>).</td>
 </tr>
 <tr>
 <td><code>access_list</code></td>
-<td>Access list to be used for type 1 and type 2 transactions. See <a href="https://eips.ethereum.org/EIPS/eip-2930">EIP-2930</a> for more information.</td>
+<td>Access list to be used, a mapping of accounts to lists of storage slots. See <a href="https://eips.ethereum.org/EIPS/eip-2930">EIP-2930</a> for more information.</td>
 </tr>
 <tr>
-<td><code>type</code></td>
-<td>Transaction type to be used. Can be either <code>0</code>, <code>1</code>, or <code>2</code>.</td>
+<td><nobr><code>authorization_list</code></nobr></td>
+<td>List of <a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a> authorizations signed with <a href="../accounts-and-addresses/#signing-eip-7702-authorizations"><code>Account.sign_authorization</code></a>.</td>
 </tr>
 </tbody>
 </table>
-<p>Low-level methods also accept the <code>data</code> keyword argument (of type <code>bytes</code> or <code>bytearray</code>) that can be used to specify the data to be sent to a contract.</p>
+<p><code>max_fee_per_gas</code>, <code>max_priority_fee_per_gas</code>, <code>gas_limit="auto"</code> and <code>access_list="auto"</code> are accepted too, but only the Anvil and Hardhat engines implement them; the default engine raises <code>NotImplementedError</code>.
+Use an explicit value instead, e.g. a gas limit from an <code>estimate</code> request or an access list from an <code>access_list</code> request.
+See <a href="../anvil-and-hardhat/#transaction-arguments">Anvil and Hardhat</a> for how they behave there.</p>
+<p>Low-level methods also accept the <code>data</code> keyword argument (of type <code>bytes</code>) that can be used to specify the data to be sent to a contract.</p>
 <div class="admonition tip">
 <p class="admonition-title">Encoding data for low-level calls and transactions</p>
 <p>To prepare the <code>data</code> payload, the <code>Abi</code> helper class can be used. It offers the same ABI encoding
@@ -8558,14 +8623,9 @@ functions as the <code>abi</code> global object in Solidity.</p>
 </code></pre></div>
 </div>
 <h2 id="tx-request-type"><code>tx</code> request type<a class="headerlink" href="#tx-request-type" title="Permanent link">#</a></h2>
-<p>The <code>tx</code> request type is used to send a transaction. It accepts one more keyword argument, <code>confirmations</code>, that can be used to specify the number of blocks that should be mined before a transaction object is returned.
-Setting <code>confirmations</code> to <code>0</code> returns a transaction object immediately after the transaction is sent.</p>
-<div class="admonition warning">
-<p class="admonition-title">Sending transactions from any account</p>
-<p>The <code>from_</code> argument can be used to send transactions from any account (including contract) or address.
-However, this may come at a cost of decreased performance (see <a href="../performance-considerations/">Performance considerations</a>).</p>
-<p><strong>When sending transactions from an account with code (contract), the contract behaves as if it had no code during the execution of the transaction!</strong></p>
-</div>
+<p>The <code>tx</code> request type is used to send a transaction. Transactions are executed immediately, so the returned value (or the transaction object with <code>return_tx=True</code>) is already final.
+The <code>confirmations</code> keyword argument is accepted for compatibility and has no effect on the default engine.</p>
+<p>The <code>from_</code> argument can be used to send transactions from any account or address, including a contract.</p>
 <h2 id="call-request-type"><code>call</code> request type<a class="headerlink" href="#call-request-type" title="Permanent link">#</a></h2>
 <p>The <code>call</code> request type is used to execute a call. It accepts one more keyword argument, <code>block</code>, that can be used to specify the number of the block to be used as a context for the call.
 The default value is <code>latest</code> which means that the call will be executed in the context of the latest block.</p>
@@ -8576,6 +8636,37 @@ The default value is <code>pending</code> which means that the estimation will b
 <p>The <code>access_list</code> request type is used to estimate the access list and the amount of gas needed to execute a transaction when using the returned access list.
 It accepts one more keyword argument, <code>block</code>, that can be used to specify the number of the block to be used as a context for the estimation.
 The default value is <code>pending</code> which means that the estimation will be executed in the context of the pending block.</p>
+<div class="admonition info">
+<p class="admonition-title">Requests in older blocks</p>
+<p>Chains keep only the newest <code>testing.block_history</code> blocks (256 by default), so the <code>block</code> argument can only name a block within that window.
+Naming an older block raises <code>HistoryPrunedError</code>, see <a href="../chains-and-blocks/#chain-history">Chains and blocks</a>.</p>
+</div>
+<h2 id="estimating-reverting-transactions">Estimating reverting transactions<a class="headerlink" href="#estimating-reverting-transactions" title="Permanent link">#</a></h2>
+<p>By default, <code>estimate</code> and <code>access_list</code> requests raise the revert error when the transaction would revert.
+Setting <code>revert=False</code> returns the estimate or the access list anyway (the low-level methods call the same argument <code>revert_on_failure</code>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># the counter is 0, so decrementing reverts</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">gas_estimate</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">decrement</span><span class="p">(</span><span class="n">request_type</span><span class="o">=</span><span class="s2">"estimate"</span><span class="p">,</span> <span class="n">revert</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">access_list</span><span class="p">,</span> <span class="n">gas_estimate</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">decrement</span><span class="p">(</span><span class="n">request_type</span><span class="o">=</span><span class="s2">"access_list"</span><span class="p">,</span> <span class="n">revert</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+<p><code>revert</code> can be set to <code>False</code> only for <code>estimate</code> and <code>access_list</code> requests, and only on the default engine.</p>
+<h2 id="inspecting-a-request-with-call">Inspecting a request with <code>Call</code><a class="headerlink" href="#inspecting-a-request-with-call" title="Permanent link">#</a></h2>
+<p><code>call</code>, <code>estimate</code> and <code>access_list</code> requests return a <code>Call</code> object instead of the plain result when <code>return_call=True</code> is passed.
+A <code>Call</code> describes the request together with its result, so it can be inspected from several angles without repeating it:</p>
+<ul>
+<li><code>chain</code>, <code>block</code>, <code>data</code>, <code>from_</code>, <code>to</code>, <code>status</code>,</li>
+<li><code>return_value</code> and <code>raw_return_value</code>; for <code>deploy</code>, the raw value is the runtime code,</li>
+<li><code>error</code> and <code>raw_error</code>,</li>
+<li><code>call_trace</code>,</li>
+<li><code>estimated_gas</code> and <code>access_list</code>, regardless of the request type used.</li>
+</ul>
+<p>Values the request did not already produce are computed on first access.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">call</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">request_type</span><span class="o">=</span><span class="s2">"call"</span><span class="p">,</span> <span class="n">return_call</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">call</span><span class="o">.</span><span class="n">estimated_gas</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">call</span><span class="o">.</span><span class="n">access_list</span><span class="p">)</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">call</span><span class="o">.</span><span class="n">call_trace</span><span class="p">)</span>
+</code></pre></div>
+<p><code>return_call</code> cannot be combined with the <code>tx</code> request type; use <code>return_tx=True</code> to get the transaction object instead.
+Combined with <code>revert=False</code>, the <code>Call</code> of a reverting request has its <code>error</code> set while <code>estimated_gas</code> and <code>access_list</code> remain available.</p>
 
 
 
@@ -8673,8 +8764,6 @@ The default value is <code>pending</code> which means that the estimation will b
         <script src="../../js/mathjax.js"></script>
       
         <script src="../../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       

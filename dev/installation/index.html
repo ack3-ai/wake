@@ -654,28 +654,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#docker-image" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker image
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#github-actions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Github actions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#shell-completions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -945,6 +923,8 @@
       
         
       
+        
+      
     
     
     
@@ -1173,6 +1153,34 @@
     
   
     Helper functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing-framework/anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
   
 
     
@@ -8322,28 +8330,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#docker-image" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker image
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#github-actions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Github actions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#shell-completions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8381,17 +8367,6 @@
 </code></pre></div>
 <h2 id="together-with-vs-code-extension">Together with VS Code extension<a class="headerlink" href="#together-with-vs-code-extension" title="Permanent link">#</a></h2>
 <p><code>eth-wake</code> is automatically installed with the <a href="https://marketplace.visualstudio.com/items?itemName=AckeeBlockchain.tools-for-solidity">Tools for Solidity</a> extension.</p>
-<h2 id="docker-image">Docker image<a class="headerlink" href="#docker-image" title="Permanent link">#</a></h2>
-<p>Wake is also available as a Docker image:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>pull<span class="w"> </span>ackeeblockchain/wake
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>docker<span class="w"> </span>run<span class="w"> </span>-it<span class="w"> </span>ackeeblockchain/wake<span class="w"> </span>wake<span class="w"> </span>--help
-</code></pre></div>
-<h2 id="github-actions">Github actions<a class="headerlink" href="#github-actions" title="Permanent link">#</a></h2>
-<p>Wake comes with 2 Github actions:</p>
-<ul>
-<li><a href="https://github.com/marketplace/actions/wake-setup"><code>Ackee-Blockchain/wake-setup-action</code></a> - sets up a CI pipeline with Wake and <a href="https://github.com/foundry-rs/foundry/tree/master/crates/anvil">Anvil</a> pre-installed</li>
-<li><a href="https://github.com/marketplace/actions/wake-detect"><code>Ackee-Blockchain/wake-detect-action</code></a> - runs detectors with optional SARIF output</li>
-</ul>
 <h2 id="shell-completions">Shell completions<a class="headerlink" href="#shell-completions" title="Permanent link">#</a></h2>
 <p>It is possible to enable shell completions for the <code>wake</code> command (does not apply to <code>wake-solc</code>).
 The instructions depend on the shell you are using.</p>
@@ -8399,17 +8374,17 @@ The instructions depend on the shell you are using.</p>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Add the following to your <code>~/.bashrc</code> file:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">eval</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">_WAKE_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>wake<span class="k">)</span><span class="s2">"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">eval</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">_WAKE_COMPLETE</span><span class="o">=</span>bash_source<span class="w"> </span>wake<span class="k">)</span><span class="s2">"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <p>Add the following to your <code>~/.zshrc</code> file:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">eval</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">_WAKE_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>wake<span class="k">)</span><span class="s2">"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">eval</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">_WAKE_COMPLETE</span><span class="o">=</span>zsh_source<span class="w"> </span>wake<span class="k">)</span><span class="s2">"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <p>Add the following to your <code>~/.config/fish/completions/wake.fish</code> file:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">eval</span> <span class="o">(</span>env <span class="nv">_WAKE_COMPLETE</span><span class="o">=</span>fish_source wake<span class="o">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">eval</span> <span class="o">(</span>env <span class="nv">_WAKE_COMPLETE</span><span class="o">=</span>fish_source wake<span class="o">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -8511,8 +8486,6 @@ The instructions depend on the shell you are using.</p>
         <script src="../js/mathjax.js"></script>
       
         <script src="../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       

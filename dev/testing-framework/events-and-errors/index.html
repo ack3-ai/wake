@@ -845,6 +845,8 @@
       
         
       
+        
+      
     
     
     
@@ -1162,6 +1164,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#halts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Halts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#helper-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1201,6 +1214,34 @@
     
   
     Helper functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
   
 
     
@@ -8390,6 +8431,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#halts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Halts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#helper-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8447,7 +8499,7 @@
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">_abi</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'anonymous'</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">'inputs'</span><span class="p">:</span> <span class="p">[{</span><span class="s1">'indexed'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">'internalType'</span><span class="p">:</span> <span class="s1">'address'</span><span class="p">,</span> <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'from'</span><span class="p">,</span> <span class="s1">'type'</span><span class="p">:</span> <span class="s1">'address'</span><span class="p">},</span> <span class="p">{</span><span class="s1">'indexed'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">'internalType'</span><span class="p">:</span> <span class="s1">'address'</span><span class="p">,</span> <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'to'</span><span class="p">,</span> <span class="s1">'type'</span><span class="p">:</span> <span class="s1">'address'</span><span class="p">},</span> <span class="p">{</span><span class="s1">'indexed'</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">'internalType'</span><span class="p">:</span> <span class="s1">'uint256'</span><span class="p">,</span> <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'value'</span><span class="p">,</span> <span class="s1">'type'</span><span class="p">:</span> <span class="s1">'uint256'</span><span class="p">}],</span> <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'Transfer'</span><span class="p">,</span> <span class="s1">'type'</span><span class="p">:</span> <span class="s1">'event'</span><span class="p">}</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">origin</span><span class="p">:</span> <span class="n">Account</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">compare</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">original_name</span> <span class="o">=</span> <span class="s1">'Transfer'</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">selector</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">'</span><span class="se">\xdd\xf2</span><span class="s1">R</span><span class="se">\xad\x1b\xe2\xc8\x9b</span><span class="s1">i</span><span class="se">\xc2\xb0</span><span class="s1">h</span><span class="se">\xfc</span><span class="s1">7</span><span class="se">\x8d\xaa\x95</span><span class="s1">+</span><span class="se">\xa7\xf1</span><span class="s1">c</span><span class="se">\xc4\xa1\x16</span><span class="s1">(</span><span class="se">\xf5</span><span class="s1">ZM</span><span class="se">\xf5</span><span class="s1">#</span><span class="se">\xb3\xef</span><span class="s1">'</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">selector</span> <span class="o">=</span> <span class="n">bytes32</span><span class="p">(</span><span class="sa">b</span><span class="s1">'</span><span class="se">\xdd\xf2</span><span class="s1">R</span><span class="se">\xad\x1b\xe2\xc8\x9b</span><span class="s1">i</span><span class="se">\xc2\xb0</span><span class="s1">h</span><span class="se">\xfc</span><span class="s1">7</span><span class="se">\x8d\xaa\x95</span><span class="s1">+</span><span class="se">\xa7\xf1</span><span class="s1">c</span><span class="se">\xc4\xa1\x16</span><span class="s1">(</span><span class="se">\xf5</span><span class="s1">ZM</span><span class="se">\xf5</span><span class="s1">#</span><span class="se">\xb3\xef</span><span class="s1">'</span><span class="p">)</span>
 <a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
 <a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="n">from_</span><span class="p">:</span> <span class="n">Address</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">"original_name"</span><span class="p">:</span> <span class="s2">"from"</span><span class="p">})</span>
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="n">to</span><span class="p">:</span> <span class="n">Address</span>
@@ -8463,7 +8515,7 @@
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_events</span><span class="p">():</span>
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">counter</span> <span class="o">=</span> <span class="n">Counter</span><span class="o">.</span><span class="n">deploy</span><span class="p">()</span>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">tx</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">()</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="k">assert</span> <span class="n">tx</span><span class="o">.</span><span class="n">events</span> <span class="o">==</span> <span class="p">[</span><span class="n">Counter</span><span class="o">.</span><span class="n">Incremented</span><span class="p">()]</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="k">assert</span> <span class="n">tx</span><span class="o">.</span><span class="n">events</span> <span class="o">==</span> <span class="p">(</span><span class="n">Counter</span><span class="o">.</span><span class="n">Incremented</span><span class="p">(),)</span>
 </code></pre></div>
 <p>Or in <code>tx_callback</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
@@ -8485,6 +8537,9 @@
 </code></pre></div>
 <p><code>pytypes</code> for unused events are not generated.
 <code>tx.events</code> may also contain <code>UnknownEvent</code> instances for events that cannot be recognized from the contract ABI.</p>
+<p>On forked chains, events of contracts that are not in <code>pytypes</code> are decoded as <code>ExternalEvent</code> instances when the contract's ABI is available on Sourcify or on Etherscan (with an API key set).
+<code>ExternalEvent</code> has the attributes named after the event parameters in the ABI, plus <code>_event_name</code> and <code>_event_full_name</code> (<code>ContractName.EventName</code>).
+To decode the events of an account with a specific contract from <code>pytypes</code> instead, set the account's <a href="../accounts-and-addresses/#resolving-events-and-errors"><code>pytypes_resolver</code></a>.</p>
 <div class="admonition info">
 <p class="admonition-title">How Solidity events are encoded</p>
 <p><code>UnknownEvent</code> instances contain the <code>topics</code> and <code>data</code> fields.
@@ -8502,7 +8557,8 @@ Accessing <code>raw_events</code> can be more efficient than accessing <code>eve
 <p>Solidity user-defined errors are translated into Python dataclasses and inherit from <code>RevertError</code> which inherits from <code>Exception</code>.
 <code>RevertError</code> also has a <code>tx</code> field that contains a transaction object for the transaction that caused the error.
 The <code>tx</code> field is set to <code>None</code> if the reverted request was not a transaction.</p>
-<p><code>pytypes</code> for unused errors are not generated.</p>
+<p><code>pytypes</code> for unused errors are not generated.
+Like events, errors of contracts that are not in <code>pytypes</code> are decoded on forked chains as <code>ExternalError</code> instances (with <code>_error_name</code> and <code>_error_full_name</code>) when the contract's ABI is available; <code>ExternalError</code> derives from <code>RevertError</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>error<span class="w"> </span>NotEnoughFunds<span class="p">(</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="kt">uint256</span><span class="w"> </span><span class="nv">requested</span><span class="p">,</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="kt">uint256</span><span class="w"> </span><span class="nv">available</span>
@@ -8517,15 +8573,14 @@ The <code>tx</code> field is set to <code>None</code> if the reverted request wa
 <a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="sd">    """</span>
 <a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">_abi</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'inputs'</span><span class="p">:</span> <span class="p">[{</span><span class="s1">'internalType'</span><span class="p">:</span> <span class="s1">'uint256'</span><span class="p">,</span> <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'requested'</span><span class="p">,</span> <span class="s1">'type'</span><span class="p">:</span> <span class="s1">'uint256'</span><span class="p">},</span> <span class="p">{</span><span class="s1">'internalType'</span><span class="p">:</span> <span class="s1">'uint256'</span><span class="p">,</span> <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'available'</span><span class="p">,</span> <span class="s1">'type'</span><span class="p">:</span> <span class="s1">'uint256'</span><span class="p">}],</span> <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'NotEnoughFunds'</span><span class="p">,</span> <span class="s1">'type'</span><span class="p">:</span> <span class="s1">'error'</span><span class="p">}</span>
 <a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="n">original_name</span> <span class="o">=</span> <span class="s1">'NotEnoughFunds'</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="n">selector</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">'</span><span class="se">\x8c\x90</span><span class="s1">Sh'</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="n">selector</span> <span class="o">=</span> <span class="n">bytes4</span><span class="p">(</span><span class="sa">b</span><span class="s1">'</span><span class="se">\x8c\x90</span><span class="s1">Sh'</span><span class="p">)</span>
 <a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
 <a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="n">requested</span><span class="p">:</span> <span class="n">uint256</span>
 <a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    <span class="n">available</span><span class="p">:</span> <span class="n">uint256</span>
 </code></pre></div>
 <h3 id="accessing-errors">Accessing errors<a class="headerlink" href="#accessing-errors" title="Permanent link">#</a></h3>
-<p>Revert errors are automatically raised in form of exceptions unless a transaction configured to return immediately with <code>confirmations=0</code>.</p>
-<p>In case of <code>confirmations=0</code>, a revert error can be accessed using the <code>error</code> property of the transaction object. This performs an implicit <code>.wait()</code>.
-If the transaction did not revert, <code>error</code> is <code>None</code>.</p>
+<p>Revert errors are raised as exceptions as soon as the request is executed.
+The transaction object of a reverted transaction is available as <code>e.tx</code>, and its <code>error</code> property holds the same error; for a transaction that did not revert, <code>error</code> is <code>None</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pytypes.contracts.Counter</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
@@ -8588,36 +8643,51 @@ If the transaction did not revert, <code>error</code> is <code>None</code>.</p>
 <a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>    <span class="n">INVALID_INTERNAL_FUNCTION_CALL</span> <span class="o">=</span> <span class="mh">0x51</span>
 <a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>    <span class="s2">"Called invalid internal function"</span>
 </code></pre></div>
+<h3 id="halts">Halts<a class="headerlink" href="#halts" title="Permanent link">#</a></h3>
+<p>When execution stops with an exceptional halt instead of a revert, e.g. on running out of gas or executing an invalid opcode, Wake raises <code>Halt</code>.
+<code>Halt</code> is not a <code>RevertError</code>; it derives directly from <code>Exception</code>. As a result, <code>except RevertError</code>, <code>must_revert()</code> and <code>may_revert()</code> without arguments, and <code>on_revert</code> handlers do not handle it, and the halt fails the test.
+Like a revert error, <code>Halt</code> carries the <code>tx</code> (or <code>call</code>) that caused it and a <code>call_trace</code>. Its <code>message</code> holds the halt reason reported by the execution engine, e.g. <code>InvalidFEOpcode</code> or <code>OutOfGas(Basic)</code> with <code>revm</code>.</p>
+<p>Name <code>Halt</code> explicitly to handle it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1"># only halts</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="k">with</span> <span class="n">must_revert</span><span class="p">(</span><span class="n">Halt</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="o">...</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># a revert or a halt</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="k">with</span> <span class="n">must_revert</span><span class="p">(</span><span class="n">RevertError</span><span class="p">,</span> <span class="n">Halt</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="o">...</span>
+</code></pre></div>
 <h3 id="helper-functions">Helper functions<a class="headerlink" href="#helper-functions" title="Permanent link">#</a></h3>
 <p>Wake offers two helper functions (context managers) to handle errors - <code>must_revert</code> and <code>may_revert</code>. Both functions can accept:</p>
 <ul>
-<li>no arguments - any <code>RevertError</code> is handled,</li>
-<li>a single error type - either <code>Error</code>, <code>Panic</code> or a user-defined type from <code>pytypes</code>,</li>
+<li>no arguments - any <code>RevertError</code> is handled, but not a <a href="#halts"><code>Halt</code></a>,</li>
+<li>a single error type - either <code>Error</code>, <code>Panic</code>, <code>Halt</code> or a user-defined type from <code>pytypes</code>,</li>
 <li>a single error instance - an instance of <code>Error</code>, <code>Panic</code> or a user-defined type from <code>pytypes</code>, e.g. <code>Error("some error")</code> or <code>Panic(PanicCodeEnum.UNDERFLOW_OVERFLOW)</code>,<ul>
 <li>the error raised by the tested contract must exactly match the provided error instance,</li>
 </ul>
 </li>
-<li>a tuple or list of errors - any mix of error types and error instances.</li>
+<li>several errors as separate arguments - any mix of error types and error instances.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1"># handle any Error(str message) or underflow/overflow</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="k">with</span> <span class="n">must_revert</span><span class="p">((</span><span class="n">Error</span><span class="p">,</span> <span class="n">Panic</span><span class="p">(</span><span class="n">PanicCodeEnum</span><span class="o">.</span><span class="n">UNDERFLOW_OVERFLOW</span><span class="p">)))</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="c1"># some code that reverts</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="k">pass</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1"># get the transaction object (if any)</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="n">tx</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">tx</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># handle any Error(str message) or underflow/overflow</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="k">with</span> <span class="n">must_revert</span><span class="p">(</span><span class="n">Error</span><span class="p">,</span> <span class="n">Panic</span><span class="p">(</span><span class="n">PanicCodeEnum</span><span class="o">.</span><span class="n">UNDERFLOW_OVERFLOW</span><span class="p">))</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="c1"># some code that reverts</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="k">pass</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1"># get the transaction object (if any)</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="n">tx</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">tx</span>
 </code></pre></div>
 <p><code>e.value</code> contains the error instance that was raised by the tested contract, or <code>None</code> if no error was raised.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>For ease of use, both context managers also accept <code>str</code> and <code>PanicCodeEnum</code> instances directly, e.g.
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">with</span> <span class="n">must_revert</span><span class="p">(</span><span class="s2">"some error"</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">with</span> <span class="n">must_revert</span><span class="p">(</span><span class="s2">"some error"</span><span class="p">)</span>
 </code></pre></div>
 or
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">with</span> <span class="n">must_revert</span><span class="p">(</span><span class="n">PanicCodeEnum</span><span class="o">.</span><span class="n">UNDERFLOW_OVERFLOW</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">with</span> <span class="n">must_revert</span><span class="p">(</span><span class="n">PanicCodeEnum</span><span class="o">.</span><span class="n">UNDERFLOW_OVERFLOW</span><span class="p">)</span>
 </code></pre></div></p>
 <p>However, <code>e.value</code> will always be an instance of <code>Error</code> or <code>Panic</code> in this case.</p>
 </div>
@@ -8718,8 +8788,6 @@ or
         <script src="../../js/mathjax.js"></script>
       
         <script src="../../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       

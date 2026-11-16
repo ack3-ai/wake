@@ -840,6 +840,8 @@
       
         
       
+        
+      
     
     
     
@@ -1068,6 +1070,34 @@
     
   
     Helper functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../testing-framework/anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
   
 
     
@@ -16539,8 +16569,8 @@ this marks the compiled contract metadata as experimental.</p>
 <a id="__codelineno-0-436" name="__codelineno-0-436"></a><span class="sd">    Target number of blocks each chain keeps. Pruning uses a small hysteresis window,</span>
 <a id="__codelineno-0-437" name="__codelineno-0-437"></a><span class="sd">    temporarily retaining `ceil(target / 8)` extra blocks (at least 1 and at most</span>
 <a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="sd">    32) before draining back to the target. `0` is treated as `1`, so the latest</span>
-<a id="__codelineno-0-439" name="__codelineno-0-439"></a><span class="sd">    block remains resolvable. `null` keeps everything, at the cost of memory linear</span>
-<a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="sd">    in transactions executed.</span>
+<a id="__codelineno-0-439" name="__codelineno-0-439"></a><span class="sd">    block remains resolvable. `None`, which can only be set from Python since TOML has</span>
+<a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="sd">    no null, keeps everything, at the cost of memory linear in transactions executed.</span>
 <a id="__codelineno-0-441" name="__codelineno-0-441"></a>
 <a id="__codelineno-0-442" name="__codelineno-0-442"></a><span class="sd">    Blocks are the unit of retention: a transaction is kept exactly as long as the block</span>
 <a id="__codelineno-0-443" name="__codelineno-0-443"></a><span class="sd">    containing it, and the EVM journal keeps only what those blocks need to re-execute.</span>
@@ -16618,8 +16648,8 @@ this marks the compiled contract metadata as experimental.</p>
         <p>Target number of blocks each chain keeps. Pruning uses a small hysteresis window,
 temporarily retaining <code>ceil(target / 8)</code> extra blocks (at least 1 and at most
 32) before draining back to the target. <code>0</code> is treated as <code>1</code>, so the latest
-block remains resolvable. <code>null</code> keeps everything, at the cost of memory linear
-in transactions executed.</p>
+block remains resolvable. <code>None</code>, which can only be set from Python since TOML has
+no null, keeps everything, at the cost of memory linear in transactions executed.</p>
 <p>Blocks are the unit of retention: a transaction is kept exactly as long as the block
 containing it, and the EVM journal keeps only what those blocks need to re-execute.
 Reaching further back than the window raises <code>HistoryPrunedError</code> - including
@@ -17350,8 +17380,6 @@ blocks are mined. <code>revm</code> only.</p>
         <script src="../../../js/mathjax.js"></script>
       
         <script src="../../../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       

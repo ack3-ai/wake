@@ -838,6 +838,8 @@
       
         
       
+        
+      
     
     
     
@@ -1066,6 +1068,34 @@
     
   
     Helper functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing-framework/anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
   
 
     
@@ -8434,7 +8464,7 @@
 <p>The MCP server can be extended with custom tools contributed by third-party packages, the same way Wake supports custom <a href="../../static-analysis/getting-started/">detectors and printers</a>. A plugin registers one or more tools under the <code>wake.plugins.mcp</code> entry-point group; the server discovers and loads them at startup.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>The built-in <a href="https://github.com/Ackee-Blockchain/wake/tree/main/wake/mcp/tools">tools</a> are a good starting point for writing your own.</p>
+<p>The built-in <a href="https://github.com/ack3-ai/wake/tree/main/wake/mcp/tools">tools</a> are a good starting point for writing your own.</p>
 </div>
 <h2 id="tool-structure">Tool structure<a class="headerlink" href="#tool-structure" title="Permanent link">#</a></h2>
 <p>A tool is a function decorated with <code>@mcp_tool</code>. Its first parameter is a <code>ToolInput</code> (a <a href="https://docs.pydantic.dev/">pydantic</a> model) subclass whose fields become the tool's JSON input schema; the function returns the result as a string.</p>
@@ -8657,8 +8687,6 @@
         <script src="../../js/mathjax.js"></script>
       
         <script src="../../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       

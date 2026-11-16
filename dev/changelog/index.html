@@ -716,6 +716,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#5.0.0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.0.0 (Nov 16, 2026)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4.22.2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.22.2 (Oct 22, 2026)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#4.22.1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1352,6 +1374,8 @@
       
         
       
+        
+      
     
     
     
@@ -1580,6 +1604,34 @@
     
   
     Helper functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing-framework/anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
   
 
     
@@ -8707,6 +8759,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#5.0.0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.0.0 (Nov 16, 2026)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4.22.2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.22.2 (Oct 22, 2026)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#4.22.1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -9195,6 +9269,134 @@ small.label {
 }
 </style>
 
+<h2 id="5.0.0">5.0.0 <small>(Nov 16, 2026)</small><a class="headerlink" href="#5.0.0" title="Permanent link">#</a></h2>
+<p>Wake 5 adds a new testing engine based on <a href="https://github.com/bluealloy/revm">revm</a> and makes it the default. See <a href="../testing-framework/migrating-from-wake-4/">Migrating from Wake 4.x</a> for upgrade instructions.</p>
+<p>Breaking changes:</p>
+<ul>
+<li>the default testing engine (<code>testing.cmd</code>) is now <code>revm</code>, an in-process EVM built into Wake; set <code>cmd = "anvil"</code> or <code>cmd = "hardhat"</code> to keep using a JSON-RPC development chain <small class="label">[testing framework]</small><ul>
+<li>projects initialized by Wake 4's <code>wake up</code> have <code>cmd = "anvil"</code> in wake.toml and keep using Anvil; remove the line (or set <code>cmd = "revm"</code>) to switch</li>
+<li><code>revm</code> exposes no JSON-RPC endpoint, so <code>Chain.connect</code> does not accept a URI of a running node and its arguments are keyword-only</li>
+<li>several <code>Chain</code>, transaction, block and chain interface members are not available under <code>revm</code>, see the migration guide</li>
+<li><code>revm</code> chains keep only the last <code>testing.block_history</code> blocks (default 256) and their transactions; older ones raise <code>HistoryPrunedError</code></li>
+</ul>
+</li>
+<li>removed Ganache support and the <code>testing.ganache</code> config namespace; Hardhat support is deprecated <small class="label">[testing framework]</small></li>
+<li>removed <code>Chain.default_tx_type</code> and the <code>type</code> keyword argument of functions interacting with contracts; the transaction type is now derived from the passed arguments <small class="label">[testing &amp; deployment framework]</small></li>
+<li>removed <code>Chain.optimistic_pytypes_resolving</code> in favor of <code>Account.pytypes_resolver</code> <small class="label">[testing &amp; deployment framework]</small></li>
+<li><code>tx.events</code> is now a <code>tuple</code> instead of a <code>list</code> <small class="label">[testing &amp; deployment framework]</small></li>
+<li>removed the <code>default_chain</code> alias, use <code>chain</code> instead <small class="label">[testing &amp; deployment framework]</small></li>
+<li>renamed <code>TransactionRevertedError</code> to <code>RevertError</code>, <code>UnknownTransactionRevertedError</code> to <code>UnknownRevertError</code> and <code>TransactionStatusEnum</code> to <code>ExecutionStatusEnum</code> <small class="label">[testing &amp; deployment framework]</small><ul>
+<li>error types and revert helpers moved from <code>wake.development.transactions</code> to <code>wake.development.errors</code>; <code>from wake.testing import *</code> is unaffected</li>
+</ul>
+</li>
+<li><code>may_revert</code> and <code>must_revert</code> now take expected errors as separate positional arguments instead of a single tuple or list <small class="label">[testing framework]</small></li>
+<li><code>Halt</code> is no longer a revert error; <code>except RevertError</code>, <code>may_revert</code>/<code>must_revert</code> without arguments and <code>on_revert</code> no longer catch it <small class="label">[testing &amp; deployment framework]</small></li>
+<li>pytypes generated by Wake 4.x must be regenerated with <code>wake up pytypes</code> <small class="label">[testing &amp; deployment framework]</small></li>
+<li>unnamed Solidity parameters are now generated as <code>param0</code>, <code>param1</code>, ... in all pytypes <small class="label">[testing &amp; deployment framework]</small></li>
+<li>Solidity <code>bytes</code> values are now represented by <code>bytes</code> instead of <code>bytearray</code> <small class="label">[testing &amp; deployment framework]</small></li>
+<li>Solidity <code>function</code> values are now decoded into <code>FunctionPointer</code> instead of a bound contract method <small class="label">[testing &amp; deployment framework]</small></li>
+<li><code>Struct</code>, <code>FunctionPointer</code>, <code>Call</code> and <code>SignedAuthorization</code> (and <code>_fqn</code> in contracts, <code>authorization_list</code> in function parameters) are now reserved names in pytypes <small class="label">[testing &amp; deployment framework]</small></li>
+<li>reworked <code>Wei</code> <small class="label">[testing &amp; deployment framework]</small><ul>
+<li>removed <code>Wei.from_ether</code>, <code>Wei.from_gwei</code> and <code>Wei.from_str</code>; added <code>ether()</code> and <code>gwei()</code> helpers and a keyword-only <code>unit</code> argument</li>
+<li><code>float</code> values are no longer accepted</li>
+<li><code>to_ether()</code> and <code>to_gwei()</code> return <code>Decimal</code> instead of <code>float</code></li>
+<li><code>str()</code> of a <code>Wei</code> now prints the value with units</li>
+</ul>
+</li>
+<li><code>Address</code> is now equal only to another <code>Address</code>, not to a <code>str</code> or an <code>Account</code>, and <code>str(Address)</code> returns the EIP-55 checksummed address <small class="label">[testing &amp; deployment framework]</small></li>
+<li>deployment transactions now default to EIP-1559 (type 2) on chains with a base fee <small class="label">[deployment framework]</small></li>
+<li>accounts configured with <code>wake accounts</code> must be removed and imported again <small class="label">[cli]</small></li>
+<li>renamed <code>wake test --shrank</code> to <code>--shrunk</code>; shrunk sequences are now stored in <code>.wake/logs/shrunk</code> <small class="label">[cli]</small></li>
+<li>the coverage export (<code>wake-coverage.cov</code>) is now statement-based (format version 2.1) and requires an updated VS Code extension; function, modifier and branch coverage is no longer exported <small class="label">[testing framework]</small></li>
+<li>removed Sake, the language server backend for contract deployment &amp; interaction in VS Code <small class="label">[language server]</small></li>
+<li>dropped support for Python 3.8 and 3.9 <small class="label">[core]</small></li>
+<li><code>eth-abi</code> and <code>eth-account</code> are no longer installed with Wake <small class="label">[core]</small></li>
+</ul>
+<p>Features &amp; improvements:</p>
+<ul>
+<li>new in-process testing engine based on revm, shipped as a Rust extension built into Wake <small class="label">[testing framework]</small><ul>
+<li>nothing to install and no development chain process to launch</li>
+<li>supports forking, automine, snapshots, call traces, <code>console.log</code>, coverage and multiprocess fuzzing</li>
+<li>development accounts are pre-funded with 10000 ETH, same as in Anvil</li>
+<li>added <code>Block.txs</code> and <code>Block.hash</code></li>
+<li>hardfork names passed to <code>Chain.connect</code> are accepted case-insensitively, with or without <code>-</code>/<code>_</code></li>
+<li>memory use is bounded by the configurable <code>testing.block_history</code> window</li>
+</ul>
+</li>
+<li>added support for <a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a> transactions with <code>Account.sign_authorization</code> and the <code>authorization_list</code> keyword argument <small class="label">[testing &amp; deployment framework]</small></li>
+<li>added the <code>Call</code> object returned with <code>return_call=True</code>, describing a call, estimate or access list request together with its result <small class="label">[testing &amp; deployment framework]</small><ul>
+<li><code>RevertError</code> and <code>Halt</code> now carry a <code>call</code> attribute alongside <code>tx</code></li>
+</ul>
+</li>
+<li><code>estimate</code> and <code>access_list</code> requests can return a result for reverting transactions with <code>revert=False</code> (<code>revert_on_failure=False</code> in the low-level API); <code>revm</code> only <small class="label">[testing framework]</small></li>
+<li>events and errors of forked contracts are resolved into <code>ExternalEvent</code> and <code>ExternalError</code> instances when their ABI is available on Sourcify or Etherscan <small class="label">[testing &amp; deployment framework]</small></li>
+<li>added <code>Account.pytypes_resolver</code> for enforcing which pytypes contract resolves events and errors of an account <small class="label">[testing &amp; deployment framework]</small></li>
+<li>pytypes structs now derive from <code>Struct</code> and offer EIP-712 helpers (<code>encode_eip712_type</code>, <code>encode_eip712_data</code>, <code>get_eip712_struct_hash</code>, <code>get_eip712_signing_hash</code>) <small class="label">[testing &amp; deployment framework]</small><ul>
+<li>added <code>get_eip712_struct_hash</code> and <code>get_eip712_signing_hash</code> functions accepting any struct</li>
+</ul>
+</li>
+<li>implemented <code>CallTrace.save()</code> for rendering a call trace into an SVG file in <code>.wake/call_traces</code> <small class="label">[testing &amp; deployment framework]</small></li>
+<li>added <code>Account.from_trezor</code> for using Trezor hardware wallets <small class="label">[deployment framework]</small></li>
+<li>negative block numbers are now resolved relative to the latest block <small class="label">[testing &amp; deployment framework]</small></li>
+<li>nonces are no longer cached on JSON-RPC chains; each transaction takes its nonce from the node <small class="label">[testing &amp; deployment framework]</small></li>
+<li>improved the error message when a non-existent <code>Account</code> alias is used <small class="label">[testing &amp; deployment framework]</small></li>
+<li>added <code>burn_erc721</code> cheatcode <small class="label">[testing framework]</small></li>
+<li><code>mint_erc20</code>, <code>burn_erc20</code>, <code>mint_erc721</code>, <code>mint_erc1155</code>, <code>burn_erc1155</code> and <code>burn_erc721</code> now operate on the pending block, so they work with automine disabled <small class="label">[testing framework]</small></li>
+<li>improved the distribution of integers generated for fuzz tests, with more edge values (zero, one, maximum, high bit set) and values spread across bit lengths <small class="label">[testing framework]</small></li>
+<li>the latest crash traceback is saved to <code>.wake/crash.txt</code> when the debugger attaches, and <code>__exception__</code> is available in all debugger frames <small class="label">[testing framework]</small></li>
+<li><code>console.log</code> in <code>wake/console.sol</code> is now marked memory-safe, so via-IR can still move variables to memory in contracts that use it <small class="label">[testing framework]</small></li>
+<li>gas prices are shown in a human-readable form when confirming deployment transactions <small class="label">[deployment framework]</small></li>
+<li>added support for Linux ARM (<code>aarch64</code>) <small class="label">[core]</small><ul>
+<li>linux-arm64 solc binaries come from the official solc-bin repository (from 0.8.31) with a fallback to the 3rd party <a href="https://github.com/nikitastupin/solc">nikitastupin/solc</a> mirror, which logs a warning</li>
+</ul>
+</li>
+<li>prebuilt wheels are published for CPython 3.10 to 3.15 on Linux (x86-64, ARM64 and i686), macOS 14+ (x86-64 and ARM64) and Windows (x86-64 and ARM64) <small class="label">[core]</small></li>
+<li>added support for Solidity 0.8.35, 0.8.36, 0.8.37 and 0.8.38 <small class="label">[core]</small></li>
+<li>added <code>compiler.solc.experimental.enable</code> and <code>compiler.solc.experimental.via_ssa_cfg</code> config options for solc experimental mode and the SSA CFG code generator (solc 0.8.35 and newer) <small class="label">[core]</small></li>
+<li>added a progress bar to compilation in CLI <small class="label">[cli]</small></li>
+<li><code>wake open --chain</code> accepts more chain names, e.g. <code>base</code>, <code>arbitrum</code>, <code>optimism</code>, <code>gnosis</code>, <code>linea</code>, <code>scroll</code>, <code>sepolia</code> and <code>holesky</code> <small class="label">[cli]</small></li>
+<li><code>wake up --example counter</code> no longer requires npm and the example runs on <code>revm</code> <small class="label">[cli]</small></li>
+<li>added the <code>wake mcp</code> <a href="https://modelcontextprotocol.io/">MCP</a> server exposing Wake's static analysis as tools for LLM agents <small class="label">[mcp]</small><ul>
+<li>stdio and streamable HTTP transports; the project is recompiled on file changes</li>
+<li>third-party packages can contribute tools through the <code>wake.plugins.mcp</code> entry point group</li>
+</ul>
+</li>
+<li>switched to the upstream <code>tree-sitter</code> and <code>tree-sitter-solidity</code> packages <small class="label">[language server]</small></li>
+<li>added the <a href="../testing-framework/migrating-from-wake-4/">Migrating from Wake 4.x</a> guide, documented the MCP server and linked the Wake 5 preprint from the documentation home page <small class="label">[documentation]</small></li>
+<li>rewrote the testing framework basics for the <code>revm</code> engine and moved Anvil and Hardhat specifics to a page of their own <small class="label">[documentation]</small></li>
+<li>documented <code>testing.block_history</code>, <code>testing.coverage_sync_timeout</code> and the <code>compiler.solc.experimental</code> options; the configuration schema now defaults to <code>revm</code> <small class="label">[documentation]</small></li>
+<li>documented <code>Halt</code> and passing expected errors to <code>must_revert</code> / <code>may_revert</code> as separate arguments <small class="label">[documentation]</small></li>
+<li>removed the Dockerfile and the Docker image and GitHub Actions sections from the documentation <small class="label">[documentation]</small></li>
+</ul>
+<p>Fixes:</p>
+<ul>
+<li>fixed incremental compilation under subprojects diverging from, and crashing relative to, a full build <small class="label">[core]</small></li>
+<li>fixed warnings and errors of unchanged compilation units disappearing after an incremental build <small class="label">[core]</small></li>
+<li>fixed <code>SyntaxWarning</code>s about invalid escape sequences on Python 3.12 and newer <small class="label">[core]</small></li>
+<li>fixed incremental compilation recovery in multi-version and subproject repositories <small class="label">[language server]</small></li>
+<li>fixed unsaved edits being kept after a file is closed, and per-file caches leaking on file delete and rename <small class="label">[language server]</small></li>
+<li>fixed multiprocess testing with the <code>spawn</code> and <code>forkserver</code> start methods (macOS, Windows, and Linux on Python 3.14 and newer) <small class="label">[testing framework]</small></li>
+<li>fixed an interrupted or concurrent coverage export leaving a truncated or mixed <code>wake-coverage.cov</code> <small class="label">[testing framework]</small></li>
+<li>fixed <code>mint_erc20</code> and <code>burn_erc20</code> failing when the total supply slot cannot be detected (e.g. LINK); a warning is printed instead <small class="label">[testing framework]</small></li>
+<li>fixed token storage slots detected by <code>mint_erc*</code> and <code>burn_erc*</code> being reused across chain connections <small class="label">[testing framework]</small></li>
+<li>fixed pytypes module paths for source files in directories named after Python keywords or starting with a digit <small class="label">[testing &amp; deployment framework]</small></li>
+</ul>
+<h2 id="4.22.2">4.22.2 <small>(Oct 22, 2026)</small><a class="headerlink" href="#4.22.2" title="Permanent link">#</a></h2>
+<p>Security:</p>
+<ul>
+<li>pinned <code>certifi</code> to <code>2026.10.19</code> on macOS to mitigate TLS interception risks from compromised emSign intermediate CA private keys <small class="label">[core]</small></li>
+</ul>
+<p>Fixes &amp; improvements:</p>
+<ul>
+<li>fixed virtual compilation source deduplication, ambiguous import paths, and symlink handling in JSON build export and import <small class="label">[core]</small></li>
+<li>fixed <code>wake compile --import-json</code> not passing imported source contents to the compiler <small class="label">[cli]</small></li>
+<li>fixed compilation semaphore errors when reusing the compiler across asyncio event loops <small class="label">[core]</small></li>
+<li>fixed an infinite loop in reentrancy analysis and assertions when resolving certain function-call expressions <small class="label">[static analysis]</small></li>
+<li>stopped reporting unused events and errors in interfaces that have no inheriting contracts <small class="label">[static analysis]</small></li>
+<li>fixed call traces and transaction output decoding for <code>0x</code>-prefixed debug trace data <small class="label">[testing &amp; deployment framework]</small></li>
+<li>fixed importing uppercase EVM version names from Foundry configuration <small class="label">[cli]</small></li>
+<li>fixed the compilation watcher losing newly included files after configuration changes <small class="label">[core]</small></li>
+</ul>
 <h2 id="4.22.1">4.22.1 <small>(Mar 2, 2026)</small><a class="headerlink" href="#4.22.1" title="Permanent link">#</a></h2>
 <p>Fixes &amp; improvements:</p>
 <ul>
@@ -9926,8 +10128,6 @@ small.label {
         <script src="../js/mathjax.js"></script>
       
         <script src="../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       

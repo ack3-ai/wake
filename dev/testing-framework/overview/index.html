@@ -865,6 +865,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#testing-engines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing engines
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -882,6 +893,8 @@
   
     
     
+      
+        
       
         
       
@@ -1128,6 +1141,34 @@
     
   
     Helper functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
   
 
     
@@ -8263,6 +8304,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#testing-engines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing engines
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -8289,20 +8341,20 @@
 It utilizes <code>pytypes</code>, Python equivalents of Solidity types, to simplify writing scripts and easily discover typing errors.</p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">#</a></h2>
 <ul>
+<li>an in-process EVM based on <a href="https://github.com/bluealloy/revm">revm</a>, built into Wake, so there is no development chain to install or launch</li>
 <li>auto-completions when writing tests and deployment scripts thanks to <code>pytypes</code></li>
 <li>type checking for all types generated in <code>pytypes</code></li>
-<li>property-based fuzzer leveraging multiprocessing to maximize the amount of inputs tested</li>
-<li>cross-chain testing support</li>
+<li>manually guided fuzzing with flows and invariants, leveraging multiprocessing to maximize the amount of inputs tested</li>
+<li>forking of live chains and cross-chain testing support</li>
 <li>integrated Python debugger (<a href="https://github.com/gotcha/ipdb">ipdb</a>) attached on test failures</li>
 <li>call traces and <code>console.log</code> support for easier debugging</li>
 <li>deployment &amp; mainnet interaction scripts</li>
-<li><a href="https://github.com/Ackee-Blockchain/python-testing-frameworks-benchmark">better performance</a> than other Python or JavaScript frameworks</li>
+<li><a href="https://github.com/ack3-ai/python-testing-frameworks-benchmark">better performance</a> than other Python or JavaScript frameworks</li>
 </ul>
-<p>The currently supported development chains are:</p>
-<ul>
-<li><a href="https://github.com/foundry-rs/foundry/tree/master/crates/anvil">Anvil</a> (recommended)</li>
-<li><a href="https://github.com/NomicFoundation/hardhat">Hardhat</a></li>
-</ul>
+<h2 id="testing-engines">Testing engines<a class="headerlink" href="#testing-engines" title="Permanent link">#</a></h2>
+<p>Tests run on the in-process <code>revm</code> engine by default.
+<a href="https://github.com/foundry-rs/foundry/tree/master/crates/anvil">Anvil</a> and <a href="https://github.com/NomicFoundation/hardhat">Hardhat</a> development chains can be used instead over JSON-RPC, for example to connect to an already running node; Hardhat support is deprecated.
+See <a href="../anvil-and-hardhat/">Anvil and Hardhat</a> for how to switch engines and what differs.</p>
 
 
 
@@ -8403,8 +8455,6 @@ It utilizes <code>pytypes</code>, Python equivalents of Solidity types, to simpl
         <script src="../../js/mathjax.js"></script>
       
         <script src="../../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       

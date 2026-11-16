@@ -845,6 +845,8 @@
       
         
       
+        
+      
     
     
     
@@ -1067,10 +1069,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#connect-keyword-arguments" class="md-nav__link">
+  <a href="#connecting-to-a-chain" class="md-nav__link">
     <span class="md-ellipsis">
       
-        connect keyword arguments
+        Connecting to a chain
       
     </span>
   </a>
@@ -1098,6 +1100,17 @@
     <span class="md-ellipsis">
       
         Block properties
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chain-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chain history
       
     </span>
   </a>
@@ -1184,6 +1197,34 @@
     
   
     Helper functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
   
 
     
@@ -8334,10 +8375,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#connect-keyword-arguments" class="md-nav__link">
+  <a href="#connecting-to-a-chain" class="md-nav__link">
     <span class="md-ellipsis">
       
-        connect keyword arguments
+        Connecting to a chain
       
     </span>
   </a>
@@ -8371,6 +8412,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#chain-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chain history
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -8396,6 +8448,7 @@
 variable is a <code>Chain</code> object that can be used to change the chain parameters
 or access the chain data. Other <code>Chain</code> instances can be created, which is
 useful in <a href="../cross-chain-testing/">Cross-chain testing</a>.</p>
+<p>This page describes chains of the default <code>revm</code> engine. Chains of the Anvil and Hardhat engines offer additional members, see <a href="../anvil-and-hardhat/">Anvil and Hardhat</a>.</p>
 <h2 id="chain-properties">Chain properties<a class="headerlink" href="#chain-properties" title="Permanent link">#</a></h2>
 <p>The <code>Chain</code> object has the following properties:</p>
 <table>
@@ -8408,11 +8461,11 @@ useful in <a href="../cross-chain-testing/">Cross-chain testing</a>.</p>
 <tbody>
 <tr>
 <td><code>accounts</code></td>
-<td>list of <code>Account</code> objects owned by the client (private keys are known to the client); each starts with 10000 ETH</td>
+<td>list of <code>Account</code> objects with known private keys; each starts with 10000 ETH</td>
 </tr>
 <tr>
 <td><code>automine</code></td>
-<td>whether to automatically mine blocks</td>
+<td>whether to automatically mine a block for each transaction</td>
 </tr>
 <tr>
 <td><code>blocks</code></td>
@@ -8428,11 +8481,7 @@ useful in <a href="../cross-chain-testing/">Cross-chain testing</a>.</p>
 </tr>
 <tr>
 <td><code>chain_interface</code></td>
-<td>low-level chain interface useful for debugging and power users</td>
-</tr>
-<tr>
-<td><code>client_version</code></td>
-<td>client version as reported by the <code>web3_clientVersion</code> JSON-RPC method</td>
+<td>low-level chain interface with <code>type()</code>, <code>get_code</code>, <code>get_storage_at</code> and <code>set_storage_at</code></td>
 </tr>
 <tr>
 <td><code>coinbase</code></td>
@@ -8459,36 +8508,20 @@ useful in <a href="../cross-chain-testing/">Cross-chain testing</a>.</p>
 <td>default <code>Account</code> used for transactions</td>
 </tr>
 <tr>
-<td><code>default_tx_confirmations</code></td>
-<td>default number of confirmations (mined blocks) needed before a transaction object is returned</td>
-</tr>
-<tr>
-<td><code>default_tx_type</code></td>
-<td>default transaction type (0, 1, or 2) used when sending transactions</td>
-</tr>
-<tr>
-<td><code>gas_price</code></td>
-<td>gas price used for all type 0 and type 1 transactions sent to the chain</td>
-</tr>
-<tr>
-<td><code>max_priority_fee_per_gas</code></td>
-<td>max priority fee per gas used for all type 2 transactions sent to the chain</td>
-</tr>
-<tr>
-<td><code>require_signed_transactions</code></td>
-<td>whether to send signed transactions or unsigned transactions</td>
+<td><code>forked_chain_id</code></td>
+<td>chain ID of the forked chain, or <code>None</code> when not forking</td>
 </tr>
 <tr>
 <td><code>txs</code></td>
-<td>dictionary of transaction objects indexed by transaction hash (a string starting with <code>0x</code>)</td>
+<td>transaction objects of the chain, indexed by their position (<code>chain.txs[-1]</code> is the latest transaction)</td>
 </tr>
 <tr>
 <td><code>tx_callback</code></td>
-<td>callback function to be called when a transaction is mined; applies only to <code>return_tx=False</code> transactions</td>
+<td>callback function called with every transaction object once the transaction is executed</td>
 </tr>
 </tbody>
 </table>
-<p><code>automine</code>, <code>block_gas_limit</code>, <code>coinbase</code>, <code>default_call_account</code>, <code>default_tx_account</code>, <code>gas_price</code>, and <code>tx_callback</code> can be assigned to.</p>
+<p><code>automine</code>, <code>block_gas_limit</code>, <code>coinbase</code>, the four default accounts and <code>tx_callback</code> can be assigned to.</p>
 <h2 id="chain-methods">Chain methods<a class="headerlink" href="#chain-methods" title="Permanent link">#</a></h2>
 <p>The <code>Chain</code> object has the following methods:</p>
 <table>
@@ -8505,19 +8538,15 @@ useful in <a href="../cross-chain-testing/">Cross-chain testing</a>.</p>
 </tr>
 <tr>
 <td><code>connect</code></td>
-<td>context manager to launch a chain and connect to it or connect to an already running chain</td>
+<td>context manager to create a chain for the duration of the context</td>
+</tr>
+<tr>
+<td><code>deploy</code></td>
+<td>low-level method for deploying contracts from creation code</td>
 </tr>
 <tr>
 <td><code>mine</code></td>
 <td>mine a block with an optional callback function to set the next block timestamp</td>
-</tr>
-<tr>
-<td><code>mine_many</code></td>
-<td>mine multiple blocks with an optional timestamp delta between blocks</td>
-</tr>
-<tr>
-<td><code>reset</code></td>
-<td>reset the chain to its initial state</td>
 </tr>
 <tr>
 <td><code>revert</code></td>
@@ -8526,14 +8555,6 @@ useful in <a href="../cross-chain-testing/">Cross-chain testing</a>.</p>
 <tr>
 <td><code>set_default_accounts</code></td>
 <td>set the default accounts for <code>tx</code>, <code>call</code>, <code>estimate</code>, and <code>access_list</code> requests at once</td>
-</tr>
-<tr>
-<td><code>set_min_gas_price</code></td>
-<td>set the minimum gas price accepted by the chain</td>
-</tr>
-<tr>
-<td><nobr><code>set_next_block_base_fee_per_gas</code></nobr></td>
-<td>set the base fee per gas for the next block</td>
 </tr>
 <tr>
 <td><nobr><code>set_next_block_timestamp</code></nobr></td>
@@ -8547,14 +8568,6 @@ useful in <a href="../cross-chain-testing/">Cross-chain testing</a>.</p>
 <td><nobr><code>snapshot_and_revert</code></nobr></td>
 <td>context manager to take a snapshot and revert to it after the context ends</td>
 </tr>
-<tr>
-<td><code>update_accounts</code></td>
-<td>update the accounts list</td>
-</tr>
-<tr>
-<td><code>deploy</code></td>
-<td>low-level method for deploying contracts from creation code</td>
-</tr>
 </tbody>
 </table>
 <p>It is recommended to use the context managers <code>change_automine</code> and <code>snapshot_and_revert</code> instead of setting the <code>automine</code> property directly or calling <code>snapshot</code> and <code>revert</code> manually.</p>
@@ -8563,24 +8576,23 @@ useful in <a href="../cross-chain-testing/">Cross-chain testing</a>.</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_chain</span><span class="p">():</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="c1"># launch a chain and connect to it</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="c1"># create a chain and connect to it</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="k">with</span> <span class="n">chain</span><span class="o">.</span><span class="n">connect</span><span class="p">(),</span> <span class="n">chain</span><span class="o">.</span><span class="n">snapshot_and_revert</span><span class="p">():</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="c1"># mine a block with the timestamp 1 greater than the previous block</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="n">chain</span><span class="o">.</span><span class="n">mine</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
-<p>All <code>Chain</code> context managers can be used as decorators:</p>
+<p><code>connect</code> and <code>change_automine</code> can also be used as decorators:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">chain</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nd">@chain</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nd">@chain</span><span class="o">.</span><span class="n">snapshot_and_revert</span><span class="p">()</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nd">@chain</span><span class="o">.</span><span class="n">change_automine</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_chain</span><span class="p">():</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="c1"># mine a block with the timestamp 1 greater than the previous block</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">chain</span><span class="o">.</span><span class="n">mine</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nd">@chain</span><span class="o">.</span><span class="n">change_automine</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_chain</span><span class="p">():</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="c1"># mine a block with the timestamp 1 greater than the previous block</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">chain</span><span class="o">.</span><span class="n">mine</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
-<h3 id="connect-keyword-arguments"><code>connect</code> keyword arguments<a class="headerlink" href="#connect-keyword-arguments" title="Permanent link">#</a></h3>
-<p>The <code>connect</code> context manager accepts keyword arguments that can override the command line arguments set in <a href="../../configuration/#testing-namespace">configuration</a> files:</p>
+<h3 id="connecting-to-a-chain">Connecting to a chain<a class="headerlink" href="#connecting-to-a-chain" title="Permanent link">#</a></h3>
+<p>The <code>connect</code> context manager accepts the following keyword-only arguments:</p>
 <table>
 <thead>
 <tr>
@@ -8593,40 +8605,25 @@ useful in <a href="../cross-chain-testing/">Cross-chain testing</a>.</p>
 <tr>
 <td><code>accounts</code></td>
 <td>number of accounts to generate</td>
-<td><code>None</code> (do not override)</td>
+<td><code>10</code></td>
 </tr>
 <tr>
 <td><code>chain_id</code></td>
 <td>chain ID assigned to the chain</td>
-<td><code>None</code> (do not override)</td>
+<td><code>31337</code>, or the forked chain ID</td>
 </tr>
 <tr>
 <td><code>fork</code></td>
-<td>URL of the chain to fork from</td>
-<td><code>None</code> (do not override)</td>
+<td>URL of the chain to fork from, optionally followed by <code>@</code> and a block number</td>
+<td><code>None</code> (no forking)</td>
 </tr>
 <tr>
 <td><code>hardfork</code></td>
-<td>hardfork to use</td>
-<td><code>None</code> (do not override)</td>
-</tr>
-<tr>
-<td><code>min_gas_price</code></td>
-<td>minimum gas price accepted by the chain</td>
-<td><code>0</code></td>
-</tr>
-<tr>
-<td><code>block_base_fee_per_gas</code></td>
-<td>base fee per gas for the next block</td>
-<td><code>0</code></td>
+<td>hardfork to use, e.g. <code>"prague"</code>; the name is case-insensitive</td>
+<td><code>"osaka"</code></td>
 </tr>
 </tbody>
 </table>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p><code>connect</code> keyword arguments can only be used when launching a new development chain.
-Also, it is not possible to set these keyword arguments when working with Hardhat.</p>
-</div>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">chain</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
@@ -8640,7 +8637,7 @@ Also, it is not possible to set these keyword arguments when working with Hardha
 </code></pre></div>
 <h2 id="accessing-chain-blocks">Accessing chain blocks<a class="headerlink" href="#accessing-chain-blocks" title="Permanent link">#</a></h2>
 <p>The <code>chain.blocks</code> property can be used to access up-to-date chain blocks data.
-It can be indexed by an integer or string literals <code>latest</code>, <code>pending</code>, <code>earliest</code>, <code>safe</code>, and <code>finalized</code>:</p>
+It can be indexed by an integer, where negative numbers count back from the latest block, or by the string literals <code>latest</code>, <code>pending</code>, <code>earliest</code>, <code>safe</code>, and <code>finalized</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">chain</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pytypes.contracts.Counter</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
@@ -8652,26 +8649,32 @@ It can be indexed by an integer or string literals <code>latest</code>, <code>pe
 <a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="c1"># get the block 0</span>
 <a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">block0</span> <span class="o">=</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="c1"># block 0 and earliest are the same</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="k">assert</span> <span class="n">block0</span> <span class="o">==</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="s2">"earliest"</span><span class="p">]</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="k">assert</span> <span class="n">block0</span><span class="o">.</span><span class="n">number</span> <span class="o">==</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="s2">"earliest"</span><span class="p">]</span><span class="o">.</span><span class="n">number</span>
 <a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
 <a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="n">counter</span> <span class="o">=</span> <span class="n">Counter</span><span class="o">.</span><span class="n">deploy</span><span class="p">()</span>
 <a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
 <a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    <span class="c1"># find the first block with non-zero transactions count</span>
-<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="n">block</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">block</span> <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">txs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>
-<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    <span class="k">assert</span> <span class="n">block</span><span class="o">.</span><span class="n">txs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">return_value</span> <span class="o">==</span> <span class="n">counter</span>
-<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>
-<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    <span class="k">with</span> <span class="n">chain</span><span class="o">.</span><span class="n">change_automine</span><span class="p">(</span><span class="kc">False</span><span class="p">):</span>
-<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>        <span class="c1"># block -1 and latest are the same</span>
-<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>        <span class="k">assert</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="s2">"latest"</span><span class="p">]</span>
-<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>
-<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>        <span class="n">tx</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">confirmations</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>
-<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>        <span class="c1"># pending block contains the transaction</span>
-<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>        <span class="k">assert</span> <span class="n">tx</span> <span class="ow">in</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="s2">"pending"</span><span class="p">]</span><span class="o">.</span><span class="n">txs</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="n">latest</span> <span class="o">=</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="s2">"latest"</span><span class="p">]</span><span class="o">.</span><span class="n">number</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="n">block</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>        <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="n">number</span><span class="p">]</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>        <span class="k">for</span> <span class="n">number</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="o">.</span><span class="n">first_number</span><span class="p">,</span> <span class="n">latest</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="n">number</span><span class="p">]</span><span class="o">.</span><span class="n">txs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    <span class="p">)</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    <span class="k">assert</span> <span class="n">block</span><span class="o">.</span><span class="n">txs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">return_value</span> <span class="o">==</span> <span class="n">counter</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    <span class="k">with</span> <span class="n">chain</span><span class="o">.</span><span class="n">change_automine</span><span class="p">(</span><span class="kc">False</span><span class="p">):</span>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>        <span class="c1"># block -1 and latest are the same</span>
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>        <span class="k">assert</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">number</span> <span class="o">==</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="s2">"latest"</span><span class="p">]</span><span class="o">.</span><span class="n">number</span>
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>        <span class="n">tx</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">()</span>
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>        <span class="c1"># pending block contains the transaction</span>
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>        <span class="k">assert</span> <span class="n">tx</span> <span class="ow">in</span> <span class="n">chain</span><span class="o">.</span><span class="n">blocks</span><span class="p">[</span><span class="s2">"pending"</span><span class="p">]</span><span class="o">.</span><span class="n">txs</span>
 </code></pre></div>
+<p><code>chain.blocks</code> supports indexing only; it has no length and cannot be iterated directly, so loop over a range of block numbers as in the example.</p>
 <h2 id="block-properties">Block properties<a class="headerlink" href="#block-properties" title="Permanent link">#</a></h2>
-<p>The following table lists the most important block properties:</p>
+<p>Block objects have the following properties:</p>
 <table>
 <thead>
 <tr>
@@ -8693,20 +8696,8 @@ It can be indexed by an integer or string literals <code>latest</code>, <code>pe
 <td>block number</td>
 </tr>
 <tr>
-<td><code>parent_hash</code></td>
-<td>parent block hash</td>
-</tr>
-<tr>
-<td><code>miner</code></td>
-<td>miner <code>Account</code> of the block</td>
-</tr>
-<tr>
 <td><code>gas_used</code></td>
 <td>amount of gas used in the block</td>
-</tr>
-<tr>
-<td><code>gas_limit</code></td>
-<td>block gas limit</td>
 </tr>
 <tr>
 <td><code>timestamp</code></td>
@@ -8714,10 +8705,21 @@ It can be indexed by an integer or string literals <code>latest</code>, <code>pe
 </tr>
 <tr>
 <td><code>txs</code></td>
-<td>list of transaction objects in the block sorted by transaction index</td>
+<td>list of transaction objects in the block in execution order</td>
 </tr>
 </tbody>
 </table>
+<p>The block gas limit and the miner are properties of the chain, <code>chain.block_gas_limit</code> and <code>chain.coinbase</code>.
+Transactions of blocks before the fork block are not available through <code>txs</code> and raise <code>NotImplementedError</code>.</p>
+<h2 id="chain-history">Chain history<a class="headerlink" href="#chain-history" title="Permanent link">#</a></h2>
+<p>Each chain keeps only the newest <code>testing.block_history</code> blocks (256 by default, see <a href="../../configuration/#testing-namespace">configuration</a>) together with the transactions in them, which keeps the memory use of long test runs bounded.
+Reaching further back, e.g. <code>chain.blocks[0]</code>, <code>chain.txs[0]</code> or a request with an old <code>block</code> argument, raises <code>HistoryPrunedError</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake_rs</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoryPrunedError</span>
+</code></pre></div>
+<p><code>chain.blocks.first_number</code> is the oldest retained block, and <code>chain.txs.first_index</code> the oldest retained transaction, so ranges such as <code>range(chain.txs.first_index, len(chain.txs))</code> stay within the window.</p>
+<p>A transaction object keeps its metadata (<code>from_</code>, <code>to</code>, <code>status</code>, <code>gas_used</code>, <code>events</code>, <code>return_value</code>, ...) for as long as it is referenced, so keep the objects that are needed later instead of looking them up in <code>chain.txs</code>.
+<code>call_trace</code> and <code>console_logs</code> re-execute the transaction and raise <code>HistoryPrunedError</code> once its block has left the window.</p>
+<p>Disconnecting a chain discards its history; transaction objects keep their stored results, but re-executing them and reading <code>block.txs</code> raise <code>HistoryPrunedError</code>.</p>
 
 
 
@@ -8815,8 +8817,6 @@ It can be indexed by an integer or string literals <code>latest</code>, <code>pe
         <script src="../../js/mathjax.js"></script>
       
         <script src="../../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       

@@ -843,6 +843,8 @@
       
         
       
+        
+      
     
     
     
@@ -1074,6 +1076,34 @@
     
   
     Helper functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../anvil-and-hardhat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anvil and Hardhat
   
 
     
@@ -1503,6 +1533,17 @@
     <span class="md-ellipsis">
       
         Chain members removed on every engine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#txevents-is-a-tuple" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tx.events is a tuple
       
     </span>
   </a>
@@ -8931,6 +8972,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#txevents-is-a-tuple" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tx.events is a tuple
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#removed-type-kwarg-from-functions-interacting-with-contracts" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -9464,7 +9516,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake_rs</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoryPrunedError</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>HistoryPrunedError: transaction 0 is no longer retained: transactions 131..401 are available.
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Raise `testing.block_history` in the configuration (or set it to null to disable pruning) to keep more.
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Raise `testing.block_history` in the configuration to keep more.
 </code></pre></div>
 <p>This affects indexing into both <code>chain.txs</code> and <code>chain.blocks</code>. <code>chain.txs[-1]</code> is not safe either: it raises once the newest transaction's own block has aged out of the window, which happens when blocks keep being mined without new transactions.</p>
 <p>Keep a reference to the transaction objects you need later:</p>
@@ -9486,13 +9538,14 @@
 <p>Holding the object keeps the metadata (<code>from_</code>, <code>to</code>, <code>status</code>, <code>gas_used</code>, <code>events</code>, <code>return_value</code>) available indefinitely. <code>call_trace</code> and <code>console_logs</code> re-execute the transaction, so they raise once its block is gone:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>HistoryPrunedError: block 1 is no longer retained for replay because its block context was pruned:
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>the retained window starts at block 132. Raise `testing.block_history` in the configuration
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>(or set it to null to disable pruning) to keep more.
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>to keep more.
 </code></pre></div>
-<p>Raise the window, or set <code>block_history = null</code> to restore Wake 4 behaviour at the cost of memory linear in the number of transactions executed:</p>
+<p>Raise the window to keep more history, at the cost of memory:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">[testing]</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">block_history</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">null</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">block_history</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10000</span>
 </code></pre></div>
 <p>The option applies to <code>revm</code> only. See <a href="../../configuration/#testing-namespace">configuration</a> for the full description.</p>
+<p>Disconnecting discards the connection's history. Transaction and call objects keep their stored results (<code>status</code>, <code>events</code>, <code>return_value</code>, and a <code>call_trace</code> read before disconnecting), but re-executing them and reading <code>block.txs</code> raise <code>HistoryPrunedError</code>. Objects from a previous connection never resolve against a later connection of the same <code>Chain</code>: on a fork, events and errors of forked contracts that were not decoded before disconnecting come back as <code>UnknownEvent</code> and <code>UnknownRevertError</code>, even after reconnecting to the same fork. Pytypes resolvers set with <code>Account.pytypes_resolver</code> belong to the <code>Chain</code> rather than to a connection, and apply to events and errors when they are first read.</p>
 <h4 id="dropped-development-chain-support">Dropped development chain support<a class="headerlink" href="#dropped-development-chain-support" title="Permanent link">#</a></h4>
 <p><a href="https://archive.trufflesuite.com/ganache/">Ganache</a> is no longer supported. The <code>testing.ganache</code> configuration namespace was removed and should be deleted from wake.toml, as options left in it are reported as unsupported and ignored.</p>
 <p>Anvil (<code>cmd = "anvil"</code>) and Hardhat (<code>cmd = "hardhat"</code>) are still supported over JSON-RPC. Hardhat's development chain support is considered deprecated.</p>
@@ -9581,10 +9634,19 @@
 </tbody>
 </table>
 <p>Unlike the table above, these are gone for <code>anvil</code> and <code>hardhat</code> too.</p>
+<h4 id="txevents-is-a-tuple"><code>tx.events</code> is a <code>tuple</code><a class="headerlink" href="#txevents-is-a-tuple" title="Permanent link">#</a></h4>
+<p>On every engine, <code>tx.events</code> is now a <code>tuple</code> instead of a <code>list</code>, so comparing it with a list is always false and in-place list operations fail:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># before</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">assert</span> <span class="n">tx</span><span class="o">.</span><span class="n">events</span> <span class="o">==</span> <span class="p">[</span><span class="n">Counter</span><span class="o">.</span><span class="n">Incremented</span><span class="p">()]</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">tx</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># after</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="k">assert</span> <span class="n">tx</span><span class="o">.</span><span class="n">events</span> <span class="o">==</span> <span class="p">(</span><span class="n">Counter</span><span class="o">.</span><span class="n">Incremented</span><span class="p">(),)</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">events</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">tx</span><span class="o">.</span><span class="n">events</span><span class="p">)</span>
+</code></pre></div>
 <h4 id="removed-type-kwarg-from-functions-interacting-with-contracts">Removed <code>type</code> kwarg from functions interacting with contracts<a class="headerlink" href="#removed-type-kwarg-from-functions-interacting-with-contracts" title="Permanent link">#</a></h4>
 <p>Transaction type can no longer be specified through the <code>type</code> keyword argument. Instead, the transaction type is derived automatically from the passed arguments.</p>
 <h4 id="transaction-arguments-not-implemented-under-revm">Transaction arguments not implemented under <code>revm</code><a class="headerlink" href="#transaction-arguments-not-implemented-under-revm" title="Permanent link">#</a></h4>
-<p>Four argument values are still accepted by the signatures but abort with <code>pyo3_runtime.PanicException: not yet implemented</code>:</p>
+<p>Four argument values are still accepted by the signatures but raise <code>NotImplementedError</code>:</p>
 <ul>
 <li><code>gas_limit="auto"</code></li>
 <li><code>max_fee_per_gas=...</code></li>
@@ -9592,13 +9654,13 @@
 <li><code>access_list="auto"</code></li>
 </ul>
 <p>Resolve them explicitly instead:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># instead of gas_limit="auto"</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">gas</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">request_type</span><span class="o">=</span><span class="s2">"estimate"</span><span class="p">)</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">gas_limit</span><span class="o">=</span><span class="n">gas</span><span class="p">)</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1"># instead of access_list="auto"</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">access_list</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">request_type</span><span class="o">=</span><span class="s2">"access_list"</span><span class="p">)</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">access_list</span><span class="o">=</span><span class="n">access_list</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># instead of gas_limit="auto"</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">gas</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">request_type</span><span class="o">=</span><span class="s2">"estimate"</span><span class="p">)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">gas_limit</span><span class="o">=</span><span class="n">gas</span><span class="p">)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># instead of access_list="auto"</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">access_list</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">request_type</span><span class="o">=</span><span class="s2">"access_list"</span><span class="p">)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="n">counter</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="n">access_list</span><span class="o">=</span><span class="n">access_list</span><span class="p">)</span>
 </code></pre></div>
 <p><code>gas_limit="max"</code>, an integer <code>gas_limit</code>, an explicit <code>access_list</code> mapping, and <code>gas_price</code> all work. <code>request_type="estimate"</code> and <code>request_type="access_list"</code> requests are themselves unaffected.</p>
 <h4 id="transaction-attributes-removed-under-revm">Transaction attributes removed under <code>revm</code><a class="headerlink" href="#transaction-attributes-removed-under-revm" title="Permanent link">#</a></h4>
@@ -9661,13 +9723,7 @@
 </tr>
 </tbody>
 </table>
-<p><code>tx_hash</code>, <code>tx_index</code>, <code>chain</code>, <code>block</code>, <code>block_number</code>, <code>data</code>, <code>from_</code>, <code>to</code>, <code>gas_used</code>, <code>cumulative_gas_used</code>, <code>status</code>, <code>return_value</code>, <code>raw_return_value</code>, <code>events</code>, <code>raw_events</code>, <code>error</code>, <code>raw_error</code>, <code>console_logs</code> and <code>call_trace</code> are unchanged. The type of <code>tx.status</code> was renamed, see <a href="#renamed-symbols">Renamed symbols</a>.</p>
-<p><code>tx.events</code> is now a <code>tuple</code> instead of a <code>list</code>, so in-place list operations on it fail:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># before</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">tx</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1"># after</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">events</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">tx</span><span class="o">.</span><span class="n">events</span><span class="p">)</span>
-</code></pre></div>
+<p><code>tx_hash</code>, <code>tx_index</code>, <code>chain</code>, <code>block</code>, <code>block_number</code>, <code>data</code>, <code>from_</code>, <code>to</code>, <code>gas_used</code>, <code>cumulative_gas_used</code>, <code>status</code>, <code>return_value</code>, <code>raw_return_value</code>, <code>events</code>, <code>raw_events</code>, <code>error</code>, <code>raw_error</code>, <code>console_logs</code> and <code>call_trace</code> are unchanged. The type of <code>tx.status</code> was renamed, see <a href="#renamed-symbols">Renamed symbols</a>, and <code>tx.events</code> is now a <code>tuple</code>, see <a href="#txevents-is-a-tuple"><code>tx.events</code> is a <code>tuple</code></a>.</p>
 <p>The per-type subclasses are never produced either — every transaction is a bare <code>TransactionAbc</code>, and it is not the <code>TransactionAbc</code> exported from <code>wake.testing</code> (that one is the JSON-RPC implementation). Type checks silently stop matching:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">wake.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">LegacyTransaction</span><span class="p">,</span> <span class="n">TransactionAbc</span>
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
@@ -9687,7 +9743,9 @@
 </code></pre></div>
 <p><code>chain.txs</code> can no longer be indexed by transaction hash — only by integer index, where <code>chain.txs[hash]</code> raises <code>TypeError: 'str' object cannot be interpreted as an integer</code>. Keep a reference to the transaction object instead of looking it up by hash. <code>len(chain.txs)</code>, <code>chain.txs[-1]</code> and <code>for tx in chain.txs</code> all work, within the bounds of <a href="#chain-history-is-bounded-to-the-last-256-blocks">history pruning</a>.</p>
 <h4 id="block-attributes-removed-under-revm"><code>Block</code> attributes removed under <code>revm</code><a class="headerlink" href="#block-attributes-removed-under-revm" title="Permanent link">#</a></h4>
-<p><code>revm</code> builds no block header, so only <code>chain</code>, <code>number</code>, <code>timestamp</code>, <code>hash</code> and <code>gas_used</code> remain.</p>
+<p><code>revm</code> exposes <code>chain</code>, <code>number</code>, <code>timestamp</code>, <code>hash</code>, <code>gas_used</code> and <code>txs</code> on block objects.</p>
+<p><code>block.txs</code> returns locally executed transactions in execution order. It raises <code>HistoryPrunedError</code> if the block has been pruned or discarded by a snapshot revert. Pending block views follow their block through mining and remain valid across snapshot reverts that preserve their recorded history.</p>
+<p>Transactions of provider-backed pre-fork blocks are not available through this property and raise <code>NotImplementedError</code>.</p>
 <table>
 <thead>
 <tr>
@@ -9696,10 +9754,6 @@
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>txs</code></td>
-<td>filter <code>chain.txs</code> on <code>tx.block_number</code></td>
-</tr>
 <tr>
 <td><code>gas_limit</code></td>
 <td><code>chain.block_gas_limit</code></td>
@@ -9890,7 +9944,7 @@
 <a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="n">Account</span><span class="p">(</span><span class="s2">"0xdAC17F958D2ee523a2206206994597C13D831ec7"</span><span class="p">)</span><span class="o">.</span><span class="n">pytypes_resolver</span> <span class="o">=</span> <span class="n">IUSDT</span>
 </code></pre></div>
 <h4 id="newly-reserved-pytypes-names">Newly reserved pytypes names<a class="headerlink" href="#newly-reserved-pytypes-names" title="Permanent link">#</a></h4>
-<p><code>Struct</code> and <code>FunctionPointer</code> (anywhere), <code>_fqn</code> (contract members) and <code>authorization_list</code> (function parameters) are now reserved in generated pytypes. A Solidity declaration whose name collides with a reserved name gets an underscore appended, so a contract named <code>Struct</code> is generated as <code>Struct_</code>. <code>RevertError</code> replaced <code>TransactionRevertedError</code> in the reserved set.</p>
+<p><code>Struct</code>, <code>FunctionPointer</code>, <code>Call</code> and <code>SignedAuthorization</code> (anywhere), <code>_fqn</code> (contract members) and <code>authorization_list</code> (function parameters) are now reserved in generated pytypes. A Solidity declaration whose name collides with a reserved name gets an underscore appended, so a contract named <code>Struct</code> is generated as <code>Struct_</code>, and Multicall3's <code>Call</code> struct as <code>Multicall3.Call_</code>. <code>RevertError</code> replaced <code>TransactionRevertedError</code> in the reserved set.</p>
 <h3 id="types-and-helpers">Types and helpers<a class="headerlink" href="#types-and-helpers" title="Permanent link">#</a></h3>
 <h4 id="wei-constructors-and-unit-conversions-reworked"><code>Wei</code> constructors and unit conversions reworked<a class="headerlink" href="#wei-constructors-and-unit-conversions-reworked" title="Permanent link">#</a></h4>
 <p><code>Wei.from_ether</code>, <code>Wei.from_gwei</code> and <code>Wei.from_str</code> were removed. <code>Wei</code> now accepts an optional keyword-only <code>unit</code> argument, and <code>wake.testing</code> and <code>wake.deployment</code> export module-level <code>ether()</code> and <code>gwei()</code> helpers.</p>
@@ -10031,7 +10085,7 @@
 <p><code>Call</code> describes a single non-transaction request (<code>call</code>, <code>estimate</code> or <code>access_list</code>) together with its result, so a request no longer has to be repeated to inspect it from a different angle. It is exported from both <code>wake.testing</code> and <code>wake.deployment</code> and offers:</p>
 <ul>
 <li><code>chain</code>, <code>block</code>, <code>data</code>, <code>from_</code>, <code>to</code>, <code>status</code></li>
-<li><code>return_value</code> and <code>raw_return_value</code></li>
+<li><code>return_value</code> and <code>raw_return_value</code>; the raw value is the returned bytes, which for <code>deploy</code> is the runtime code (a call deploys nothing, so unlike a transaction it has no new <code>Account</code> to return)</li>
 <li><code>error</code> and <code>raw_error</code></li>
 <li><code>call_trace</code></li>
 <li><code>estimated_gas</code> and <code>access_list</code>, regardless of the request type used</li>
@@ -10225,8 +10279,6 @@
         <script src="../../js/mathjax.js"></script>
       
         <script src="../../js/asciinema-player.min.js"></script>
-      
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       
