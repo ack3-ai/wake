@@ -167,3 +167,21 @@ def test_config_cyclic_import():
 
     with pytest.raises(ValueError):
         config.load(sources_path / "cyclic_2.toml")
+
+
+def test_write_config_testing_cmd(tmp_path):
+    import tomli
+
+    from wake.cli.init import write_config
+
+    config = WakeConfig(
+        project_root_path=tmp_path, local_config_path=tmp_path / "wake.toml"
+    )
+    write_config(config)
+    with config.local_config_path.open("rb") as f:
+        assert tomli.load(f)["testing"]["cmd"] == "revm"
+
+    config.update({"testing": {"cmd": "anvil"}}, [])
+    write_config(config)
+    with config.local_config_path.open("rb") as f:
+        assert tomli.load(f)["testing"]["cmd"] == "anvil"
