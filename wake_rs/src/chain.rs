@@ -11,7 +11,7 @@ use send_wrapper::SendWrapper;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rand::Rng;
-use revm::context::result::{EVMError, ExecutionResult};
+use revm::context::result::{EVMError, ExecutionResult, Output};
 use revm::context::transaction::AccessList;
 use revm::context::{BlockEnv, Cfg, CfgEnv, ContextTr, Evm, TxEnv};
 use revm::database::{AlloyDB, EmptyDB, WrapDatabaseAsync};
@@ -1512,10 +1512,11 @@ impl Chain {
 
         if !return_call && let ExecutionResult::Success { output, .. } = res.result {
             // happy fast path
-            if let Some(abi) = abi && let Some(return_type) = return_type {
+            // a deployment returns the runtime code; the constructor ABI has no outputs to decode
+            if let Output::Call(data) = &output && let Some(abi) = abi && let Some(return_type) = return_type {
                 Ok(decode_and_normalize(
                     py,
-                    output.data(),
+                    data,
                     &abi,
                     &return_type,
                     &Py::from(borrowed),
