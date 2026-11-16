@@ -118,8 +118,16 @@
             "experimental": {
               "type": "object",
               "properties": {
-                "enable": { "type": "boolean" },
-                "via_ssa_cfg": { "type": "boolean" }
+                "enable": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Enable solc experimental mode (solc 0.8.35 or newer)"
+                },
+                "via_ssa_cfg": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Use the experimental SSA CFG-based code generator (requires enable = true, solc 0.8.35 or newer)"
+                }
               }
             }
           }
@@ -203,8 +211,19 @@
         "cmd": {
           "type": "string",
           "enum": ["revm", "anvil", "hardhat"],
-          "default": "anvil",
-          "description": "Which development chain to use for testing"
+          "default": "revm",
+          "description": "Testing engine: the in-process revm EVM, or the Anvil or Hardhat development chain over JSON-RPC"
+        },
+        "block_history": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 256,
+          "description": "Number of most recent blocks, with their transactions, that revm chains keep; reaching further back raises HistoryPrunedError"
+        },
+        "coverage_sync_timeout": {
+          "type": "number",
+          "default": 5,
+          "description": "Minimum number of seconds between updates of wake-coverage.cov while tests run with coverage enabled"
         },
         "anvil": {
           "type": "object",
@@ -511,8 +530,16 @@
           "experimental": {
             "type": "object",
             "properties": {
-              "enable": { "type": "boolean" },
-              "via_ssa_cfg": { "type": "boolean" }
+              "enable": {
+                "type": "boolean",
+                "default": false,
+                "description": "Enable solc experimental mode (solc 0.8.35 or newer)"
+              },
+              "via_ssa_cfg": {
+                "type": "boolean",
+                "default": false,
+                "description": "Use the experimental SSA CFG-based code generator (requires enable = true, solc 0.8.35 or newer)"
+              }
             }
           }
         }
