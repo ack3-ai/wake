@@ -145,7 +145,7 @@ Transaction type can no longer be specified through the `type` keyword argument.
 
 #### Transaction arguments not implemented under `revm`
 
-Four argument values are still accepted by the signatures but abort with `pyo3_runtime.PanicException: not yet implemented`:
+Four argument values are still accepted by the signatures but raise `NotImplementedError`:
 
 - `gas_limit="auto"`
 - `max_fee_per_gas=...`
