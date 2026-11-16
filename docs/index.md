@@ -9,14 +9,13 @@
 - vulnerability and code quality detectors
 - printers for extracting useful information from Solidity code
 - static analysis framework for implementing custom detectors and printers
-- Github actions for [setting up Wake](https://github.com/marketplace/actions/wake-setup) and [running detectors](https://github.com/marketplace/actions/wake-detect)
 - language server ([LSP](https://microsoft.github.io/language-server-protocol/))
 - VS Code extension ([Tools for Solidity](https://marketplace.visualstudio.com/items?itemName=AckeeBlockchain.tools-for-solidity))
 - solc version manager
 
 ## Resources
 
-- [Awesome Wake tests](https://github.com/Ackee-Blockchain/awesome-wake-tests) - collection of fuzz tests and unit tests written in Wake
+- [Awesome Wake tests](https://github.com/ack3-ai/awesome-wake-tests) - collection of fuzz tests and unit tests written in Wake
 - built-in [detectors](https://github.com/ack3-ai/wake/tree/main/wake_detectors) and [printers](https://github.com/ack3-ai/wake/tree/main/wake_printers)
 
 ## Discovered vulnerabilities

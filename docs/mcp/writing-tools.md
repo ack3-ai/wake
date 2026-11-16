@@ -3,7 +3,7 @@
 The MCP server can be extended with custom tools contributed by third-party packages, the same way Wake supports custom [detectors and printers](../static-analysis/getting-started.md). A plugin registers one or more tools under the `wake.plugins.mcp` entry-point group; the server discovers and loads them at startup.
 
 !!! tip
-    The built-in [tools](https://github.com/Ackee-Blockchain/wake/tree/main/wake/mcp/tools) are a good starting point for writing your own.
+    The built-in [tools](https://github.com/ack3-ai/wake/tree/main/wake/mcp/tools) are a good starting point for writing your own.
 
 ## Tool structure
 

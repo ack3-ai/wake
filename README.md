@@ -26,7 +26,7 @@ Wake 4 (`4.22.1`) stays available with `pip3 install eth-wake` and its documenta
 
 - **Built-in fuzzing** — automatically generate diverse inputs and edge cases to uncover hidden vulnerabilities
 - **Vulnerability detectors** — catch reentrancy, overflows, and logic flaws early
-- **Seamless developer experience** — VS Code extension, GitHub Actions, solc manager
+- **Seamless developer experience** — VS Code extension, solc manager
 - **Cross-chain testing** — works with revm, Anvil and Hardhat
 
 ---
@@ -40,7 +40,6 @@ Wake 4 (`4.22.1`) stays available with `pip3 install eth-wake` and its documenta
 - Vulnerability and code quality detectors — detect reentrancy, overflows, and bad patterns early in development
 - Printers for extracting useful information from Solidity code — gain insights into contract structures and flows
 - Static analysis framework for custom detectors and printers — extend Wake with project-specific rules
-- GitHub actions for [setting up Wake](https://github.com/marketplace/actions/wake-setup) and [running detectors](https://github.com/marketplace/actions/wake-detect) — integrate seamlessly into CI/CD pipelines
 - Language server ([LSP](https://microsoft.github.io/language-server-protocol/)) — get autocompletion, hints, and references inside your IDE
 - VS Code extension ([Solidity (Wake)](https://marketplace.visualstudio.com/items?itemName=AckeeBlockchain.tools-for-solidity)) — instant feedback while writing Solidity code
 - Solc version manager — manage compiler versions with ease for consistent builds

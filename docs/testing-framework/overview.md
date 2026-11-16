@@ -14,7 +14,7 @@ It utilizes `pytypes`, Python equivalents of Solidity types, to simplify writing
 - integrated Python debugger ([ipdb](https://github.com/gotcha/ipdb)) attached on test failures
 - call traces and `console.log` support for easier debugging
 - deployment & mainnet interaction scripts
-- [better performance](https://github.com/Ackee-Blockchain/python-testing-frameworks-benchmark) than other Python or JavaScript frameworks
+- [better performance](https://github.com/ack3-ai/python-testing-frameworks-benchmark) than other Python or JavaScript frameworks
 
 The currently supported development chains are:
 
