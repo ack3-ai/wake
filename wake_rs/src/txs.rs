@@ -164,8 +164,7 @@ impl Txs {
             // caller error, so it gets its own exception type.
             _ => Err(HistoryPrunedError::new_err(format!(
                 "transaction {absolute} is no longer retained: transactions {}..{} are available. \
-                 Raise `testing.block_history` in the configuration (or set it to null to \
-                 disable pruning) to keep more.",
+                 Raise `testing.block_history` in the configuration to keep more.",
                 self.start_index, total
             ))),
         }

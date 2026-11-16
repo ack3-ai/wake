@@ -38,7 +38,7 @@ from wake_rs import HistoryPrunedError
 
 ```text
 HistoryPrunedError: transaction 0 is no longer retained: transactions 131..401 are available.
-Raise `testing.block_history` in the configuration (or set it to null to disable pruning) to keep more.
+Raise `testing.block_history` in the configuration to keep more.
 ```
 
 This affects indexing into both `chain.txs` and `chain.blocks`. `chain.txs[-1]` is not safe either: it raises once the newest transaction's own block has aged out of the window, which happens when blocks keep being mined without new transactions.
@@ -69,14 +69,14 @@ Holding the object keeps the metadata (`from_`, `to`, `status`, `gas_used`, `eve
 ```text
 HistoryPrunedError: block 1 is no longer retained for replay because its block context was pruned:
 the retained window starts at block 132. Raise `testing.block_history` in the configuration
-(or set it to null to disable pruning) to keep more.
+to keep more.
 ```
 
-Raise the window, or set `block_history = null` to restore Wake 4 behaviour at the cost of memory linear in the number of transactions executed:
+Raise the window to keep more history, at the cost of memory:
 
 ```toml
 [testing]
-block_history = null
+block_history = 10000
 ```
 
 The option applies to `revm` only. See [configuration](../configuration.md#testing-namespace) for the full description.

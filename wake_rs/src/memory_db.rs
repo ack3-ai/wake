@@ -77,8 +77,7 @@ impl fmt::Display for JournalOutOfRange {
                 f,
                 "journal index {requested} is outside the replayable range: history before \
                  index {base} has been pruned. Increase `testing.block_history` in the \
-                 configuration (or set it to null to disable pruning) to keep older \
-                 transactions replayable."
+                 configuration to keep older transactions replayable."
             ),
             Self::Reverted { requested, tip } => write!(
                 f,

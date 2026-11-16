@@ -436,8 +436,8 @@ class TestingConfig(WakeConfigModel):
     Target number of blocks each chain keeps. Pruning uses a small hysteresis window,
     temporarily retaining `ceil(target / 8)` extra blocks (at least 1 and at most
     32) before draining back to the target. `0` is treated as `1`, so the latest
-    block remains resolvable. `null` keeps everything, at the cost of memory linear
-    in transactions executed.
+    block remains resolvable. `None`, which can only be set from Python since TOML has
+    no null, keeps everything, at the cost of memory linear in transactions executed.
 
     Blocks are the unit of retention: a transaction is kept exactly as long as the block
     containing it, and the EVM journal keeps only what those blocks need to re-execute.
