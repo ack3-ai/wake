@@ -1343,7 +1343,7 @@ def _get_storage_layout(
 
         return SolcOutputStorageLayout.model_validate(contract._storage_layout)
 
-    if (resolver := contract.chain._pytypes_resolvers.get(contract)) is not None:
+    if (resolver := contract.pytypes_resolver) is not None:
         fqn = getattr(resolver, "_fqn", None)
     else:
         fqn = get_fqn_from_address(contract.address, "latest", contract.chain)
