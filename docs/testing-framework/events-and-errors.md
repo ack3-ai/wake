@@ -28,7 +28,7 @@ class Transfer:
     _abi = {'anonymous': False, 'inputs': [{'indexed': True, 'internalType': 'address', 'name': 'from', 'type': 'address'}, {'indexed': True, 'internalType': 'address', 'name': 'to', 'type': 'address'}, {'indexed': False, 'internalType': 'uint256', 'name': 'value', 'type': 'uint256'}], 'name': 'Transfer', 'type': 'event'}
     origin: Account = dataclasses.field(init=False, compare=False, repr=False)
     original_name = 'Transfer'
-    selector = b'\xdd\xf2R\xad\x1b\xe2\xc8\x9bi\xc2\xb0h\xfc7\x8d\xaa\x95+\xa7\xf1c\xc4\xa1\x16(\xf5ZM\xf5#\xb3\xef'
+    selector = bytes32(b'\xdd\xf2R\xad\x1b\xe2\xc8\x9bi\xc2\xb0h\xfc7\x8d\xaa\x95+\xa7\xf1c\xc4\xa1\x16(\xf5ZM\xf5#\xb3\xef')
 
     from_: Address = dataclasses.field(metadata={"original_name": "from"})
     to: Address
@@ -75,6 +75,10 @@ def test_events():
 `pytypes` for unused events are not generated.
 `tx.events` may also contain `UnknownEvent` instances for events that cannot be recognized from the contract ABI.
 
+On forked chains, events of contracts that are not in `pytypes` are decoded as `ExternalEvent` instances when the contract's ABI is available on Sourcify or on Etherscan (with an API key set).
+`ExternalEvent` has the attributes named after the event parameters in the ABI, plus `_event_name` and `_event_full_name` (`ContractName.EventName`).
+To decode the events of an account with a specific contract from `pytypes` instead, set the account's [`pytypes_resolver`](./accounts-and-addresses.md#resolving-events-and-errors).
+
 !!! info "How Solidity events are encoded"
     `UnknownEvent` instances contain the `topics` and `data` fields.
     `topics` is a list of 32-byte entries where the first entry matches the selector of the event (i.e. Keccak-256 of the event signature).
@@ -94,6 +98,7 @@ Solidity user-defined errors are translated into Python dataclasses and inherit 
 The `tx` field is set to `None` if the reverted request was not a transaction.
 
 `pytypes` for unused errors are not generated.
+Like events, errors of contracts that are not in `pytypes` are decoded on forked chains as `ExternalError` instances (with `_error_name` and `_error_full_name`) when the contract's ABI is available; `ExternalError` derives from `RevertError`.
 
 ```solidity
 error NotEnoughFunds(
@@ -112,7 +117,7 @@ class NotEnoughFunds(RevertError):
     """
     _abi = {'inputs': [{'internalType': 'uint256', 'name': 'requested', 'type': 'uint256'}, {'internalType': 'uint256', 'name': 'available', 'type': 'uint256'}], 'name': 'NotEnoughFunds', 'type': 'error'}
     original_name = 'NotEnoughFunds'
-    selector = b'\x8c\x90Sh'
+    selector = bytes4(b'\x8c\x90Sh')
 
     requested: uint256
     available: uint256
@@ -120,10 +125,8 @@ class NotEnoughFunds(RevertError):
 
 ### Accessing errors
 
-Revert errors are automatically raised in form of exceptions unless a transaction configured to return immediately with `confirmations=0`.
-
-In case of `confirmations=0`, a revert error can be accessed using the `error` property of the transaction object. This performs an implicit `.wait()`.
-If the transaction did not revert, `error` is `None`.
+Revert errors are raised as exceptions as soon as the request is executed.
+The transaction object of a reverted transaction is available as `e.tx`, and its `error` property holds the same error; for a transaction that did not revert, `error` is `None`.
 
 ```python
 from wake.testing import *

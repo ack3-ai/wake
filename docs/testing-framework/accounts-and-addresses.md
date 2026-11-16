@@ -15,7 +15,7 @@ Address("0x0000000000000000000000000000000000000000")
 Address(0)
 ```
 
-The hex string does not have to be [EIP-55](https://eips.ethereum.org/EIPS/eip-55) compliant.
+The hex string does not have to be [EIP-55](https://eips.ethereum.org/EIPS/eip-55) compliant, but `str(address)` always returns the EIP-55 checksummed form.
 
 Addresses can be compared with each other:
 
@@ -23,6 +23,12 @@ Addresses can be compared with each other:
 from wake.testing import Address
 
 assert Address(1) > Address(0)
+```
+
+An `Address` is equal only to another `Address`. Comparing it with a string returns `False`, and ordering it against a string raises `TypeError`, so construct an `Address` first:
+
+```python
+assert token.owner() == Address("0xdAC17F958D2ee523a2206206994597C13D831ec7")
 ```
 
 ## Accounts
@@ -40,13 +46,12 @@ assert Account(0) == Account(0, chain)
 assert Account(0) != Account(0, other_chain)
 ```
 
-`Address` and `Account` instances cannot be compared with each other. `Account` instances belonging to different
-chains cannot be compared using the `<` and `>` operators.
+An `Account` is never equal to an `Address`, and ordering an `Account` against an `Address` raises `TypeError`; compare `account.address` instead.
+`Account` instances belonging to different chains cannot be compared using the `<` and `>` operators.
 
 !!! warning "Using accounts belonging to different chains"
-    To save users from accidentally using accounts belonging to different chains, Wake testing framework
-    does not accept `Account` instances belonging to different chains in most API functions. To overcome
-    this limitation, it is possible to use the `address` property of an `Account` instance.
+    An `Account` refers to its own chain. When an account of one chain is needed on another chain, for example as a function argument,
+    pass its `address` property instead.
 
 ### Importing accounts and addresses
 
@@ -87,6 +92,14 @@ Account.new()
 
 In all of the above cases, a private key is stored together with the account and can be used to sign transactions or messages.
 
+An account can also be backed by a Trezor hardware wallet, which signs instead of a stored private key:
+
+```python
+from wake.testing import Account
+
+Account.from_trezor("m/44'/60'/0'/0/0")
+```
+
 ### Signing messages
 
 `Account` instances can be used to sign messages. This is only possible if the account has a known private key.
@@ -122,21 +135,50 @@ class Transfer:
     amount: uint256
 
 
-account = Account.from_mnemonic(" ".join(["test"] * 11 + ["junk"]))
-signature = account.sign_structured(
-    Transfer(
-        sender=account.address,
-        recipient=Address(1),
-        amount=10,
-    ),
-    domain=Eip712Domain(
-        name="Test",
-        chainId=chain.chain_id,
+@chain.connect()
+def test_sign_structured():
+    account = Account.from_mnemonic(" ".join(["test"] * 11 + ["junk"]))
+    signature = account.sign_structured(
+        Transfer(
+            sender=account.address,
+            recipient=Address(1),
+            amount=10,
+        ),
+        domain=Eip712Domain(
+            name="Test",
+            chainId=chain.chain_id,
+        )
     )
-)
 ```
 
 See [EIP-712](https://eips.ethereum.org/EIPS/eip-712) for more information.
+
+To debug a signature, the hashes that are signed can be computed directly. `get_eip712_struct_hash(message)` returns the struct hash and `get_eip712_signing_hash(message, domain)` the full signing hash.
+Structs generated in `pytypes` derive from `Struct` and also offer `.encode_eip712_type()`, `.encode_eip712_data()`, `.get_eip712_struct_hash()` and `.get_eip712_signing_hash(domain)`.
+
+#### Signing EIP-7702 authorizations
+
+`account.sign_authorization(address)` signs an [EIP-7702](https://eips.ethereum.org/EIPS/eip-7702) authorization that delegates the account's code to the contract at `address`.
+`chain_id` and `nonce` default to the current chain and the account's current nonce.
+The signed authorization is passed to a transaction, sent by any account, in the `authorization_list` argument:
+
+```python
+from wake.testing import *
+from pytypes.contracts.Counter import Counter
+
+
+@chain.connect()
+def test_delegation():
+    implementation = Counter.deploy()
+    eoa = Account.new()
+
+    authorization = eoa.sign_authorization(implementation)
+    chain.accounts[0].transact(authorization_list=[authorization])
+
+    # eoa now executes the code of Counter
+    Counter(eoa).increment()
+    assert Counter(eoa).count() == 1
+```
 
 #### Signing message hash
 
@@ -171,17 +213,32 @@ Setting the label to `None` removes the label.
 
 `Account` instances have the following properties:
 
-| Property      | Description                           |
-|---------------|---------------------------------------|
-| `address`     | `Address` of the account              |
-| `balance`     | balance of the account in Wei         |
-| `chain`       | `Chain` the account is bound to       |
-| `code`        | code of the account                   |
-| `label`       | string label of the account           |
-| `nonce`       | nonce of the account                  |
-| `private_key` | private key of the account (if known) |
+| Property                         | Description                                                                                      |
+|----------------------------------|--------------------------------------------------------------------------------------------------|
+| `address`                        | `Address` of the account                                                                         |
+| `balance`                        | balance of the account in Wei                                                                    |
+| `chain`                          | `Chain` the account is bound to                                                                  |
+| `code`                           | code of the account                                                                              |
+| `label`                          | string label of the account                                                                      |
+| `nonce`                          | nonce of the account                                                                             |
+| `private_key`                    | private key of the account (if known)                                                            |
+| <nobr>`pytypes_resolver`</nobr>  | contract from `pytypes` used to decode events and errors of the account, see below (`None` by default) |
 
-Except for `address`, `chain` and `private_key`, all properties can be assigned to. `nonce` can only be incremented.
+Except for `address`, `chain` and `private_key`, all properties can be assigned to.
+Assigning `balance`, `nonce` or `code` mines a new block.
+
+### Resolving events and errors
+
+Events and errors are decoded using the contract that emitted or raised them. When Wake cannot tell which contract that is, for example for a contract deployed from raw creation code or on a forked chain, `pytypes_resolver` names it explicitly:
+
+```python
+usdt = Account("0xdAC17F958D2ee523a2206206994597C13D831ec7")
+usdt.pytypes_resolver = IUSDT
+```
+
+where `IUSDT` is a contract or interface generated in `pytypes`. The resolver must be set on the account whose code emits the event or raises the error; behind a proxy, that is the implementation contract.
+Resolvers are cleared when the chain connects again, and assigning `None` removes one.
+On forked chains, events and errors of contracts without a resolver and outside `pytypes` are decoded as `ExternalEvent` and `ExternalError` when their ABI is available on Sourcify or Etherscan, see [Events and errors](./events-and-errors.md).
 
 ### Low-level calls and transactions
 
