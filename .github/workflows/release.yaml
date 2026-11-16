@@ -92,7 +92,7 @@ jobs:
           path: ./wheelhouse/*.whl
 
   build_macos_wheels:
-    runs-on: macos-14
+    runs-on: macos-latest
     strategy:
       matrix:
         arch: [x86_64, arm64]
@@ -119,6 +119,12 @@ jobs:
       - name: Install cibuildwheel
         run: |
           python3 -m pip install cibuildwheel
+
+      # libusb1-sys links Homebrew's libusb when pkg-config finds it, and that dylib is built for the
+      # runner's macOS; without it, libusb is compiled from source and linked statically, like for x86_64
+      - name: Remove Homebrew libusb
+        run: |
+          brew uninstall --ignore-dependencies libusb || true
 
       - name: Build wheels
         run: |
