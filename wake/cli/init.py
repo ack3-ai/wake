@@ -654,8 +654,6 @@ def run_init(
             overwrite=force,
         )
 
-        subprocess.run(["npm", "install"])
-
     # update .gitignore, --force is not needed
     update_gitignore(config.project_root_path / ".gitignore")
 

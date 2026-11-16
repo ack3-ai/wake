@@ -1,8 +1,3 @@
-Install `@openzeppelin`:
-```bash
-npm install
-```
-
 Run
 ```bash
 wake up pytypes

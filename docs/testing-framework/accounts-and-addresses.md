@@ -251,3 +251,6 @@ Every method of a contract generated in `pytypes` has a `selector` property.
         counter.increment()
         assert counter.count() == 1
     ```
+
+    The example project does not include `@openzeppelin/contracts`.
+    To run this test, install it with `npm install @openzeppelin/contracts` and import `@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol` from a Solidity file in the project so that `pytypes` are generated for `ERC1967Proxy`.
