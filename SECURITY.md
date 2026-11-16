@@ -2,4 +2,4 @@
 
 ## Reporting a Vulnerability
 
-To report a vulnerability, please contact the maintainers at wake@ackee.xyz.
+To report a vulnerability, please contact the maintainers at wake@ack3.ai.
