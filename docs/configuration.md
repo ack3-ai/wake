@@ -28,6 +28,10 @@ Wake can be configured using configuration options loaded from multiple sources 
     # target_version (unset - use the latest version)
     # via_IR (unset - let the compiler decide)
 
+    [compiler.solc.experimental]
+    enable = false
+    via_ssa_cfg = false
+
     [compiler.solc.optimizer]
     # enabled (unset - let the compiler decide)
     runs = 200
@@ -93,7 +97,9 @@ Wake can be configured using configuration options loaded from multiple sources 
     link_format = "vscode://file/{path}:{line}:{col}"
 
     [testing]
-    cmd = "anvil"
+    block_history = 256
+    cmd = "revm"
+    coverage_sync_timeout = 5
 
     [testing.anvil]
     cmd_args = "--prune-history 100 --transaction-block-keeper 10 --steps-tracing --silent"
@@ -172,6 +178,13 @@ Additionally, detectors and printers may use this namespace to load needed API k
 
 !!! info
     The `include_paths` option is the preferred way to handle imports of libraries. Remappings should be used only when `include_paths` cannot be used (e.g. when the import path differs from the system path of the imported file).
+
+### `compiler.solc.experimental` namespace
+
+| Option                     | Description                                                                                                                                                                                              |
+|:---------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `enable`                   | Enable `solc` experimental mode (`solc` 0.8.35 or newer). On its own it only unlocks experimental features; they have no stability guarantees, and enabling it marks the contract metadata as experimental |
+| <nobr>`via_ssa_cfg`</nobr> | Use the experimental SSA CFG-based code generator. Requires `enable = true` and `solc` 0.8.35 or newer                                                                                                   |
 
 ### `compiler.solc.optimizer` namespace
 
@@ -310,9 +323,11 @@ The following settings mainly apply to LSP printers that are run automatically b
 
 ### `testing` namespace
 
-| Option    | Description                                                                      |
-|:----------|:---------------------------------------------------------------------------------|
-| `cmd`     | Development chain implementation to use. May be either `anvil` or `hardhat`. |
+| Option                               | Description                                                                                                                                                                                       |
+|:-------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| <nobr>`block_history`</nobr>         | Number of most recent blocks, with their transactions, that `revm` chains keep. Reaching further back raises `HistoryPrunedError`; raise the value to keep more history at the cost of memory. `revm` only |
+| `cmd`                                | Testing engine to use: `revm` (the in-process EVM), or the `anvil` or `hardhat` development chain over JSON-RPC (Hardhat support is deprecated)                                                  |
+| <nobr>`coverage_sync_timeout`</nobr> | Minimum number of seconds between updates of `wake-coverage.cov` while tests run with coverage enabled                                                                                            |
 
 ### `testing.anvil` namespace
 
