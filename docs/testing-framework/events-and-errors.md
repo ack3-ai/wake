@@ -196,21 +196,41 @@ class PanicCodeEnum(IntEnum):
     "Called invalid internal function"
 ```
 
+### Halts
+
+When execution stops with an exceptional halt instead of a revert, e.g. on running out of gas or executing an invalid opcode, Wake raises `Halt`.
+`Halt` is not a `RevertError`; it derives directly from `Exception`. As a result, `except RevertError`, `must_revert()` and `may_revert()` without arguments, and `on_revert` handlers do not handle it, and the halt fails the test.
+Like a revert error, `Halt` carries the `tx` (or `call`) that caused it and a `call_trace`. Its `message` holds the halt reason reported by the execution engine, e.g. `InvalidFEOpcode` or `OutOfGas(Basic)` with `revm`.
+
+Name `Halt` explicitly to handle it:
+
+```python
+from wake.testing import *
+
+# only halts
+with must_revert(Halt) as e:
+    ...
+
+# a revert or a halt
+with must_revert(RevertError, Halt) as e:
+    ...
+```
+
 ### Helper functions
 
 Wake offers two helper functions (context managers) to handle errors - `must_revert` and `may_revert`. Both functions can accept:
 
-- no arguments - any `RevertError` is handled,
-- a single error type - either `Error`, `Panic` or a user-defined type from `pytypes`,
+- no arguments - any `RevertError` is handled, but not a [`Halt`](#halts),
+- a single error type - either `Error`, `Panic`, `Halt` or a user-defined type from `pytypes`,
 - a single error instance - an instance of `Error`, `Panic` or a user-defined type from `pytypes`, e.g. `Error("some error")` or `Panic(PanicCodeEnum.UNDERFLOW_OVERFLOW)`,
     - the error raised by the tested contract must exactly match the provided error instance,
-- a tuple or list of errors - any mix of error types and error instances.
+- several errors as separate arguments - any mix of error types and error instances.
 
 ```python
 from wake.testing import *
 
 # handle any Error(str message) or underflow/overflow
-with must_revert((Error, Panic(PanicCodeEnum.UNDERFLOW_OVERFLOW))) as e:
+with must_revert(Error, Panic(PanicCodeEnum.UNDERFLOW_OVERFLOW)) as e:
     # some code that reverts
     pass
 
