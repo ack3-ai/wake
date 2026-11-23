@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Wake is a Python-based Solidity development and testing framework with built-in vulnerability detectors.">
+        <meta name="description" content="Reports a possibility of triggering a compiler bug when copying empty calldata or memory bytes to storage bytes and then extending the storage bytes…">
       
       
         <meta name="author" content="ack3">
@@ -70,7 +70,7 @@
   
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Empty byte array copy bug - Wake" />
-<meta property="og:description" content="Wake is a Python-based Solidity development and testing framework with built-in vulnerability detectors." />
+<meta property="og:description" content="Reports a possibility of triggering a compiler bug when copying empty calldata or memory bytes to storage bytes and then extending the storage bytes…" />
 <meta property="og:image" content="https://ack3.ai/wake/docs/latest/assets/images/social/static-analysis/detectors/empty-byte-array-copy-bug.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
@@ -78,7 +78,7 @@
 <meta property="og:url" content="https://ack3.ai/wake/docs/latest/static-analysis/detectors/empty-byte-array-copy-bug/" />
 <meta property="twitter:card" content="summary_large_image" />
 <meta property="twitter:title" content="Empty byte array copy bug - Wake" />
-<meta property="twitter:description" content="Wake is a Python-based Solidity development and testing framework with built-in vulnerability detectors." />
+<meta property="twitter:description" content="Reports a possibility of triggering a compiler bug when copying empty calldata or memory bytes to storage bytes and then extending the storage bytes…" />
 <meta property="twitter:image" content="https://ack3.ai/wake/docs/latest/assets/images/social/static-analysis/detectors/empty-byte-array-copy-bug.png" />
 </head>
   
@@ -8392,6 +8392,9 @@ The bug was fixed in Solidity 0.7.4.</p>
 
 
 
+
+  
+  
 
 
 

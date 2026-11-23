@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Wake is a Python-based Solidity development and testing framework with built-in vulnerability detectors.">
+        <meta name="description" content="Reports uses of msg.value in functions that are never called from a payable function. The value of msg.value is always zero in such functions.">
       
       
         <meta name="author" content="ack3">
@@ -70,7 +70,7 @@
   
 <meta property="og:type" content="website" />
 <meta property="og:title" content="msg.value non-payable function - Wake" />
-<meta property="og:description" content="Wake is a Python-based Solidity development and testing framework with built-in vulnerability detectors." />
+<meta property="og:description" content="Reports uses of msg.value in functions that are never called from a payable function. The value of msg.value is always zero in such functions." />
 <meta property="og:image" content="https://ack3.ai/wake/docs/latest/assets/images/social/static-analysis/detectors/msg-value-nonpayable-function.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
@@ -78,7 +78,7 @@
 <meta property="og:url" content="https://ack3.ai/wake/docs/latest/static-analysis/detectors/msg-value-nonpayable-function/" />
 <meta property="twitter:card" content="summary_large_image" />
 <meta property="twitter:title" content="msg.value non-payable function - Wake" />
-<meta property="twitter:description" content="Wake is a Python-based Solidity development and testing framework with built-in vulnerability detectors." />
+<meta property="twitter:description" content="Reports uses of msg.value in functions that are never called from a payable function. The value of msg.value is always zero in such functions." />
 <meta property="twitter:image" content="https://ack3.ai/wake/docs/latest/assets/images/social/static-analysis/detectors/msg-value-nonpayable-function.png" />
 </head>
   
@@ -8389,6 +8389,9 @@ The value of <code>msg.value</code> is always zero in such functions.</p>
 
 
 
+
+  
+  
 
 
 
