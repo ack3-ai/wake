@@ -1,3 +1,7 @@
+---
+description: "Running Wake tests on an Anvil or Hardhat development chain over JSON-RPC instead of the default in-process revm engine, and what differs between them."
+---
+
 # Anvil and Hardhat
 
 Tests run on the in-process `revm` engine by default.

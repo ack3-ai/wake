@@ -1,3 +1,7 @@
+---
+description: "Fuzz testing in Wake with FuzzTest: flows, invariants and execution hooks, random data for flow arguments, and launching fuzz tests in parallel."
+---
+
 # Fuzzing
 
 Fuzzing is a technique for testing software that involves providing invalid, unexpected, or random data as inputs to a computer program.

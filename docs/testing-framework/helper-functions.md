@@ -1,3 +1,7 @@
+---
+description: "Wake testing helpers: ABI encoding and decoding, Keccak-256, CREATE and CREATE2 addresses, proxy logic contracts, storage access, token mint and burn."
+---
+
 # Helper functions
 
 Wake testing framework provides a set of helper functions to make testing easier.

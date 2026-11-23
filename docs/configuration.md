@@ -1,3 +1,7 @@
+---
+description: "How Wake loads configuration from defaults, global and project wake.toml files, environment variables and CLI arguments, plus a reference of every option."
+---
+
 # Configuration
 
 Wake can be configured using configuration options loaded from multiple sources in the following order:

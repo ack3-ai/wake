@@ -1,3 +1,7 @@
+---
+description: "Changes from Woke 2.x to Woke 3.x: return values of transaction calls, the default transaction type, and deployment_code() renamed to get_creation_code()."
+---
+
 # Migrating from Woke 2.x
 
 Woke 3.x introduces a new deployment module, which gives ability to write deployment scripts in Python.

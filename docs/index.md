@@ -1,3 +1,7 @@
+---
+description: "Wake is a Python-based Solidity development and testing framework with a property-based fuzzer, vulnerability detectors, printers and a language server."
+---
+
 # Wake
 
 [Wake](https://github.com/ack3-ai/wake) is a Python-based Solidity development and testing framework with built-in vulnerability detectors.

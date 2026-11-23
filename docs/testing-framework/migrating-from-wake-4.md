@@ -1,3 +1,7 @@
+---
+description: "Upgrading from Wake 4.x to Wake 5: revm as the new default execution engine, chain and transaction API changes, errors and reverts, regenerated pytypes."
+---
+
 # Migrating from Wake 4.x
 
 In version 5.0.0, a new testing EVM execution engine based on [revm](https://github.com/bluealloy/revm) was introduced and made the default. This brings several breaking changes as well as new features.

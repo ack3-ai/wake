@@ -1,3 +1,7 @@
+---
+description: "Solc Version Manager in Wake: installing, listing, switching and removing solc compiler versions with wake svm, and the wake-solc wrapper."
+---
+
 # Solc Version Manager (SVM)
 
 Wake implements Solc Version Manager (SVM) to manage multiple installations of the *solc* compiler. Compiler executables for different versions are located in

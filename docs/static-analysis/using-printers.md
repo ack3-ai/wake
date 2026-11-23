@@ -1,3 +1,7 @@
+---
+description: "Running Wake printers to extract information from Solidity contracts with wake print, configuring printers and changing their loading priorities."
+---
+
 # Using printers
 
 Printers are Python scripts used to extract useful information from Solidity smart contracts.

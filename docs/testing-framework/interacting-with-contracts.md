@@ -1,3 +1,7 @@
+---
+description: "Calling and deploying contracts in Wake tests through pytypes or low-level methods, with the tx, call, estimate and access_list request types."
+---
+
 # Interacting with contracts
 
 Contracts can be interacted with either using methods generated in `pytypes` or using low-level methods.

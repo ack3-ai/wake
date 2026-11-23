@@ -1,3 +1,7 @@
+---
+description: "The Wake LSP server for Solidity over TCP: configuration, supported commands, and features such as go to definition, references, hover and code lens."
+---
+
 # Solidity LSP server
 Wake implements an [LSP](https://microsoft.github.io/language-server-protocol/) server for Solidity. The only currently supported communication channel is TCP.
 

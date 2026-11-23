@@ -1,3 +1,7 @@
+---
+description: "Common Wake fuzz testing patterns: account balance testing, multi-token interaction, state change tracking and test flow branching."
+---
+
 # Common Testing Patterns
 Frequently used testing approaches that apply to most smart contract testing scenarios, focusing on balance tracking, state changes, and common interactions.
 

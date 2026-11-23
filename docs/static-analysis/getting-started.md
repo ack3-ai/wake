@@ -1,3 +1,7 @@
+---
+description: "Writing a custom Wake detector or printer from a template: its structure, command-line interface, inherited methods, visit modes and execution order."
+---
+
 # Getting started
 
 Implementing a custom detector or printer is a very efficient way to extend Wake's detection and analysis capabilities.

@@ -1,3 +1,7 @@
+---
+description: "Keeping Wake tests fast, for example with tx.raw_events and fewer call traces, and profiling test runs with the wake --profile flag."
+---
+
 # Performance considerations
 
 Wake testing framework is designed to be fast and efficient. However, there are some things to keep in mind to achieve the best performance.

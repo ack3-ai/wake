@@ -1,3 +1,7 @@
+---
+description: "Wake Cookbook: fuzz testing patterns for Solidity smart contracts, from essential fundamentals and common patterns to specialized use cases."
+---
+
 # Wake Cookbook
 
 Welcome to the Wake Cookbook - a guide to fuzz testing patterns for smart contracts using Wake. This cookbook is organized into categories from fundamental to specialized patterns.

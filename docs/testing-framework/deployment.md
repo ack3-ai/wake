@@ -1,3 +1,7 @@
+---
+description: "Deployment scripts in Wake: how wake.deployment differs from wake.testing on live chains, managing accounts with private keys, and supported chains."
+---
+
 # Deployment
 
 <div id="deployment-asciinema" style="z-index: 1; position: relative;"></div>

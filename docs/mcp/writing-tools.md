@@ -1,3 +1,7 @@
+---
+description: "Extending the Wake MCP server with custom tools: the @mcp_tool decorator, ToolInput schemas, the McpBuild object and registering a wake.plugins.mcp plugin."
+---
+
 # Writing custom tools
 
 The MCP server can be extended with custom tools contributed by third-party packages, the same way Wake supports custom [detectors and printers](../static-analysis/getting-started.md). A plugin registers one or more tools under the `wake.plugins.mcp` entry-point group; the server discovers and loads them at startup.

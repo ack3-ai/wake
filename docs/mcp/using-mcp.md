@@ -1,3 +1,7 @@
+---
+description: "Running the Wake MCP server over stdio or streamable HTTP and connecting MCP clients, so LLM agents can statically analyze a Solidity codebase."
+---
+
 # Using the MCP server
 
 Wake implements an [MCP](https://modelcontextprotocol.io/) (Model Context Protocol) server that exposes its static-analysis capabilities as tools for LLM agents and AI coding assistants. It lets a model explore and reason about a Solidity codebase — list contracts, resolve declarations, read sources, follow references, inspect storage layout, and more — without leaving the assistant.
