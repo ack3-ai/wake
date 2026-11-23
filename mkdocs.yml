@@ -289,6 +289,7 @@ exclude_docs: |
 
 hooks:
     - docs/hooks/meta_descriptions.py
+    - docs/hooks/redirects.py
 
 plugins:
     - search
