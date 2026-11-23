@@ -1,3 +1,7 @@
+---
+description: "The Wake IR built on the Solidity compiler AST: declarations, statements, expressions, type names and meta nodes, and the rules of the IR tree structure."
+---
+
 Wake IR (intermediate representation) model builds on top of the AST (abstract syntax tree) produced by the Solidity compiler.
 It is a tree representation of the source code holding additional information.
 

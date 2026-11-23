@@ -1,3 +1,7 @@
+---
+description: "Command-line options and arguments for Wake detectors and printers with Click, SolidityName completions for Solidity names, and import handling."
+---
+
 # Command-line interface
 
 Detectors and printers provide a command-line interface through the [Click](https://click.palletsprojects.com/en/8.1.x/) library.

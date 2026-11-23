@@ -1,3 +1,7 @@
+---
+description: "Upgrading from Woke 3.x to Wake 4.x: renamed modules, configuration option changes, default accounts, detect and fuzz commands, may_revert and must_revert."
+---
+
 # Migrating from Woke 3.x
 
 In the version 4.0.0, the framework was renamed from Woke to Wake.

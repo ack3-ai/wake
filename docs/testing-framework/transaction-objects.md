@@ -1,3 +1,7 @@
+---
+description: "Transaction objects returned when sending a transaction in Wake tests: their properties, and sending multiple transactions in a single block."
+---
+
 # Transaction objects
 
 When sending a transaction, a transaction object is returned. This object can be used to access

@@ -1,3 +1,7 @@
+---
+description: "Setting up a Wake development environment: a virtual environment with uv, venv or virtualenvwrapper, an editable install, Pyright and the git hooks."
+---
+
 # Contributing
 
 ## Creating a virtual environment

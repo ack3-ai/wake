@@ -1,3 +1,7 @@
+---
+description: "First steps with the Wake testing framework: generating pytypes, connecting to a chain, deploying a contract and interacting with it in a test."
+---
+
 # Getting started
 
 This guide explains how to run the first test in Wake development and testing framework.

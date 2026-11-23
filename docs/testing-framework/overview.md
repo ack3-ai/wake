@@ -1,4 +1,5 @@
 ---
+description: "Overview of the Wake testing framework: pytest-based Solidity tests with pytypes, an in-process revm EVM, guided fuzzing, forking and cross-chain tests."
 title: Development and testing framework
 ---
 

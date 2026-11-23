@@ -284,6 +284,12 @@ extra:
 watch:
     - wake
 
+exclude_docs: |
+    /hooks/
+
+hooks:
+    - docs/hooks/meta_descriptions.py
+
 plugins:
     - search
     - mkdocstrings:

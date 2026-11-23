@@ -1,3 +1,7 @@
+---
+description: "Built-in tools of the Wake MCP server for project overview, source code, navigation and references, storage and state, selectors and calls."
+---
+
 # Built-in tools
 
 The `wake mcp` server exposes the following tools. Every tool operates on the statically compiled project and returns human-readable text. Optional parameters are marked with `?`.

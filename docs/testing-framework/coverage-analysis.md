@@ -1,3 +1,7 @@
+---
+description: "Code coverage in Wake: Python test script coverage with pytest-cov, and Solidity contract coverage collected with wake test --coverage."
+---
+
 # Coverage analysis
 
 Wake supports code coverage analysis of both Python test scripts and Solidity contracts.

@@ -1,3 +1,7 @@
+---
+description: "Testing events and errors in Wake: accessing emitted events, user-defined and internal error types, halts, and the must_revert and may_revert helpers."
+---
+
 # Events and errors
 
 Wake testing framework provides a way to test events and errors emitted by the tested contract.

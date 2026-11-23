@@ -1,3 +1,7 @@
+---
+description: "Fixing common Wake test failures: UnknownRevertError with empty data, code and initcode size limits, invalid opcodes, WebSocket timeouts and frozen tests."
+---
+
 # Troubleshooting
 
 ## `UnknownRevertError(data=b'')`

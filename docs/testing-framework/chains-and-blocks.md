@@ -1,3 +1,7 @@
+---
+description: "The Chain object in Wake tests: chain properties and methods, connecting to a chain, accessing blocks and their properties, and chain history."
+---
+
 # Chains and blocks
 
 For single chain tests, Wake provides the global `chain` variable. This

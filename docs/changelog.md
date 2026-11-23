@@ -1,3 +1,7 @@
+---
+description: "Wake release notes from 4.0.0 onward, including Wake 5.0.0 with its new revm-based default testing engine."
+---
+
 # Changelog
 
 <style>

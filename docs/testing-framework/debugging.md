@@ -1,3 +1,7 @@
+---
+description: "Debugging Wake tests with the ipdb debugger on failures or at breakpoint() calls, call traces of transactions, and console.log output from contracts."
+---
+
 # Debugging
 
 ## Using Python debugger

@@ -1,3 +1,7 @@
+---
+description: "Installing Wake with pip3 install eth-wake on Python 3.10 or higher or through the Tools for Solidity VS Code extension, and enabling shell completions."
+---
+
 # Installation
 Wake requires Python 3.10 or higher.
 

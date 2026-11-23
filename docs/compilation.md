@@ -1,3 +1,7 @@
+---
+description: "Solidity compilation settings in Wake: include paths, remappings for Foundry and other projects, exclude paths, the via IR pipeline and the optimizer."
+---
+
 # Compilation
 
 Wake comes with default compilation settings that should work for many projects.

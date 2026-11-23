@@ -1,3 +1,7 @@
+---
+description: "Testing multichain Solidity systems in Wake with a separate Chain instance for each chain, and relaying events from one chain to another."
+---
+
 # Cross-chain testing
 
 Wake testing framework supports testing multichain solutions. The API remains the same as for single-chain solutions.
